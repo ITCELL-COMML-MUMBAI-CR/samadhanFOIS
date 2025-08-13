@@ -1,0 +1,124 @@
+# Samadhan FOIS - Railway Complaint System
+# Git ignore file to prevent uploading crucial files
+
+# Database Configuration and Credentials
+config/config.php
+*.sql
+db_backup/
+database/
+
+# Environment and Configuration Files
+.env
+.env.local
+.env.production
+settings.ini
+config.ini
+
+# Upload Directory and User Files
+public/uploads/
+uploads/
+files/
+attachments/
+evidence/
+
+# Log Files
+logs/
+*.log
+error.log
+access.log
+debug.log
+
+# Cache and Temporary Files
+cache/
+tmp/
+temp/
+*.tmp
+*.cache
+
+# Session Files
+sessions/
+*.sess
+
+# Backup Files
+backups/
+*.backup
+*.bak
+*.old
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# PHP Specific
+vendor/
+composer.lock
+*.phar
+
+# Node.js (if using any frontend build tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build and Distribution Files
+dist/
+build/
+*.min.js
+*.min.css
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Security and Sensitive Files
+private/
+secrets/
+keys/
+certificates/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Application Specific Sensitive Files
+init_setup.php
+install.php
+setup.php
+migrate.php
+
+# Documentation that might contain sensitive info
+INSTALL.md
+SETUP.md
+DEPLOYMENT.md
+
+# Test Files with Sensitive Data
+test_data/
+sample_data/
+dummy_data/
+
+# Custom Application Files (add as needed)
+# admin_tools/
+# maintenance/
+# scripts/
+
+# Version Control
+.git/
+.gitattributes
+
+# Archive Files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z

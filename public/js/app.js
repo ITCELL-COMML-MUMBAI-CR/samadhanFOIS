@@ -1,0 +1,399 @@
+/**
+ * Main JavaScript file for Samadhan FOIS - Railway Complaint System
+ */
+
+// Global App Object
+const SamadhanApp = {
+    // Configuration
+    config: {
+        apiUrl: window.location.origin + '/api/',
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+        allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif'],
+        maxFiles: 3
+    },
+    
+    // Utility functions
+    utils: {
+        // Format date to Indian locale
+        formatDate: function(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-IN', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        },
+        
+        // Format date and time to Indian locale
+        formatDateTime: function(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('en-IN', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        },
+        
+        // Sanitize HTML content
+        sanitizeHtml: function(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
+        
+        // Show loading spinner
+        showLoading: function(element) {
+            if (element) {
+                element.innerHTML = '<span class="loading-spinner"></span> Loading...';
+                element.disabled = true;
+            }
+        },
+        
+        // Hide loading spinner
+        hideLoading: function(element, originalText) {
+            if (element) {
+                element.innerHTML = originalText;
+                element.disabled = false;
+            }
+        },
+        
+        // Generate random ID
+        generateId: function() {
+            return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+    },
+    
+    // Alert system
+    alerts: {
+        show: function(message, type = 'info', duration = 5000) {
+            const alertId = SamadhanApp.utils.generateId();
+            const alertHtml = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${SamadhanApp.utils.sanitizeHtml(message)}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            // Find or create alert container
+            let alertContainer = document.querySelector('.alert-container');
+            if (!alertContainer) {
+                alertContainer = document.createElement('div');
+                alertContainer.className = 'alert-container container-fluid mt-3';
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent) {
+                    mainContent.insertBefore(alertContainer, mainContent.firstChild);
+                }
+            }
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHtml);
+            
+            // Auto-hide after duration
+            if (duration > 0) {
+                setTimeout(() => {
+                    const alertElement = document.getElementById(alertId);
+                    if (alertElement) {
+                        const bsAlert = new bootstrap.Alert(alertElement);
+                        bsAlert.close();
+                    }
+                }, duration);
+            }
+        },
+        
+        success: function(message, duration = 5000) {
+            this.show(message, 'success', duration);
+        },
+        
+        error: function(message, duration = 7000) {
+            this.show(message, 'danger', duration);
+        },
+        
+        warning: function(message, duration = 6000) {
+            this.show(message, 'warning', duration);
+        },
+        
+        info: function(message, duration = 5000) {
+            this.show(message, 'info', duration);
+        }
+    },
+    
+    // File upload handling
+    fileUpload: {
+        validate: function(files) {
+            if (!files || files.length === 0) {
+                return { valid: true, errors: [] };
+            }
+            
+            const errors = [];
+            const config = SamadhanApp.config;
+            
+            if (files.length > config.maxFiles) {
+                errors.push(`Maximum ${config.maxFiles} files allowed`);
+                return { valid: false, errors };
+            }
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Check file size
+                if (file.size > config.maxFileSize) {
+                    errors.push(`File "${file.name}" is too large. Maximum size: ${Math.round(config.maxFileSize / (1024 * 1024))}MB`);
+                }
+                
+                // Check file type
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!config.allowedFileTypes.includes(extension)) {
+                    errors.push(`File "${file.name}" has invalid type. Allowed: ${config.allowedFileTypes.join(', ')}`);
+                }
+            }
+            
+            return { valid: errors.length === 0, errors };
+        },
+        
+        setupDragDrop: function(element) {
+            if (!element) return;
+            
+            element.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                element.classList.add('dragover');
+            });
+            
+            element.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                element.classList.remove('dragover');
+            });
+            
+            element.addEventListener('drop', function(e) {
+                e.preventDefault();
+                element.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                const fileInput = element.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        },
+        
+        previewImages: function(files, container) {
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.createElement('div');
+                        preview.className = 'col-md-4 mb-3';
+                        preview.innerHTML = `
+                            <div class="card">
+                                <img src="${e.target.result}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                                <div class="card-body p-2">
+                                    <small class="text-muted">${file.name}</small>
+                                    <br>
+                                    <small class="text-muted">${Math.round(file.size / 1024)} KB</small>
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(preview);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    },
+    
+    // API calls
+    api: {
+        request: async function(endpoint, options = {}) {
+            const url = SamadhanApp.config.apiUrl + endpoint;
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const response = await fetch(url, finalOptions);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'API request failed');
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        },
+        
+        get: function(endpoint) {
+            return this.request(endpoint, { method: 'GET' });
+        },
+        
+        post: function(endpoint, data) {
+            return this.request(endpoint, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        },
+        
+        put: function(endpoint, data) {
+            return this.request(endpoint, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        },
+        
+        delete: function(endpoint) {
+            return this.request(endpoint, { method: 'DELETE' });
+        }
+    },
+    
+    // Form handling
+    forms: {
+        serialize: function(form) {
+            const formData = new FormData(form);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (data[key]) {
+                    if (Array.isArray(data[key])) {
+                        data[key].push(value);
+                    } else {
+                        data[key] = [data[key], value];
+                    }
+                } else {
+                    data[key] = value;
+                }
+            }
+            
+            return data;
+        },
+        
+        validate: function(form) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            return isValid;
+        },
+        
+        reset: function(form) {
+            form.reset();
+            form.querySelectorAll('.is-invalid').forEach(field => {
+                field.classList.remove('is-invalid');
+            });
+        }
+    },
+    
+    // Initialize the application
+    init: function() {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize file upload areas
+            const uploadAreas = document.querySelectorAll('.file-upload-area');
+            uploadAreas.forEach(area => {
+                SamadhanApp.fileUpload.setupDragDrop(area);
+            });
+            
+            // Initialize file input change handlers
+            const fileInputs = document.querySelectorAll('input[type="file"]');
+            fileInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    const validation = SamadhanApp.fileUpload.validate(this.files);
+                    
+                    if (!validation.valid) {
+                        SamadhanApp.alerts.error(validation.errors.join('<br>'));
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // Preview images if container exists
+                    const previewContainer = document.querySelector('.image-preview-container');
+                    if (previewContainer && this.files.length > 0) {
+                        SamadhanApp.fileUpload.previewImages(this.files, previewContainer);
+                    }
+                });
+            });
+            
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // Initialize rating systems
+            const ratingContainers = document.querySelectorAll('.rating');
+            ratingContainers.forEach(container => {
+                SamadhanApp.rating.init(container);
+            });
+            
+            console.log('Samadhan FOIS App initialized successfully');
+        });
+    },
+    
+    // Rating system
+    rating: {
+        init: function(container) {
+            const stars = container.querySelectorAll('.star');
+            const input = container.querySelector('input[type="hidden"]');
+            
+            stars.forEach((star, index) => {
+                star.addEventListener('click', function() {
+                    const rating = index + 1;
+                    if (input) input.value = rating;
+                    
+                    stars.forEach((s, i) => {
+                        if (i < rating) {
+                            s.classList.add('active');
+                        } else {
+                            s.classList.remove('active');
+                        }
+                    });
+                });
+                
+                star.addEventListener('mouseover', function() {
+                    stars.forEach((s, i) => {
+                        if (i <= index) {
+                            s.style.color = '#fbbf24';
+                        } else {
+                            s.style.color = '#e2e8f0';
+                        }
+                    });
+                });
+            });
+            
+            container.addEventListener('mouseleave', function() {
+                const currentRating = input ? parseInt(input.value) || 0 : 0;
+                stars.forEach((s, i) => {
+                    if (i < currentRating) {
+                        s.style.color = '#fbbf24';
+                    } else {
+                        s.style.color = '#e2e8f0';
+                    }
+                });
+            });
+        }
+    }
+};
+
+// Initialize the application
+SamadhanApp.init();
+
+// Make it globally available
+window.SamadhanApp = SamadhanApp;
