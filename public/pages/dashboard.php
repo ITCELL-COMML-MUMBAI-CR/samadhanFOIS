@@ -1,146 +1,7 @@
 <?php
-/**
- * Dashboard Page
- * Main dashboard with statistics and charts based on user role
- */
-
-require_once '../src/utils/SessionManager.php';
-
-// Require login
-SessionManager::requireLogin();
-
-$currentUser = SessionManager::getCurrentUser();
-$userRole = $currentUser['role'];
-
-// Get dashboard data based on role
-$dashboardData = [];
-$recentGrievances = [];
-$statistics = [];
-
-try {
-    require_once '../src/models/Complaint.php';
-    require_once '../src/models/User.php';
-    require_once '../src/models/Transaction.php';
-    
-    $complaintModel = new Complaint();
-    $userModel = new User();
-    $transactionModel = new Transaction();
-    
-    // Get statistics based on role
-    switch ($userRole) {
-        case 'customer':
-            $filters = ['customer_id' => $currentUser['customer_id']];
-            $statistics = $complaintModel->getStatistics($filters);
-            $recentGrievances = $complaintModel->findByCustomer($currentUser['customer_id'], 5);
-            break;
-            
-        case 'controller':
-            $filters = ['assigned_to' => $currentUser['login_id']];
-            $statistics = $complaintModel->getStatistics($filters);
-            $recentGrievances = $complaintModel->findAssignedTo($currentUser['login_id'], 5);
-            break;
-            
-        case 'admin':
-        case 'viewer':
-            $statistics = $complaintModel->getStatistics();
-            $recentGrievances = $complaintModel->getRecent(5);
-            break;
-    }
-    
-    // Get user statistics for admin
-    if ($userRole === 'admin') {
-        $dashboardData['user_stats'] = $userModel->getStatistics();
-    }
-    
-    // Get recent transactions
-    $recentTransactions = $transactionModel->getRecent(5, $userRole === 'customer' ? null : $currentUser['login_id']);
-    
-} catch (Exception $e) {
-    error_log('Dashboard error: ' . $e->getMessage());
-    $statistics = [];
-}
-
-// Prepare chart data
-$statusChartData = [];
-$priorityChartData = [];
-$monthlyData = [];
-
-if (!empty($statistics['by_status'])) {
-    foreach ($statistics['by_status'] as $status => $count) {
-        $statusChartData[] = [
-            'label' => ucfirst(str_replace('_', ' ', $status)),
-            'value' => $count,
-            'color' => getStatusColor($status)
-        ];
-    }
-}
-
-if (!empty($statistics['by_priority'])) {
-    foreach ($statistics['by_priority'] as $priority => $count) {
-        $priorityChartData[] = [
-            'label' => ucfirst($priority),
-            'value' => $count,
-            'color' => getPriorityColor($priority)
-        ];
-    }
-}
-
-// Get monthly data for trend chart
-try {
-    $monthlyData = getMonthlyGrievanceData($complaintModel, $userRole, $currentUser);
-} catch (Exception $e) {
-    $monthlyData = [];
-}
-
-// Helper functions
-function getStatusColor($status) {
-    $colors = [
-        'pending' => '#fbbf24',
-        'in_progress' => '#3b82f6',
-        'resolved' => '#16a34a',
-        'closed' => '#6b7280',
-        'rejected' => '#dc2626'
-    ];
-    return $colors[$status] ?? '#6b7280';
-}
-
-function getPriorityColor($priority) {
-    $colors = [
-        'low' => '#22c55e',
-        'medium' => '#fbbf24',
-        'high' => '#ea580c',
-        'critical' => '#dc2626'
-    ];
-    return $colors[$priority] ?? '#6b7280';
-}
-
-function getMonthlyGrievanceData($complaintModel, $userRole, $currentUser) {
-    $data = [];
-    $months = [];
-    
-    // Get last 6 months
-    for ($i = 5; $i >= 0; $i--) {
-        $date = date('Y-m', strtotime("-$i months"));
-        $months[] = $date;
-    }
-    
-    foreach ($months as $month) {
-        $startDate = $month . '-01';
-        $endDate = date('Y-m-t', strtotime($startDate));
-        
-        // This would require a more complex query - simplified for demo
-        $count = 0; // Placeholder
-        
-        $data[] = [
-            'month' => date('M Y', strtotime($startDate)),
-            'count' => $count
-        ];
-    }
-    
-    return $data;
-}
+// This file is now a view and should not contain business logic.
+// The logic is handled by DashboardController.php
 ?>
-
 <div class="container-fluid">
     <!-- Welcome Header -->
     <div class="row">
@@ -160,7 +21,7 @@ function getMonthlyGrievanceData($complaintModel, $userRole, $currentUser) {
                 </div>
                 <div>
                     <?php if ($userRole === 'customer'): ?>
-                        <a href="<?php echo BASE_URL; ?>grievances/new" class="btn btn-railway-primary">
+                        <a href="<?php echo BASE_URL; ?>complaints/new" class="btn btn-railway-primary">
                             <i class="fas fa-plus-circle"></i> New Grievance
                         </a>
                     <?php elseif ($userRole === 'admin'): ?>
@@ -281,7 +142,7 @@ function getMonthlyGrievanceData($complaintModel, $userRole, $currentUser) {
                         <h5 class="mb-0">
                             <i class="fas fa-list"></i> Recent Grievances
                         </h5>
-                        <a href="<?php echo BASE_URL; ?>grievances" class="btn btn-outline-primary btn-sm">
+                        <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-outline-primary btn-sm">
                             View All
                         </a>
                     </div>
@@ -351,31 +212,34 @@ function getMonthlyGrievanceData($complaintModel, $userRole, $currentUser) {
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         <?php if ($userRole === 'customer'): ?>
-                            <a href="<?php echo BASE_URL; ?>grievances/new" class="btn btn-railway-primary btn-sm">
+                            <a href="<?php echo BASE_URL; ?>complaints/new" class="btn btn-railway-primary btn-sm">
                                 <i class="fas fa-plus-circle"></i> Submit New Grievance
                             </a>
-                            <a href="<?php echo BASE_URL; ?>grievances/my" class="btn btn-outline-primary btn-sm">
+                            <a href="<?php echo BASE_URL; ?>complaints/my" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-list"></i> View My Grievances
                             </a>
                         <?php elseif ($userRole === 'controller'): ?>
-                            <a href="<?php echo BASE_URL; ?>grievances/tome" class="btn btn-railway-primary btn-sm">
+                            <a href="<?php echo BASE_URL; ?>complaints/tome" class="btn btn-railway-primary btn-sm">
                                 <i class="fas fa-tasks"></i> Grievances to Me
                             </a>
-                            <a href="<?php echo BASE_URL; ?>grievances" class="btn btn-outline-primary btn-sm">
+                            <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-list"></i> All Grievances
                             </a>
                         <?php elseif ($userRole === 'admin'): ?>
                             <a href="<?php echo BASE_URL; ?>admin/categories" class="btn btn-railway-primary btn-sm">
                                 <i class="fas fa-tags"></i> Manage Categories
                             </a>
+                            <a href="<?php echo BASE_URL; ?>customer/add" class="btn btn-success btn-sm">
+                                <i class="fas fa-user-plus"></i> Add Customer
+                            </a>
                             <a href="<?php echo BASE_URL; ?>register" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-user-plus"></i> Add User
+                                <i class="fas fa-users"></i> Add User
                             </a>
                             <a href="<?php echo BASE_URL; ?>admin/reports" class="btn btn-outline-info btn-sm">
                                 <i class="fas fa-chart-bar"></i> View Reports
                             </a>
                         <?php else: ?>
-                            <a href="<?php echo BASE_URL; ?>grievances" class="btn btn-railway-primary btn-sm">
+                            <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-railway-primary btn-sm">
                                 <i class="fas fa-list"></i> View Grievances
                             </a>
                             <a href="<?php echo BASE_URL; ?>admin/reports" class="btn btn-outline-info btn-sm">
@@ -544,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function viewGrievance(complaintId) {
-    window.open('<?php echo BASE_URL; ?>grievances/view/' + complaintId, '_blank');
+    window.open('<?php echo BASE_URL; ?>complaints/view/' + complaintId, '_blank');
 }
 
 // Auto-refresh dashboard every 5 minutes

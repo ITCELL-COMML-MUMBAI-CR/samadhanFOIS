@@ -1,11 +1,19 @@
 <?php
 /**
- * Front Controller for Samadhan FOIS - Railway Grievance System
+ * Front Controller for SAMPARK - Railway Grievance System
  */
 
 // Include configuration and session management
 require_once '../config/config.php';
 require_once '../src/utils/SessionManager.php';
+require_once '../src/controllers/BaseController.php';
+require_once '../src/controllers/PageController.php';
+require_once '../src/controllers/LoginController.php';
+require_once '../src/controllers/DashboardController.php';
+require_once '../src/controllers/ComplaintController.php';
+require_once '../src/controllers/AdminController.php';
+require_once '../src/controllers/CustomerController.php';
+
 
 // Start session management
 SessionManager::start();
@@ -28,106 +36,67 @@ if (empty($uri)) {
 
 // Extract controller and action
 $segments = explode('/', $uri);
-$controller = $segments[0] ?? 'home';
+$controllerName = $segments[0] ?? 'home';
 $action = $segments[1] ?? 'index';
 $params = array_slice($segments, 2);
 
-// Define page title
-$pageTitle = 'Home';
-
-// Include header
-include '../src/views/header.php';
+// Handle API requests first (before including header)
+if ($controllerName === 'api') {
+    // Handle API requests
+    include '../src/api/index.php';
+    exit;
+}
 
 // Basic routing logic
-switch ($controller) {
+switch ($controllerName) {
     case 'home':
     case '':
-        $pageTitle = 'Welcome';
-        include 'pages/home.php';
+        $controller = new PageController();
+        $controller->home();
         break;
         
     case 'login':
-        $pageTitle = 'Login';
-        include 'pages/login.php';
+        $controller = new LoginController();
+        $controller->handleLoginRequest();
+        
+        // Load the login page using PageController
+        $pageController = new PageController();
+        $pageController->login();
         break;
         
-    case 'register':
-        $pageTitle = 'Register';
-        include 'pages/register.php';
+    case 'customer':
+        $controller = new CustomerController();
+        if ($action === 'add') {
+            $controller->add();
+        }
         break;
-        
+
     case 'dashboard':
-        $pageTitle = 'Dashboard';
-        SessionManager::requireLogin();
-        include 'pages/dashboard.php';
+        $controller = new DashboardController();
+        $controller->index();
         break;
         
     case 'grievances':
-    case 'complaints':
-        $pageTitle = 'Grievances';
-        SessionManager::requireLogin();
-        
-        switch ($action) {
-            case 'new':
-                $pageTitle = 'New Grievance';
-                SessionManager::requireAnyRole(['customer']);
-                include 'pages/complaint_form.php';
-                break;
-            case 'my':
-                $pageTitle = 'My Grievances';
-                SessionManager::requireAnyRole(['customer']);
-                include 'pages/my_complaints.php';
-                break;
-            case 'tome':
-                $pageTitle = 'Grievances to Me';
-                SessionManager::requireAnyRole(['controller']);
-                include 'pages/complaints_to_me.php';
-                break;
-            case 'view':
-                $pageTitle = 'View Grievance';
-                include 'pages/complaint_view.php';
-                break;
-            default:
-                include 'pages/complaints_list.php';
-                break;
+        $controller = new ComplaintController();
+        if ($action === 'new') {
+            $controller->create();
         }
+        // ... other complaint actions
         break;
         
     case 'admin':
-        SessionManager::requireRole('admin');
-        
-        switch ($action) {
-            case 'categories':
-                $pageTitle = 'Manage Categories';
-                include 'pages/manage_categories.php';
-                break;
-            case 'users':
-                $pageTitle = 'Manage Users';
-                include 'pages/manage_users.php';
-                break;
-            case 'reports':
-                $pageTitle = 'Reports';
-                include 'pages/reports.php';
-                break;
-            case 'logs':
-                $pageTitle = 'System Logs';
-                include 'pages/admin_logs.php';
-                break;
-            default:
-                header('Location: ' . BASE_URL . 'dashboard');
-                exit;
+        $controller = new AdminController();
+        if ($action === 'categories') {
+            $controller->categories();
+        } elseif ($action === 'logs') {
+            $controller->logs();
         }
         break;
         
     case 'policy':
-        $pageTitle = 'General Policy';
-        include 'pages/policy.php';
+        $controller = new PageController();
+        $controller->policy();
         break;
-        
-    case 'api':
-        // Handle API requests
-        include '../src/api/index.php';
-        exit;
         
     case 'logout':
         SessionManager::logout();
@@ -135,13 +104,7 @@ switch ($controller) {
         exit;
         
     default:
-        // 404 page
-        http_response_code(404);
-        $pageTitle = '404 - Page Not Found';
-        include 'pages/404.php';
+        $controller = new PageController();
+        $controller->notFound();
         break;
 }
-
-// Include footer
-include '../src/views/footer.php';
-?>

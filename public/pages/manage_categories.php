@@ -1,108 +1,7 @@
 <?php
-/**
- * Manage Categories Page
- * Admin page to manage grievance categories, types, and subtypes
- */
-
-require_once '../src/utils/SessionManager.php';
-
-// Require admin access
-SessionManager::requireRole('admin');
-
-$error = '';
-$success = '';
-$action = $_GET['action'] ?? 'list';
-
-require_once '../src/models/ComplaintCategory.php';
-$categoryModel = new ComplaintCategory();
-
-// Handle actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $postAction = $_POST['action'] ?? '';
-    
-    try {
-        switch ($postAction) {
-            case 'add':
-                $category = sanitizeInput($_POST['category'] ?? '');
-                $type = sanitizeInput($_POST['type'] ?? '');
-                $subtype = sanitizeInput($_POST['subtype'] ?? '');
-                
-                if (empty($category) || empty($type) || empty($subtype)) {
-                    $error = 'All fields are required.';
-                } else {
-                    $result = $categoryModel->addCategory($category, $type, $subtype);
-                    if ($result !== false) {
-                        $success = 'Category added successfully!';
-                    } else {
-                        $error = 'Category combination already exists.';
-                    }
-                }
-                break;
-                
-            case 'edit':
-                $id = (int)($_POST['id'] ?? 0);
-                $category = sanitizeInput($_POST['category'] ?? '');
-                $type = sanitizeInput($_POST['type'] ?? '');
-                $subtype = sanitizeInput($_POST['subtype'] ?? '');
-                
-                if (empty($category) || empty($type) || empty($subtype)) {
-                    $error = 'All fields are required.';
-                } else {
-                    $result = $categoryModel->updateCategory($id, $category, $type, $subtype);
-                    if ($result) {
-                        $success = 'Category updated successfully!';
-                    } else {
-                        $error = 'Failed to update category.';
-                    }
-                }
-                break;
-                
-            case 'delete':
-                $id = (int)($_POST['id'] ?? 0);
-                $result = $categoryModel->deleteCategory($id);
-                if ($result) {
-                    $success = 'Category deleted successfully!';
-                } else {
-                    $error = 'Failed to delete category.';
-                }
-                break;
-        }
-    } catch (Exception $e) {
-        error_log('Category management error: ' . $e->getMessage());
-        $error = 'An error occurred. Please try again.';
-    }
-}
-
-// Get categories for listing
-$categories = [];
-$searchTerm = $_GET['search'] ?? '';
-
-if (!empty($searchTerm)) {
-    $categories = $categoryModel->searchCategories($searchTerm);
-} else {
-    $categories = $categoryModel->getAllForManagement();
-}
-
-// Get hierarchical data for dropdowns
-$hierarchicalData = $categoryModel->getHierarchicalData();
-
-// Get statistics
-$stats = $categoryModel->getStatistics();
-
-// Get category for editing
-$editCategory = null;
-if ($action === 'edit' && isset($_GET['id'])) {
-    $editId = (int)$_GET['id'];
-    $allCategories = $categoryModel->getAllForManagement();
-    foreach ($allCategories as $cat) {
-        if ($cat['CategoryID'] == $editId) {
-            $editCategory = $cat;
-            break;
-        }
-    }
-}
+// This file is now a view and should not contain business logic.
+// The logic is handled by AdminController.php
 ?>
-
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -181,7 +80,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" id="categoryForm">
+                    <form method="POST" id="categoryForm" action="<?php echo BASE_URL; ?>admin/categories">
                         <input type="hidden" name="action" value="<?php echo $action === 'edit' ? 'edit' : 'add'; ?>">
                         <?php if ($action === 'edit' && $editCategory): ?>
                             <input type="hidden" name="id" value="<?php echo $editCategory['CategoryID']; ?>">
@@ -268,7 +167,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                             </h5>
                         </div>
                         <div class="col-md-6">
-                            <form method="GET" class="d-flex">
+                            <form method="GET" class="d-flex" action="<?php echo BASE_URL; ?>admin/categories">
                                 <input type="hidden" name="action" value="list">
                                 <input type="text" class="form-control form-control-sm me-2" 
                                        name="search" placeholder="Search categories..." 
@@ -369,7 +268,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="POST" style="display: inline;">
+                <form method="POST" style="display: inline;" action="<?php echo BASE_URL; ?>admin/categories">
                     <input type="hidden" name="action" value="delete">
                     <input type="hidden" name="id" id="deleteItemId">
                     <button type="submit" class="btn btn-danger">
@@ -460,6 +359,6 @@ function exportCategories() {
 }
 
 function showStatistics() {
-    SamadhanApp.alerts.info('Categories: <?php echo $stats['total_categories']; ?>, Types: <?php echo $stats['total_types']; ?>, Subtypes: <?php echo $stats['total_subtypes']; ?>');
+    SAMPARKApp.alerts.info('Categories: <?php echo $stats['total_categories']; ?>, Types: <?php echo $stats['total_types']; ?>, Subtypes: <?php echo $stats['total_subtypes']; ?>');
 }
 </script>

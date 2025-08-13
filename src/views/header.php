@@ -11,7 +11,7 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link href="<?php echo BASE_URL; ?>public/css/style.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>css/style.css" rel="stylesheet">
     
     <style>
         :root {
@@ -90,7 +90,7 @@
             <!-- Brand/Logo -->
             <a class="navbar-brand d-flex align-items-center" href="<?php echo BASE_URL; ?>">
                 <i class="fas fa-train railway-logo"></i>
-                <span>Samadhan FOIS</span>
+                <span>SAMPARK</span>
             </a>
             
             <!-- Mobile Toggle Button -->
@@ -111,29 +111,29 @@
                         
                         <?php if (SessionManager::hasRole('customer')): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo BASE_URL; ?>grievances/new">
+                                <a class="nav-link" href="<?php echo BASE_URL; ?>complaints/new">
                                     <i class="fas fa-plus-circle"></i> New Grievance
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo BASE_URL; ?>grievances/my">
+                                <a class="nav-link" href="<?php echo BASE_URL; ?>complaints/my">
                                     <i class="fas fa-list"></i> My Grievances
                                 </a>
                             </li>
                         <?php elseif (SessionManager::hasRole('controller')): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo BASE_URL; ?>grievances">
+                                <a class="nav-link" href="<?php echo BASE_URL; ?>complaints">
                                     <i class="fas fa-clipboard-list"></i> All Grievances
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo BASE_URL; ?>grievances/tome">
+                                <a class="nav-link" href="<?php echo BASE_URL; ?>complaints/tome">
                                     <i class="fas fa-tasks"></i> Grievances to Me
                                 </a>
                             </li>
                         <?php else: ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo BASE_URL; ?>grievances">
+                                <a class="nav-link" href="<?php echo BASE_URL; ?>complaints">
                                     <i class="fas fa-clipboard-list"></i> All Grievances
                                 </a>
                             </li>
@@ -148,6 +148,8 @@
                                     <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/users">User Management</a></li>
                                     <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/categories">Manage Categories</a></li>
                                     <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/reports">Reports</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer/add"><i class="fas fa-user-plus"></i> Add Customer</a></li>
                                     <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>register">Add User</a></li>
                                 </ul>
                             </li>

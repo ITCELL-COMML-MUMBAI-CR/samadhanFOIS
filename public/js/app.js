@@ -3,11 +3,11 @@
  */
 
 // Global App Object
-const SamadhanApp = {
+const SAMPARKApp = {
     // Configuration
     config: {
         apiUrl: window.location.origin + '/api/',
-        maxFileSize: 5 * 1024 * 1024, // 5MB
+        maxFileSize: 2 * 1024 * 1024, // 2MB
         allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif'],
         maxFiles: 3
     },
@@ -68,10 +68,10 @@ const SamadhanApp = {
     // Alert system
     alerts: {
         show: function(message, type = 'info', duration = 5000) {
-            const alertId = SamadhanApp.utils.generateId();
+            const alertId = SAMPARKApp.utils.generateId();
             const alertHtml = `
                 <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
-                    ${SamadhanApp.utils.sanitizeHtml(message)}
+                    ${SAMPARKApp.utils.sanitizeHtml(message)}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             `;
@@ -126,7 +126,7 @@ const SamadhanApp = {
             }
             
             const errors = [];
-            const config = SamadhanApp.config;
+            const config = SAMPARKApp.config;
             
             if (files.length > config.maxFiles) {
                 errors.push(`Maximum ${config.maxFiles} files allowed`);
@@ -209,7 +209,7 @@ const SamadhanApp = {
     // API calls
     api: {
         request: async function(endpoint, options = {}) {
-            const url = SamadhanApp.config.apiUrl + endpoint;
+            const url = SAMPARKApp.config.apiUrl + endpoint;
             const defaultOptions = {
                 headers: {
                     'Content-Type': 'application/json',
@@ -308,17 +308,17 @@ const SamadhanApp = {
             // Initialize file upload areas
             const uploadAreas = document.querySelectorAll('.file-upload-area');
             uploadAreas.forEach(area => {
-                SamadhanApp.fileUpload.setupDragDrop(area);
+                SAMPARKApp.fileUpload.setupDragDrop(area);
             });
             
             // Initialize file input change handlers
             const fileInputs = document.querySelectorAll('input[type="file"]');
             fileInputs.forEach(input => {
                 input.addEventListener('change', function() {
-                    const validation = SamadhanApp.fileUpload.validate(this.files);
+                    const validation = SAMPARKApp.fileUpload.validate(this.files);
                     
                     if (!validation.valid) {
-                        SamadhanApp.alerts.error(validation.errors.join('<br>'));
+                        SAMPARKApp.alerts.error(validation.errors.join('<br>'));
                         this.value = '';
                         return;
                     }
@@ -326,7 +326,7 @@ const SamadhanApp = {
                     // Preview images if container exists
                     const previewContainer = document.querySelector('.image-preview-container');
                     if (previewContainer && this.files.length > 0) {
-                        SamadhanApp.fileUpload.previewImages(this.files, previewContainer);
+                        SAMPARKApp.fileUpload.previewImages(this.files, previewContainer);
                     }
                 });
             });
@@ -340,10 +340,10 @@ const SamadhanApp = {
             // Initialize rating systems
             const ratingContainers = document.querySelectorAll('.rating');
             ratingContainers.forEach(container => {
-                SamadhanApp.rating.init(container);
+                SAMPARKApp.rating.init(container);
             });
             
-            console.log('Samadhan FOIS App initialized successfully');
+            console.log('SAMPARK App initialized successfully');
         });
     },
     
@@ -393,7 +393,7 @@ const SamadhanApp = {
 };
 
 // Initialize the application
-SamadhanApp.init();
+SAMPARKApp.init();
 
 // Make it globally available
-window.SamadhanApp = SamadhanApp;
+window.SAMPARKApp = SAMPARKApp;

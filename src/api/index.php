@@ -20,7 +20,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once '../../config/config.php';
+require_once dirname(__DIR__, 2) . '/config/config.php';
 
 // Parse the request URI
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);

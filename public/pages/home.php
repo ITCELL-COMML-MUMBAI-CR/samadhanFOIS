@@ -15,7 +15,7 @@
                         <div class="col-lg-8 mx-auto">
                             <h1 class="display-4 fw-bold text-primary mb-4">
                                 <i class="fas fa-train me-3"></i>
-                                Samadhan FOIS
+                                SAMPARK
                             </h1>
                             <p class="lead mb-4">
                                 Central Railway Freight Customer Grievance Management System

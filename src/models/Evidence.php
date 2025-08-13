@@ -129,9 +129,19 @@ class Evidence extends BaseModel {
                 $newFileName = $complaintId . '_' . ($i + 1) . '_' . time() . '.' . $extension;
                 $targetPath = $uploadDir . $newFileName;
                 
-                // Move uploaded file
-                if (move_uploaded_file($tmpName, $targetPath)) {
-                    $uploadedFiles[] = $newFileName;
+                // Compress and save the image
+                if (move_uploaded_file($tmpName, $targetPath . '.original')) {
+                    // Compress the image
+                    if ($this->compressImage($targetPath . '.original', $targetPath)) {
+                        // Remove original file after successful compression
+                        unlink($targetPath . '.original');
+                        $uploadedFiles[] = $newFileName;
+                    } else {
+                        // If compression fails, use original file (fallback)
+                        rename($targetPath . '.original', $targetPath);
+                        $uploadedFiles[] = $newFileName;
+                        $errors[] = "Warning: Could not compress $fileName, using original size";
+                    }
                 } else {
                     $errors[] = "Failed to upload: $fileName";
                 }
@@ -161,14 +171,6 @@ class Evidence extends BaseModel {
      * Validate uploaded file
      */
     private function validateFile($fileName, $fileSize, $tmpName) {
-        // Check file size
-        if ($fileSize > MAX_FILE_SIZE) {
-            return [
-                'valid' => false,
-                'error' => "File $fileName is too large. Maximum size: " . round(MAX_FILE_SIZE / (1024 * 1024)) . "MB"
-            ];
-        }
-        
         // Check file extension
         $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
         if (!in_array($extension, ALLOWED_EXTENSIONS)) {
@@ -186,7 +188,120 @@ class Evidence extends BaseModel {
             ];
         }
         
+        // Note: File size check removed as we'll compress images automatically
         return ['valid' => true];
+    }
+    
+    /**
+     * Compress image to below 2MB while maintaining quality
+     */
+    private function compressImage($sourcePath, $targetPath, $maxSizeBytes = 2097152) { // 2MB = 2 * 1024 * 1024
+        $imageInfo = getimagesize($sourcePath);
+        if (!$imageInfo) {
+            return false;
+        }
+        
+        $mime = $imageInfo['mime'];
+        $width = $imageInfo[0];
+        $height = $imageInfo[1];
+        
+        // Create image resource based on type
+        switch ($mime) {
+            case 'image/jpeg':
+                $sourceImage = imagecreatefromjpeg($sourcePath);
+                break;
+            case 'image/png':
+                $sourceImage = imagecreatefrompng($sourcePath);
+                break;
+            case 'image/gif':
+                $sourceImage = imagecreatefromgif($sourcePath);
+                break;
+            default:
+                return false;
+        }
+        
+        if (!$sourceImage) {
+            return false;
+        }
+        
+        // If original file is already under 2MB, just copy it
+        if (filesize($sourcePath) <= $maxSizeBytes) {
+            copy($sourcePath, $targetPath);
+            imagedestroy($sourceImage);
+            return true;
+        }
+        
+        // Calculate new dimensions while maintaining aspect ratio
+        $maxWidth = 1920; // Max width for compression
+        $maxHeight = 1080; // Max height for compression
+        
+        $ratio = min($maxWidth / $width, $maxHeight / $height, 1);
+        $newWidth = (int)($width * $ratio);
+        $newHeight = (int)($height * $ratio);
+        
+        // Create new image with calculated dimensions
+        $compressedImage = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Preserve transparency for PNG and GIF
+        if ($mime == 'image/png' || $mime == 'image/gif') {
+            imagealphablending($compressedImage, false);
+            imagesavealpha($compressedImage, true);
+            $transparent = imagecolorallocatealpha($compressedImage, 255, 255, 255, 127);
+            imagefill($compressedImage, 0, 0, $transparent);
+        }
+        
+        // Resize image
+        imagecopyresampled($compressedImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+        
+        // Save compressed image with quality adjustment
+        $quality = 85; // Start with 85% quality
+        $attempt = 0;
+        $maxAttempts = 5;
+        
+        do {
+            $tempPath = $targetPath . '.tmp';
+            
+            switch ($mime) {
+                case 'image/jpeg':
+                    imagejpeg($compressedImage, $tempPath, $quality);
+                    break;
+                case 'image/png':
+                    // PNG compression level (0-9, where 9 is max compression)
+                    $pngQuality = (int)(9 - ($quality / 100) * 9);
+                    imagepng($compressedImage, $tempPath, $pngQuality);
+                    break;
+                case 'image/gif':
+                    imagegif($compressedImage, $tempPath);
+                    break;
+            }
+            
+            $attempt++;
+            
+            // Check if file size is acceptable
+            if (file_exists($tempPath) && filesize($tempPath) <= $maxSizeBytes) {
+                rename($tempPath, $targetPath);
+                break;
+            } else if ($attempt < $maxAttempts) {
+                // Reduce quality for next attempt
+                $quality -= 15;
+                if (file_exists($tempPath)) {
+                    unlink($tempPath);
+                }
+            } else {
+                // If we can't get it under 2MB, save with lowest quality
+                if (file_exists($tempPath)) {
+                    rename($tempPath, $targetPath);
+                }
+                break;
+            }
+            
+        } while ($attempt < $maxAttempts);
+        
+        // Clean up resources
+        imagedestroy($sourceImage);
+        imagedestroy($compressedImage);
+        
+        return file_exists($targetPath);
     }
     
     /**

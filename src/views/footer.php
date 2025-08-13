@@ -94,7 +94,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <!-- Custom JavaScript -->
-    <script src="<?php echo BASE_URL; ?>public/js/app.js"></script>
+    <script src="<?php echo BASE_URL; ?>js/app.js"></script>
     
     <!-- Page-specific JavaScript -->
     <?php if (isset($customJS)): ?>

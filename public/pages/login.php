@@ -32,7 +32,7 @@ if (isset($_GET['timeout'])) {
                 <div class="card-header">
                     <div class="text-center">
                         <i class="fas fa-train fa-3x text-primary mb-3"></i>
-                        <h3 class="fw-bold text-primary">Samadhan FOIS</h3>
+                        <h3 class="fw-bold text-primary">SAMPARK</h3>
                         <p class="text-muted">Grievance Management System</p>
                     </div>
                 </div>

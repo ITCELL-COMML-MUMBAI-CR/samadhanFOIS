@@ -3,6 +3,7 @@
 
 # Database Configuration and Credentials
 config/config.php
+config/email_config.php
 *.sql
 db_backup/
 database/

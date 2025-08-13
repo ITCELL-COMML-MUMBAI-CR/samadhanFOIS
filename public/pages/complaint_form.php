@@ -1,158 +1,7 @@
 <?php
-/**
- * Grievance Submission Form
- * Page for customers to submit new grievances
- */
-
-require_once '../src/utils/SessionManager.php';
-
-// Require customer access
-SessionManager::requireRole('customer');
-
-$error = '';
-$success = '';
-$currentUser = SessionManager::getCurrentUser();
-
-// Get customer details
-$customerDetails = null;
-try {
-    require_once '../src/models/BaseModel.php';
-    $db = Database::getInstance();
-    $connection = $db->getConnection();
-    $stmt = $connection->prepare("SELECT * FROM customers WHERE CustomerID = ?");
-    $stmt->execute([$currentUser['customer_id']]);
-    $customerDetails = $stmt->fetch();
-} catch (Exception $e) {
-    $error = 'Unable to load customer details.';
-}
-
-// Get categories for dropdowns
-$categories = [];
-$types = [];
-$subtypes = [];
-try {
-    require_once '../src/models/ComplaintCategory.php';
-    $categoryModel = new ComplaintCategory();
-    $hierarchicalData = $categoryModel->getHierarchicalData();
-    $categories = array_keys($hierarchicalData);
-} catch (Exception $e) {
-    $error = 'Unable to load grievance categories.';
-}
-
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // Validate CSRF token
-        if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
-            throw new Exception('Invalid security token');
-        }
-        
-        $formData = [
-            'complaint_type' => sanitizeInput($_POST['complaint_type'] ?? ''),
-            'complaint_subtype' => sanitizeInput($_POST['complaint_subtype'] ?? ''),
-            'category' => sanitizeInput($_POST['category'] ?? ''),
-            'location' => sanitizeInput($_POST['location'] ?? ''),
-            'description' => sanitizeInput($_POST['description'] ?? ''),
-            'rating' => (int)($_POST['rating'] ?? 0),
-            'rating_remarks' => sanitizeInput($_POST['rating_remarks'] ?? '')
-        ];
-        
-        // Validation
-        $errors = [];
-        
-        if (empty($formData['complaint_type'])) {
-            $errors[] = 'Grievance type is required';
-        }
-        
-        if (empty($formData['complaint_subtype'])) {
-            $errors[] = 'Grievance subtype is required';
-        }
-        
-        if (empty($formData['category'])) {
-            $errors[] = 'Category is required';
-        }
-        
-        if (empty($formData['location'])) {
-            $errors[] = 'Location is required';
-        }
-        
-        if (empty($formData['description'])) {
-            $errors[] = 'Description is required';
-        } elseif (strlen($formData['description']) < 20) {
-            $errors[] = 'Description must be at least 20 characters long';
-        }
-        
-        if ($formData['rating'] > 0 && $formData['rating'] < 3 && empty($formData['rating_remarks'])) {
-            $errors[] = 'Rating remarks are required for ratings below 3';
-        }
-        
-        // Validate category combination
-        if (!$categoryModel->validateCombination($formData['category'], $formData['complaint_type'], $formData['complaint_subtype'])) {
-            $errors[] = 'Invalid category combination selected';
-        }
-        
-        if (empty($errors)) {
-            require_once '../src/models/Complaint.php';
-            require_once '../src/models/Evidence.php';
-            require_once '../src/models/Transaction.php';
-            
-            $complaintModel = new Complaint();
-            $evidenceModel = new Evidence();
-            $transactionModel = new Transaction();
-            
-            // Prepare complaint data
-            $complaintData = [
-                'complaint_type' => $formData['complaint_type'],
-                'complaint_subtype' => $formData['complaint_subtype'],
-                'category' => $formData['category'],
-                'location' => $formData['location'],
-                'description' => $formData['description'],
-                'rating' => $formData['rating'] > 0 ? $formData['rating'] : null,
-                'rating_remarks' => !empty($formData['rating_remarks']) ? $formData['rating_remarks'] : null,
-                'customer_id' => $currentUser['customer_id'],
-                'department' => 'COMMERCIAL', // Default to Commercial as per workflow
-                'priority' => 'medium'
-            ];
-            
-            // Create complaint
-            $complaintId = $complaintModel->createComplaint($complaintData);
-            
-            if ($complaintId) {
-                // Handle file uploads if present
-                if (!empty($_FILES['evidence']['tmp_name'][0])) {
-                    $uploadResult = $evidenceModel->handleFileUpload($_FILES['evidence'], $complaintId);
-                    
-                    if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
-                        $error = 'Grievance submitted but some files failed to upload: ' . implode(', ', $uploadResult['errors']);
-                    }
-                }
-                
-                // Log initial transaction
-                $transactionModel->logStatusUpdate(
-                    $complaintId,
-                    'Grievance submitted by customer. Assigned to Commercial Department for review.',
-                    $currentUser['login_id']
-                );
-                
-                $success = "Grievance submitted successfully! Your grievance ID is: <strong>$complaintId</strong>";
-                
-                // Clear form
-                $_POST = [];
-                
-            } else {
-                $error = 'Failed to submit grievance. Please try again.';
-            }
-        } else {
-            $error = implode('<br>', $errors);
-        }
-        
-    } catch (Exception $e) {
-        error_log('Grievance submission error: ' . $e->getMessage());
-        $error = 'An error occurred while submitting your grievance. Please try again.';
-    }
-}
+// This file is now a view and should not contain business logic.
+// The logic is handled by ComplaintController.php
 ?>
-
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-lg-10">
@@ -217,55 +66,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <form method="POST" enctype="multipart/form-data" id="grievanceForm">
                         <input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
                         
-                        <!-- Category Selection -->
+                        <!-- Complaint Type and Subtype Selection -->
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <select class="form-select" id="category" name="category" required>
-                                        <option value="">Select Category</option>
-                                        <?php foreach ($categories as $category): ?>
-                                            <option value="<?php echo htmlspecialchars($category); ?>" 
-                                                    <?php echo ($_POST['category'] ?? '') === $category ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($category); ?>
+                                    <select class="form-select" id="complaint_type" name="complaint_type" required>
+                                        <option value="">Select Complaint Type</option>
+                                        <?php foreach ($complaintTypes as $type): ?>
+                                            <option value="<?php echo htmlspecialchars($type); ?>" 
+                                                    <?php echo ($_POST['complaint_type'] ?? '') === $type ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($type); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <label for="category">
-                                        <i class="fas fa-tags"></i> Category *
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-floating mb-3">
-                                    <select class="form-select" id="complaint_type" name="complaint_type" required>
-                                        <option value="">Select Type</option>
-                                    </select>
                                     <label for="complaint_type">
-                                        <i class="fas fa-list"></i> Type *
+                                        <i class="fas fa-list"></i> Complaint Type *
                                     </label>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <select class="form-select" id="complaint_subtype" name="complaint_subtype" required>
-                                        <option value="">Select Subtype</option>
+                                    <select class="form-select" id="complaint_subtype" name="complaint_subtype" required disabled>
+                                        <option value="">First select a complaint type</option>
                                     </select>
                                     <label for="complaint_subtype">
-                                        <i class="fas fa-list-ul"></i> Subtype *
+                                        <i class="fas fa-list-ul"></i> Complaint Subtype *
                                     </label>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="form-text mb-3">
+                            Select the type and subtype of complaint/grievance you want to submit. The category will be determined automatically.
+                        </div>
+                        
+                        <!-- FNR Number -->
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="fnr_no" name="fnr_no" required
+                                   placeholder="FNR Number" value="<?php echo htmlspecialchars($_POST['fnr_no'] ?? ''); ?>">
+                            <label for="fnr_no">
+                                <i class="fas fa-receipt"></i> FNR Number *
+                            </label>
+                            <div class="form-text">
+                                Enter the Freight Note Receipt (FNR) number if applicable
                             </div>
                         </div>
                         
                         <!-- Location -->
                         <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="location" name="location" 
-                                   placeholder="Location" value="<?php echo htmlspecialchars($_POST['location'] ?? ''); ?>" required>
-                            <label for="location">
+                            <select class="form-select" id="shed_id" name="shed_id" required>
+                                <option value="">Select Location</option>
+                                <?php foreach ($sheds as $shed): ?>
+                                    <option value="<?php echo htmlspecialchars($shed['ShedID']); ?>" 
+                                            <?php echo ($_POST['shed_id'] ?? '') == $shed['ShedID'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($shed['Terminal'] . ' - ' . $shed['Type']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <label for="shed_id">
                                 <i class="fas fa-map-marker-alt"></i> Location *
                             </label>
                             <div class="form-text">
-                                Specify the station, depot, or location where the issue occurred
+                                Select the terminal, depot, or location where the issue occurred
                             </div>
                         </div>
                         
@@ -284,47 +145,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
-                        <!-- Rating Section -->
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <h6 class="card-title">
-                                    <i class="fas fa-star"></i> Service Rating (Optional)
-                                </h6>
-                                <p class="card-text">Rate the service quality related to this grievance:</p>
-                                
-                                <div class="rating mb-3" id="serviceRating">
-                                    <input type="hidden" name="rating" id="ratingValue" value="<?php echo $_POST['rating'] ?? '0'; ?>">
-                                    <?php for ($i = 1; $i <= 5; $i++): ?>
-                                        <span class="star" data-rating="<?php echo $i; ?>">
-                                            <i class="fas fa-star"></i>
-                                        </span>
-                                    <?php endfor; ?>
-                                </div>
-                                
-                                <div class="form-floating" id="ratingRemarksField" style="display: none;">
-                                    <textarea class="form-control" id="rating_remarks" name="rating_remarks" 
-                                              placeholder="Rating Remarks"><?php echo htmlspecialchars($_POST['rating_remarks'] ?? ''); ?></textarea>
-                                    <label for="rating_remarks">
-                                        <i class="fas fa-comment"></i> Please explain your rating
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <!-- File Upload -->
                         <div class="card mb-3">
                             <div class="card-body">
                                 <h6 class="card-title">
                                     <i class="fas fa-paperclip"></i> Evidence (Optional)
                                 </h6>
-                                <p class="card-text">Upload supporting images (Max 3 files, 5MB each)</p>
+                                <p class="card-text">Upload supporting images (Max 3 files, 2MB each)</p>
                                 
-                                <div class="file-upload-area" id="fileUploadArea">
+                                <div class="file-upload-area" id="fileUploadArea" style="cursor: pointer;">
                                     <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
                                     <p>Drag and drop files here or click to select</p>
                                     <input type="file" class="form-control" id="evidence" name="evidence[]" 
                                            multiple accept="image/*" style="display: none;">
-                                    <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('evidence').click();">
+                                    <button type="button" class="btn btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('evidence').click();">
                                         <i class="fas fa-upload"></i> Select Files
                                     </button>
                                 </div>
@@ -332,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="row mt-3" id="imagePreview"></div>
                                 
                                 <div class="form-text">
-                                    Supported formats: JPG, JPEG, PNG, GIF. Maximum 3 images, 5MB each.
+                                    Supported formats: JPG, JPEG, PNG, GIF. Maximum 3 images, 2MB each.
                                 </div>
                             </div>
                         </div>
@@ -389,18 +223,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-// Hierarchical data for dynamic dropdowns
-const hierarchicalData = <?php echo json_encode($hierarchicalData ?? []); ?>;
+// Type-Subtype mapping for cascading dropdowns
+const typeSubtypeMapping = <?php echo json_encode($typeSubtypeMapping); ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
-    const categorySelect = document.getElementById('category');
     const typeSelect = document.getElementById('complaint_type');
     const subtypeSelect = document.getElementById('complaint_subtype');
     const descriptionField = document.getElementById('description');
     const charCount = document.getElementById('charCount');
-    const ratingStars = document.querySelectorAll('.star');
-    const ratingValue = document.getElementById('ratingValue');
-    const ratingRemarksField = document.getElementById('ratingRemarksField');
+
     const fileInput = document.getElementById('evidence');
     const fileUploadArea = document.getElementById('fileUploadArea');
     const imagePreview = document.getElementById('imagePreview');
@@ -415,159 +246,89 @@ document.addEventListener('DOMContentLoaded', function() {
     descriptionField.addEventListener('input', updateCharCount);
     updateCharCount();
     
-    // Category cascade
-    categorySelect.addEventListener('change', function() {
-        const category = this.value;
-        updateTypeOptions(category);
-        clearSubtypeOptions();
-    });
-    
+    // Cascading dropdown: Type -> Subtype
     typeSelect.addEventListener('change', function() {
-        const category = categorySelect.value;
-        const type = this.value;
-        updateSubtypeOptions(category, type);
+        const selectedType = this.value;
+        updateSubtypeOptions(selectedType);
     });
     
-    function updateTypeOptions(category) {
-        typeSelect.innerHTML = '<option value="">Select Type</option>';
-        if (hierarchicalData[category]) {
-            Object.keys(hierarchicalData[category]).forEach(type => {
-                const option = document.createElement('option');
-                option.value = type;
-                option.textContent = type;
-                if ('<?php echo $_POST['complaint_type'] ?? ''; ?>' === type) {
-                    option.selected = true;
-                }
-                typeSelect.appendChild(option);
-            });
-        }
-    }
-    
-    function updateSubtypeOptions(category, type) {
-        subtypeSelect.innerHTML = '<option value="">Select Subtype</option>';
-        if (hierarchicalData[category] && hierarchicalData[category][type]) {
-            hierarchicalData[category][type].forEach(subtype => {
+    function updateSubtypeOptions(selectedType) {
+        subtypeSelect.innerHTML = '<option value="">Select Complaint Subtype</option>';
+        
+        if (selectedType && typeSubtypeMapping[selectedType]) {
+            subtypeSelect.disabled = false;
+            
+            typeSubtypeMapping[selectedType].forEach(function(subtype) {
                 const option = document.createElement('option');
                 option.value = subtype;
                 option.textContent = subtype;
-                if ('<?php echo $_POST['complaint_subtype'] ?? ''; ?>' === subtype) {
+                if ('<?php echo htmlspecialchars($_POST['complaint_subtype'] ?? ''); ?>' === subtype) {
                     option.selected = true;
                 }
                 subtypeSelect.appendChild(option);
             });
-        }
-    }
-    
-    function clearSubtypeOptions() {
-        subtypeSelect.innerHTML = '<option value="">Select Subtype</option>';
-    }
-    
-    // Initialize on page load
-    if (categorySelect.value) {
-        updateTypeOptions(categorySelect.value);
-        if (typeSelect.value) {
-            updateSubtypeOptions(categorySelect.value, typeSelect.value);
-        }
-    }
-    
-    // Rating system
-    ratingStars.forEach(star => {
-        star.addEventListener('click', function() {
-            const rating = parseInt(this.dataset.rating);
-            ratingValue.value = rating;
-            updateStarDisplay(rating);
-            toggleRatingRemarks(rating);
-        });
-        
-        star.addEventListener('mouseover', function() {
-            const rating = parseInt(this.dataset.rating);
-            updateStarDisplay(rating);
-        });
-    });
-    
-    document.getElementById('serviceRating').addEventListener('mouseleave', function() {
-        const currentRating = parseInt(ratingValue.value) || 0;
-        updateStarDisplay(currentRating);
-    });
-    
-    function updateStarDisplay(rating) {
-        ratingStars.forEach((star, index) => {
-            if (index < rating) {
-                star.classList.add('active');
-                star.style.color = '#fbbf24';
-            } else {
-                star.classList.remove('active');
-                star.style.color = '#e2e8f0';
-            }
-        });
-    }
-    
-    function toggleRatingRemarks(rating) {
-        if (rating > 0 && rating < 3) {
-            ratingRemarksField.style.display = 'block';
-            document.getElementById('rating_remarks').required = true;
         } else {
-            ratingRemarksField.style.display = 'none';
-            document.getElementById('rating_remarks').required = false;
+            subtypeSelect.disabled = true;
+            subtypeSelect.innerHTML = '<option value="">First select a complaint type</option>';
         }
     }
     
-    // Initialize rating display
-    const initialRating = parseInt('<?php echo $_POST['rating'] ?? '0'; ?>');
-    if (initialRating > 0) {
-        updateStarDisplay(initialRating);
-        toggleRatingRemarks(initialRating);
+    if (typeSelect.value) {
+        updateSubtypeOptions(typeSelect.value);
     }
     
     // File upload handling
-    SamadhanApp.fileUpload.setupDragDrop(fileUploadArea);
+    SAMPARKApp.fileUpload.setupDragDrop(fileUploadArea);
+    
+    fileUploadArea.addEventListener('click', function(e) {
+        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+            fileInput.click();
+        }
+    });
     
     fileInput.addEventListener('change', function() {
-        const validation = SamadhanApp.fileUpload.validate(this.files);
+        if (this.files.length === 0) {
+            imagePreview.innerHTML = '';
+            return;
+        }
+        
+        const validation = SAMPARKApp.fileUpload.validate(this.files);
         
         if (!validation.valid) {
-            SamadhanApp.alerts.error(validation.errors.join('<br>'));
+            SAMPARKApp.alerts.error(validation.errors.join('<br>'));
             this.value = '';
             imagePreview.innerHTML = '';
             return;
         }
         
-        SamadhanApp.fileUpload.previewImages(this.files, imagePreview);
+        SAMPARKApp.fileUpload.previewImages(this.files, imagePreview);
     });
     
-    // Form submission
     const form = document.getElementById('grievanceForm');
     const submitBtn = document.getElementById('submitBtn');
     const originalBtnText = submitBtn.innerHTML;
     
     form.addEventListener('submit', function(e) {
-        // Validate description length
         if (descriptionField.value.length < 20) {
             e.preventDefault();
-            SamadhanApp.alerts.error('Description must be at least 20 characters long.');
+            SAMPARKApp.alerts.error('Description must be at least 20 characters long.');
             return;
         }
         
-        // Show loading state
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Submitting...';
         
-        // Re-enable after 10 seconds in case of issues
         setTimeout(function() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
         }, 10000);
     });
     
-    // Form reset
     form.addEventListener('reset', function() {
         imagePreview.innerHTML = '';
-        updateStarDisplay(0);
-        ratingValue.value = '0';
-        ratingRemarksField.style.display = 'none';
         updateCharCount();
-        clearSubtypeOptions();
-        typeSelect.innerHTML = '<option value="">Select Type</option>';
+        subtypeSelect.disabled = true;
+        subtypeSelect.innerHTML = '<option value="">First select a complaint type</option>';
     });
 });
 </script>
@@ -588,31 +349,9 @@ document.addEventListener('DOMContentLoaded', function() {
     background-color: #f8f9fa;
 }
 
-.rating {
-    display: flex;
-    gap: 0.5rem;
-    font-size: 1.5rem;
-}
-
-.rating .star {
-    cursor: pointer;
-    transition: color 0.2s ease;
-    color: #e2e8f0;
-}
-
-.rating .star:hover,
-.rating .star.active {
-    color: #fbbf24;
-}
-
 @media (max-width: 768px) {
     .file-upload-area {
         padding: 2rem 1rem;
-    }
-    
-    .rating {
-        font-size: 1.25rem;
-        justify-content: center;
     }
     
     .card-body {
@@ -630,3 +369,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 }
 </style>
+
+<?php
+// Include footer
+require_once __DIR__ . '/../../src/views/footer.php';
+?>

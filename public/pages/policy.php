@@ -61,7 +61,7 @@ $pageTitle = 'General Policy - Terms & Conditions';
                     </h4>
                 </div>
                 <div class="card-body">
-                    <p>Welcome to the Samadhan FOIS (Freight Operations Information System) - Central Railway's dedicated grievance management platform for freight customers.</p>
+                    <p>Welcome to the SAMPARK (Freight Operations Information System) - Central Railway's dedicated grievance management platform for freight customers.</p>
                     
                     <h6>Our Mission:</h6>
                     <ul>
@@ -564,14 +564,14 @@ document.addEventListener('DOMContentLoaded', function() {
 function sharePolicy() {
     if (navigator.share) {
         navigator.share({
-            title: 'Samadhan FOIS - General Policy',
+            title: 'SAMPARK - General Policy',
             text: 'Terms, Conditions & Guidelines for Central Railway Freight Grievance System',
             url: window.location.href
         });
     } else {
         // Fallback: copy URL to clipboard
         navigator.clipboard.writeText(window.location.href).then(() => {
-            SamadhanApp.alerts.success('Policy URL copied to clipboard!');
+            SAMPARKApp.alerts.success('Policy URL copied to clipboard!');
         });
     }
 }
