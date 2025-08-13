@@ -1,13 +1,22 @@
-RewriteEngine On
+<IfModule mod_rewrite.c>
+    RewriteEngine On
 
-# Redirect everything to index.php
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ index.php [QSA,L]
+    # For production, RewriteBase should be '/'.
+    # For development (XAMPP), uncomment the line below and comment out the production line.
+    # RewriteBase /samadhanFOIS/public/
+    RewriteBase /
 
-# Security: Deny access to config and src directories
-RewriteRule ^(config|src)/ - [F,L]
+    # Redirect all requests to index.php if the file/directory doesn't exist
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php?url=$1 [L,QSA]
+</IfModule>
 
-# Allow common file types
-RewriteCond %{REQUEST_FILENAME} \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ [NC]
-RewriteRule ^(.*)$ - [L]
+# Disable directory browsing
+Options -Indexes
+
+# Prevent access to sensitive files
+<Files ~ "\.(log|ini)$">
+    Order allow,deny
+    Deny from all
+</Files>

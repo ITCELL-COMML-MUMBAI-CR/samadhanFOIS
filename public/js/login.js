@@ -40,3 +40,4 @@ document.addEventListener('DOMContentLoaded', function() {
         showPasswordToggle.innerHTML = `<i class="fas ${icon}"></i>`;
     });
 });
+
