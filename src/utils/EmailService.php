@@ -1,7 +1,7 @@
 <?php
 /**
  * Email Service
- * Handles sending emails for the complaint system
+ * Handles sending emails for the complaint system using Hostinger SMTP
  */
 
 class EmailService {
@@ -10,8 +10,8 @@ class EmailService {
     private $headers;
     
     public function __construct() {
-         // Load email configuration
-         if (file_exists(__DIR__ . '/../../config/email_config.php')) {
+        // Load email configuration
+        if (file_exists(__DIR__ . '/../../config/email_config.php')) {
             require_once __DIR__ . '/../../config/email_config.php';
             $this->from = EMAIL_FROM;
             $this->fromName = EMAIL_FROM_NAME;
@@ -105,15 +105,15 @@ class EmailService {
                     <div class='complaint-id'>$complaintId</div>
                     
                     <div class='details'>
-                                                 <h3>Complaint Details:</h3>
-                         <p><strong>Submission Date:</strong> $submissionDate</p>
-                         <p><strong>Type:</strong> {$complaintDetails['complaint_type']}</p>
-                         <p><strong>Subtype:</strong> {$complaintDetails['complaint_subtype']}</p>
-                         <p><strong>Category:</strong> {$complaintDetails['category']}</p>
-                         <p><strong>Location:</strong> {$complaintDetails['location']}</p>" . 
-                         (!empty($complaintDetails['fnr_no']) ? "<p><strong>FNR Number:</strong> {$complaintDetails['fnr_no']}</p>" : "") . "
-                         <p><strong>Status:</strong> Pending Review</p>
-                         <p><strong>Assigned Department:</strong> {$complaintDetails['department']}</p>
+                        <h3>Complaint Details:</h3>
+                        <p><strong>Submission Date:</strong> $submissionDate</p>
+                        <p><strong>Type:</strong> {$complaintDetails['complaint_type']}</p>
+                        <p><strong>Subtype:</strong> {$complaintDetails['complaint_subtype']}</p>
+                        <p><strong>Category:</strong> {$complaintDetails['category']}</p>
+                        <p><strong>Location:</strong> {$complaintDetails['location']}</p>" . 
+                        (!empty($complaintDetails['fnr_no']) ? "<p><strong>FNR Number:</strong> {$complaintDetails['fnr_no']}</p>" : "") . "
+                        <p><strong>Status:</strong> Pending Review</p>
+                        <p><strong>Assigned Department:</strong> {$complaintDetails['department']}</p>
                     </div>
                     
                     <h3>What happens next?</h3>
@@ -223,7 +223,7 @@ class EmailService {
     }
     
     /**
-     * Send email using PHP mail function
+     * Send email using PHP mail function with Hostinger SMTP
      */
     private function sendEmail($to, $subject, $message) {
         try {
@@ -231,6 +231,20 @@ class EmailService {
             if (!$this->isMailServerAvailable()) {
                 error_log("Mail server not available. Email not sent to: $to, Subject: $subject");
                 return false;
+            }
+            
+            // For production (Hostinger), configure SMTP settings
+            if (defined('ENVIRONMENT') && ENVIRONMENT === 'production') {
+                // Configure PHP mail settings for Hostinger SMTP
+                if (defined('SMTP_HOST')) {
+                    ini_set('SMTP', SMTP_HOST);
+                    ini_set('smtp_port', SMTP_PORT);
+                    
+                    // Add SMTP authentication headers
+                    $this->headers[] = 'X-SMTP-Host: ' . SMTP_HOST;
+                    $this->headers[] = 'X-SMTP-Port: ' . SMTP_PORT;
+                    $this->headers[] = 'X-SMTP-Username: ' . SMTP_USERNAME;
+                }
             }
             
             $headers = implode("\r\n", $this->headers);

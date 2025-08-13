@@ -18,7 +18,7 @@ try {
     $emailService = new EmailService();
     
     // Test data
-    $testEmail = 'your-test-email@gmail.com'; // Replace with your email
+    $testEmail = 'dineshkurkure.dk@gmail.com'; // Your actual email for testing
     $testName = 'Test User';
     $testComplaintId = 'TEST' . date('YmdHis');
     $testComplaintDetails = [
