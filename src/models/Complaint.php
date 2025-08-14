@@ -296,5 +296,32 @@ class Complaint extends BaseModel {
         $stmt->execute([$limit]);
         return $stmt->fetchAll();
     }
+    
+    /**
+     * Update complaint
+     */
+    public function updateComplaint($complaintId, $data) {
+        $columns = array_keys($data);
+        $setClause = array_map(function($column) {
+            return "$column = ?";
+        }, $columns);
+        
+        $sql = "UPDATE complaints SET " . implode(', ', $setClause) . " WHERE complaint_id = ?";
+        
+        $params = array_values($data);
+        $params[] = $complaintId;
+        
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
+     * Assign complaint to user
+     */
+    public function assignComplaint($complaintId, $assignedTo) {
+        $sql = "UPDATE complaints SET assigned_to = ?, status = 'in_progress', updated_at = ? WHERE complaint_id = ?";
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute([$assignedTo, getCurrentDateTime(), $complaintId]);
+    }
 }
 ?>

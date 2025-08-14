@@ -19,17 +19,6 @@
                         <?php endif; ?>
                     </p>
                 </div>
-                <div>
-                    <?php if ($userRole === 'customer'): ?>
-                        <a href="<?php echo BASE_URL; ?>complaints/new" class="btn btn-railway-primary">
-                            <i class="fas fa-plus-circle"></i> New Grievance
-                        </a>
-                    <?php elseif ($userRole === 'admin'): ?>
-                        <a href="<?php echo BASE_URL; ?>admin/categories" class="btn btn-railway-primary">
-                            <i class="fas fa-cog"></i> Manage System
-                        </a>
-                    <?php endif; ?>
-                </div>
             </div>
         </div>
     </div>

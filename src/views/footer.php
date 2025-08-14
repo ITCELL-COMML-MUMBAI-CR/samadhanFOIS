@@ -2,87 +2,78 @@
     <!-- Main Content End -->
     
     <!-- Footer -->
-    <footer class="footer py-4 mt-5">
+    <footer class="footer py-4 mt-5" style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%); color: #e2e8f0;">
         <div class="container">
             <div class="row">
                 <div class="col-lg-4 col-md-6 mb-4">
                     <h5><i class="fas fa-train"></i> Samadhan FOIS</h5>
-                    <p class="text-light">
-                        Central Railway Freight Customer Complaint Management System
-                    </p>
-                    <p class="text-light mb-0">
-                        <small>
-                            Powered by Central Railway<br>
-                            Ministry of Railways, Government of India
-                        </small>
+                                         <p class="text-light" style="color: #e2e8f0 !important;">
+                         Central Railway Freight Customer Complaint Management System
+                     </p>
+                     <p class="text-light mb-0" style="color: #e2e8f0 !important;">
+                                                 <small style="color: #cbd5e0 !important;">
+                             Powered by Central Railway<br>
+                             Ministry of Railways, Government of India
+                         </small>
                     </p>
                 </div>
                 
                 <div class="col-lg-2 col-md-6 mb-4">
                     <h6>Quick Links</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="<?php echo BASE_URL; ?>" class="text-light text-decoration-none">Home</a></li>
-                        <?php if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in']): ?>
-                            <li><a href="<?php echo BASE_URL; ?>dashboard" class="text-light text-decoration-none">Dashboard</a></li>
-                            <li><a href="<?php echo BASE_URL; ?>complaints/new" class="text-light text-decoration-none">New Complaint</a></li>
-                        <?php else: ?>
-                            <li><a href="<?php echo BASE_URL; ?>login" class="text-light text-decoration-none">Login</a></li>
-                            <li><a href="<?php echo BASE_URL; ?>register" class="text-light text-decoration-none">Register</a></li>
-                        <?php endif; ?>
-                    </ul>
+                                         <ul class="list-unstyled">
+                         <li><a href="<?php echo BASE_URL; ?>" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Home</a></li>
+                         <?php if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in']): ?>
+                             <li><a href="<?php echo BASE_URL; ?>dashboard" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Dashboard</a></li>
+                             <li><a href="<?php echo BASE_URL; ?>complaints/new" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">New Complaint</a></li>
+                         <?php else: ?>
+                             <li><a href="<?php echo BASE_URL; ?>login" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Login</a></li>
+                             <li><a href="<?php echo BASE_URL; ?>register" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Register</a></li>
+                         <?php endif; ?>
+                     </ul>
                 </div>
                 
                 <div class="col-lg-3 col-md-6 mb-4">
                     <h6>Support</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="<?php echo BASE_URL; ?>help" class="text-light text-decoration-none">Help Center</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>faq" class="text-light text-decoration-none">FAQ</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>contact" class="text-light text-decoration-none">Contact Us</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>guidelines" class="text-light text-decoration-none">Guidelines</a></li>
-                    </ul>
+                                         <ul class="list-unstyled">
+                         <li><a href="<?php echo BASE_URL; ?>help" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Help Center</a></li>
+                         <li><a href="<?php echo BASE_URL; ?>faq" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">FAQ</a></li>
+                         <li><a href="<?php echo BASE_URL; ?>contact" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Contact Us</a></li>
+                         <li><a href="<?php echo BASE_URL; ?>guidelines" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">Guidelines</a></li>
+                     </ul>
                 </div>
                 
                 <div class="col-lg-3 col-md-6 mb-4">
                     <h6>Contact Information</h6>
-                    <div class="text-light">
-                        <p class="mb-2">
-                            <i class="fas fa-envelope"></i> 
-                            <a href="mailto:complaints@cr.railnet.gov.in" class="text-light text-decoration-none">
-                                complaints@cr.railnet.gov.in
-                            </a>
-                        </p>
-                        <p class="mb-2">
-                            <i class="fas fa-phone"></i> 
-                            <a href="tel:+911234567890" class="text-light text-decoration-none">
-                                +91 12345 67890
-                            </a>
-                        </p>
-                        <p class="mb-2">
-                            <i class="fas fa-clock"></i> 
-                            24/7 Support Available
-                        </p>
-                    </div>
+                                         <div class="text-light" style="color: #e2e8f0 !important;">
+                         <p class="mb-2">
+                             <i class="fas fa-envelope"></i> 
+                             <a href="mailto:complaints@cr.railnet.gov.in" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">
+                                 complaints@cr.railnet.gov.in
+                             </a>
+                         </p>
+                         <p class="mb-2">
+                             <i class="fas fa-phone"></i> 
+                             <a href="tel:+911234567890" class="text-light text-decoration-none" style="color: #e2e8f0 !important;">
+                                 +91 12345 67890
+                             </a>
+                         </p>
+                         <p class="mb-2">
+                             <i class="fas fa-clock"></i> 
+                             24/7 Support Available
+                         </p>
+                     </div>
                 </div>
             </div>
             
             <hr class="my-4" style="border-color: #4a5568;">
             
             <div class="row align-items-center">
-                <div class="col-md-8">
-                    <p class="text-light mb-0">
-                        &copy; <?php echo date('Y'); ?> Central Railway. All rights reserved. | 
-                        <a href="<?php echo BASE_URL; ?>privacy" class="text-light text-decoration-none">Privacy Policy</a> | 
-                        <a href="<?php echo BASE_URL; ?>terms" class="text-light text-decoration-none">Terms of Service</a>
-                    </p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <div class="text-light">
-                        <small>
-                            Version <?php echo APP_VERSION; ?> | 
-                            Server Time: <?php echo date('d-M-Y H:i:s'); ?>
-                        </small>
-                    </div>
-                </div>
+                                 <div class="col-md-8">
+                     <p class="text-light mb-0" style="color: #e2e8f0 !important;">
+                         &copy; <?php echo date('Y'); ?> Central Railway. All rights reserved.
+                         
+                     </p>
+                 </div>
             </div>
         </div>
     </footer>
@@ -95,6 +86,7 @@
     
     <!-- Custom JavaScript -->
     <script src="<?php echo BASE_URL; ?>js/app.js"></script>
+    <script src="<?php echo BASE_URL; ?>js/navbar.js"></script>
     
     <!-- Page-specific JavaScript -->
     <?php if (isset($customJS)): ?>

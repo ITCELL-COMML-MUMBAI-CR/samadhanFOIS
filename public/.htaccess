@@ -3,8 +3,8 @@
 
     # For production, RewriteBase should be '/'.
     # For development (XAMPP), uncomment the line below and comment out the production line.
-    # RewriteBase /samadhanFOIS/public/
-    RewriteBase /
+    RewriteBase /samadhanFOIS/public/
+    # RewriteBase /
 
     # Redirect all requests to index.php if the file/directory doesn't exist
     RewriteCond %{REQUEST_FILENAME} !-f

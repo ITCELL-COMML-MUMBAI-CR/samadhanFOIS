@@ -44,7 +44,7 @@ function handleNotificationCount() {
         // For now, return a simple count based on assigned complaints
         // This can be enhanced later with proper notification system
         if ($userRole !== 'customer') {
-            require_once '../models/Complaint.php';
+            require_once __DIR__ . '/../models/Complaint.php';
             $complaintModel = new Complaint();
             
             // Count pending assignments
@@ -71,8 +71,8 @@ function handleNotificationList() {
         
         // Simple notification system - can be enhanced later
         if ($userRole !== 'customer') {
-            require_once '../models/Complaint.php';
-            require_once '../models/Transaction.php';
+            require_once __DIR__ . '/../models/Complaint.php';
+            require_once __DIR__ . '/../models/Transaction.php';
             
             $complaintModel = new Complaint();
             $transactionModel = new Transaction();

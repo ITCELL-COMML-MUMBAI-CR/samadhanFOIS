@@ -7,12 +7,6 @@
 require_once __DIR__ . '/../../src/controllers/LoginController.php';
 require_once __DIR__ . '/../../src/utils/SessionManager.php';
 
-// If already logged in, redirect to dashboard
-if (SessionManager::isLoggedIn()) {
-    header('Location: ' . BASE_URL . 'dashboard');
-    exit;
-}
-
 $loginController = new LoginController();
 $loginController->handleLoginRequest();
 
@@ -86,47 +80,6 @@ if (isset($_GET['timeout'])) {
                         </p>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Quick Access Info -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-info-circle"></i> Quick Access Guide
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-primary">For Customers:</h6>
-                            <ul class="small">
-                                <li>Submit new grievances</li>
-                                <li>Track grievance status</li>
-                                <li>Provide feedback</li>
-                                <li>View grievance history</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-primary">For Railway Staff:</h6>
-                            <ul class="small">
-                                <li>Handle assigned grievances</li>
-                                <li>Forward to departments</li>
-                                <li>Update status & remarks</li>
-                                <li>Generate reports</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- System Status -->
-            <div class="text-center mt-4">
-                <small class="text-muted">
-                    <i class="fas fa-shield-alt text-success"></i> 
-                    System Status: Online | 
-                    <i class="fas fa-clock"></i> 
-                    Server Time: <?php echo date('d-M-Y H:i:s'); ?> IST
-                </small>
             </div>
         </div>
     </div>

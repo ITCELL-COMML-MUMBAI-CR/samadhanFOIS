@@ -15,6 +15,12 @@ class PageController extends BaseController {
     }
 
     public function login() {
+        // Check if user is already logged in before loading header
+        if (SessionManager::isLoggedIn()) {
+            header('Location: ' . BASE_URL . 'dashboard');
+            exit;
+        }
+        
         $this->loadView('header', ['pageTitle' => 'Login']);
         require_once __DIR__ . '/../../public/pages/login.php';
         $this->loadView('footer');
