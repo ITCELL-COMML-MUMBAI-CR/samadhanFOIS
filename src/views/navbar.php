@@ -49,6 +49,21 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <span>Track Status</span>
                             </a>
                         </li>
+                        <ul class="dropdown-menu dropdown-menu-animated">
+                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/FOISWebPortal/index.jsp">
+                                    <i class="fas fa-users"></i> FOIS Official
+                                </a></li>
+                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/RailSAHAY/">
+                                    <i class="fas fa-tags"></i> Freight Business Devlopment
+                                </a></li>
+                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/FOISWebPortal/pages/digilib/foisdiglib.jsp">
+                                    <i class="fas fa-chart-line"></i> FOIS Digital Library & User Manuals
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="https://rbs.indianrail.gov.in/ShortPath/ShortPath.jsp">
+                                    <i class="fas fa-user-plus"></i> RBS Shortest Pathfinder
+                                </a></li>
+                            </ul>
                         
                     <?php elseif ($userRole === 'controller'): ?>
                         <!-- Controller Navigation -->

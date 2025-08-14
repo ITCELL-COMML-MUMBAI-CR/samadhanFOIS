@@ -125,16 +125,15 @@ class EmailService {
                     </ul>
                     
                     <h3>Need Help?</h3>
-                    <p>If you have any questions about your complaint, please contact us at:</p>
+                    <p>If you have any questions about your complaint regarding this email, please contact us at:</p>
                     <ul>
-                        <li>Email: support@railway.gov.in</li>
-                        <li>Phone: +91 12345 67890</li>
+                        <li>Email: sampark-admin@itcellbbcr.in</li>
                         <li>Reference your complaint ID: <strong>$complaintId</strong></li>
                     </ul>
                 </div>
                 
                 <div class='footer'>
-                    <p>This is an automated message from SAMPARK FOIS - Railway Complaint Management System</p>
+                    <p>This is an automated message from SAMPARK FOIS</p>
                     <p>Central Railway, Ministry of Railways, Government of India</p>
                     <p>Please do not reply to this email. For support, use the contact information above.</p>
                 </div>
@@ -204,16 +203,15 @@ class EmailService {
                     <p>You can continue to track your complaint progress using your complaint ID.</p>
                     
                     <h3>Need Help?</h3>
-                    <p>If you have any questions, please contact us at:</p>
+                    <p>If you have any questions regarding this email, please contact us at:</p>
                     <ul>
-                        <li>Email: support@railway.gov.in</li>
-                        <li>Phone: +91 12345 67890</li>
+                        <li>Email: sampark-admin@itcellbbcr.in</li>
                         <li>Reference your complaint ID: <strong>$complaintId</strong></li>
                     </ul>
                 </div>
                 
                 <div class='footer'>
-                    <p>This is an automated message from SAMPARK FOIS - Railway Complaint Management System</p>
+                    <p>This is an automated message from SAMPARK FOIS</p>
                     <p>Central Railway, Ministry of Railways, Government of India</p>
                     <p>Please do not reply to this email. For support, use the contact information above.</p>
                 </div>
