@@ -10,38 +10,66 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- AOS (Animate On Scroll) CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link href="<?php echo BASE_URL; ?>css/style.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>css/navbar.css" rel="stylesheet">
+    <?php if (isset($pageTitle) && ($pageTitle === 'My Grievances' || $pageTitle === 'Customer Home')): ?>
+    <link href="<?php echo BASE_URL; ?>css/customer_home.css" rel="stylesheet">
+    <?php endif; ?>
     
     <style>
         :root {
-            --railway-blue: #1e3a8a;
-            --railway-orange: #ea580c;
-            --railway-green: #16a34a;
-            --railway-red: #dc2626;
-            --railway-gold: #f59e0b;
+            /* Apple-inspired color palette */
+            --apple-black: #000000;
+            --apple-dark-gray: #666666;
+            --apple-medium-gray: #979797;
+            --apple-light-gray: #eeeeee;
+            --apple-blue: #0088cc;
+            
+            /* Gradient colors */
+            --gradient-start: hsla(330, 100%, 99%, 1);
+            --gradient-end: hsla(0, 0%, 88%, 1);
         }
         
-        /* Global Styles */
+        /* Global Styles - Apple-inspired */
         body {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--gradient-start);
+            background: linear-gradient(90deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            background: -moz-linear-gradient(90deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            background: -webkit-linear-gradient(90deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#FFFBFD", endColorstr="#E1E1E1", GradientType=1);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            font-weight: 400;
+            letter-spacing: -0.022em;
         }
         
         .main-content {
             flex: 1;
             padding-top: 20px;
+            margin-top: 0;
         }
         
-        /* Compact Header Styles */
+        /* Ensure proper spacing when both header and navbar are sticky */
+        .compact-header + .railway-navbar {
+            margin-top: 0;
+        }
+        
+        /* Apple-inspired Header Styles */
         .compact-header {
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #1e40af 100%);
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1002;
         }
         
         /* Header Content */
@@ -57,25 +85,30 @@
             flex-shrink: 0;
         }
         
+        .railways-logo, .sampark-logo {
+            height: 60px;
+            width: auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
         
-        /* System Name Center */
+        
+        /* Apple-inspired System Name Center */
         .system-name-center {
             flex: 1;
             text-align: center;
         }
         
         .system-acronym {
-            font-size: 5.5rem;
-            font-weight: 900;
-            color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--apple-black);
             margin: 0;
-            letter-spacing: 2px;
+            letter-spacing: -0.022em;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.05;
         }
         
-        
-        
-        /* Responsive Design */
+        /* Apple-inspired Responsive Design */
         @media (max-width: 768px) {
             .header-content {
                 flex-direction: column;
@@ -83,14 +116,14 @@
             }
             
             .system-acronym {
-                font-size: 2rem;
+                font-size: 2.5rem;
             }
             
             .system-full-name {
-                font-size: 0.8rem;
+                font-size: 1rem;
             }
             
-            .railway-logo, .sampark-logo {
+            .railways-logo, .sampark-logo {
                 height: 50px;
             }
         }
@@ -101,15 +134,25 @@
             }
             
             .system-acronym {
+                font-size: 2rem;
+            }
+            
+            .system-full-name {
+                font-size: 0.9rem;
+            }
+            
+            .railways-logo, .sampark-logo {
+                height: 40px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .system-acronym {
                 font-size: 1.8rem;
             }
             
             .system-full-name {
-                font-size: 0.7rem;
-            }
-            
-            .railway-logo, .sampark-logo {
-                height: 40px;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -144,7 +187,7 @@
             // Define BASE_URL for JavaScript
             const BASE_URL = '<?php echo BASE_URL; ?>';
         </script>
-        <script src="<?php echo BASE_URL; ?>js/notifications.js"></script>
+
     <?php endif; ?>
     
     <!-- Navigation Bar - Hide on login page -->

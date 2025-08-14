@@ -266,8 +266,8 @@ $pageTitle = 'General Policy - Terms & Conditions';
                         </div>
                         <div class="timeline-item">
                             <h6>Step 4: Resolution</h6>
-                            <p>Action taken → Commercial approval → Customer notification</p>
-                            <small class="text-muted">Email notification sent upon completion</small>
+                            <p>Action taken → Commercial approval → Customer email</p>
+<small class="text-muted">Email sent upon completion</small>
                         </div>
                         <div class="timeline-item">
                             <h6>Step 5: Feedback</h6>

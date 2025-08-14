@@ -1,7 +1,7 @@
 <?php
 /**
  * ComplaintRejection Model
- * Handles complaint rejection tracking
+ * Handles complaint rejection/revert tracking
  */
 
 require_once 'BaseModel.php';
@@ -10,7 +10,7 @@ class ComplaintRejection extends BaseModel {
     protected $table = 'complaint_rejections';
     
     /**
-     * Create rejection record
+     * Create rejection/revert record
      */
     public function createRejection($data) {
         $data['created_at'] = getCurrentDateTime();
@@ -18,16 +18,16 @@ class ComplaintRejection extends BaseModel {
     }
     
     /**
-     * Get rejections for a complaint
+     * Get rejections/reverts for a complaint
      */
     public function findByComplaintId($complaintId) {
         $stmt = $this->connection->prepare("
             SELECT cr.*, 
-                   u1.name as rejected_by_name,
-                   u2.name as rejected_to_name
+                   u1.name as reverted_by_name,
+                   u2.name as reverted_to_name
             FROM complaint_rejections cr
-            LEFT JOIN users u1 ON cr.rejected_by = u1.login_id
-            LEFT JOIN users u2 ON cr.rejected_to = u2.login_id
+            LEFT JOIN users u1 ON cr.reverted_by = u1.login_id
+            LEFT JOIN users u2 ON cr.reverted_to = u2.login_id
             WHERE cr.complaint_id = ?
             ORDER BY cr.created_at DESC
         ");
@@ -38,61 +38,61 @@ class ComplaintRejection extends BaseModel {
     /**
      * Log commercial rejection to concern department
      */
-    public function logCommercialToConcern($complaintId, $rejectedBy, $rejectedTo, $reason) {
+    public function logCommercialToConcern($complaintId, $revertedBy, $revertedTo, $reason) {
         return $this->createRejection([
             'complaint_id' => $complaintId,
-            'rejected_by' => $rejectedBy,
-            'rejected_to' => $rejectedTo,
-            'rejection_reason' => $reason,
-            'rejection_stage' => 'commercial_to_concern'
+            'reverted_by' => $revertedBy,
+            'reverted_to' => $revertedTo,
+            'revert_reason' => $reason,
+            'revert_stage' => 'commercial_to_concern'
         ]);
     }
     
     /**
      * Log concern rejection back to commercial
      */
-    public function logConcernToCommercial($complaintId, $rejectedBy, $rejectedTo, $reason) {
+    public function logConcernToCommercial($complaintId, $revertedBy, $revertedTo, $reason) {
         return $this->createRejection([
             'complaint_id' => $complaintId,
-            'rejected_by' => $rejectedBy,
-            'rejected_to' => $rejectedTo,
-            'rejection_reason' => $reason,
-            'rejection_stage' => 'concern_to_commercial'
+            'reverted_by' => $revertedBy,
+            'reverted_to' => $revertedTo,
+            'revert_reason' => $reason,
+            'revert_stage' => 'concern_to_commercial'
         ]);
     }
     
     /**
      * Log commercial rejection to customer
      */
-    public function logCommercialToCustomer($complaintId, $rejectedBy, $rejectedTo, $reason) {
+    public function logCommercialToCustomer($complaintId, $revertedBy, $revertedTo, $reason) {
         return $this->createRejection([
             'complaint_id' => $complaintId,
-            'rejected_by' => $rejectedBy,
-            'rejected_to' => $rejectedTo,
-            'rejection_reason' => $reason,
-            'rejection_stage' => 'commercial_to_customer'
+            'reverted_by' => $revertedBy,
+            'reverted_to' => $revertedTo,
+            'revert_reason' => $reason,
+            'revert_stage' => 'commercial_to_customer'
         ]);
     }
     
     /**
-     * Get recent rejections
+     * Get recent rejections/reverts
      */
     public function getRecent($limit = 10, $userId = null) {
         $sql = "
             SELECT cr.*, 
                    c.complaint_type,
-                   u1.name as rejected_by_name,
-                   u2.name as rejected_to_name
+                   u1.name as reverted_by_name,
+                   u2.name as reverted_to_name
             FROM complaint_rejections cr
             LEFT JOIN complaints c ON cr.complaint_id = c.complaint_id
-            LEFT JOIN users u1 ON cr.rejected_by = u1.login_id
-            LEFT JOIN users u2 ON cr.rejected_to = u2.login_id
+            LEFT JOIN users u1 ON cr.reverted_by = u1.login_id
+            LEFT JOIN users u2 ON cr.reverted_to = u2.login_id
         ";
         
         $params = [];
         
         if ($userId) {
-            $sql .= " WHERE (cr.rejected_by = ? OR cr.rejected_to = ?)";
+            $sql .= " WHERE (cr.reverted_by = ? OR cr.reverted_to = ?)";
             $params = [$userId, $userId];
         }
         
@@ -105,7 +105,7 @@ class ComplaintRejection extends BaseModel {
     }
     
     /**
-     * Get rejection statistics
+     * Get rejection/revert statistics
      */
     public function getStatistics($filters = []) {
         $stats = [];
@@ -115,7 +115,7 @@ class ComplaintRejection extends BaseModel {
         $params = [];
         
         if (!empty($filters['user_id'])) {
-            $whereClause .= " AND (rejected_by = ? OR rejected_to = ?)";
+            $whereClause .= " AND (reverted_by = ? OR reverted_to = ?)";
             $params[] = $filters['user_id'];
             $params[] = $filters['user_id'];
         }
@@ -130,22 +130,22 @@ class ComplaintRejection extends BaseModel {
             $params[] = $filters['date_to'];
         }
         
-        // Total rejections
+        // Total rejections/reverts
         $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM complaint_rejections $whereClause");
         $stmt->execute($params);
         $stats['total'] = $stmt->fetch()['count'];
         
-        // By rejection stage
+        // By revert stage
         $stmt = $this->connection->prepare("
-            SELECT rejection_stage, COUNT(*) as count 
+            SELECT revert_stage, COUNT(*) as count 
             FROM complaint_rejections $whereClause
-            GROUP BY rejection_stage
+            GROUP BY revert_stage
         ");
         $stmt->execute($params);
         $stageStats = $stmt->fetchAll();
         
         foreach ($stageStats as $stageStat) {
-            $stats['by_stage'][$stageStat['rejection_stage']] = $stageStat['count'];
+            $stats['by_stage'][$stageStat['revert_stage']] = $stageStat['count'];
         }
         
         return $stats;
@@ -158,7 +158,7 @@ class ComplaintRejection extends BaseModel {
         $stmt = $this->connection->prepare("
             SELECT COUNT(*) as count 
             FROM complaint_rejections 
-            WHERE complaint_id = ? AND rejection_stage = ?
+            WHERE complaint_id = ? AND revert_stage = ?
         ");
         $stmt->execute([$complaintId, $stage]);
         $result = $stmt->fetch();
@@ -171,11 +171,11 @@ class ComplaintRejection extends BaseModel {
     public function getLatestRejection($complaintId) {
         $stmt = $this->connection->prepare("
             SELECT cr.*, 
-                   u1.name as rejected_by_name,
-                   u2.name as rejected_to_name
+                   u1.name as reverted_by_name,
+                   u2.name as reverted_to_name
             FROM complaint_rejections cr
-            LEFT JOIN users u1 ON cr.rejected_by = u1.login_id
-            LEFT JOIN users u2 ON cr.rejected_to = u2.login_id
+            LEFT JOIN users u1 ON cr.reverted_by = u1.login_id
+            LEFT JOIN users u2 ON cr.reverted_to = u2.login_id
             WHERE cr.complaint_id = ?
             ORDER BY cr.created_at DESC
             LIMIT 1

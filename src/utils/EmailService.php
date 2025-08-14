@@ -153,7 +153,7 @@ class EmailService {
             'pending' => 'Pending (with Commercial)',
             'replied' => 'Replied',
             'closed' => 'Closed',
-            'rejected' => 'More Information Requested',
+            'reverted' => 'More Information Requested',
             'resolved' => 'Resolved (awaiting your feedback)',
             'awaiting_approval' => 'Awaiting Commercial Approval'
         ];

@@ -172,4 +172,327 @@ class AdminController extends BaseController {
         $this->loadView('pages/admin_reports', $data);
         $this->loadView('footer');
     }
+
+    public function news() {
+        $newsModel = $this->loadModel('News');
+        $error = '';
+        $success = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            list($error, $success) = $this->handleNewsAction($newsModel);
+        }
+
+        // Filters and search
+        $search = $_GET['search'] ?? '';
+        $filters = [
+            'type' => $_GET['type'] ?? '',
+            'status' => $_GET['status'] ?? '',
+            'featured' => $_GET['featured'] ?? ''
+        ];
+
+        // Get news list with filters
+        $conditions = [];
+        if (!empty($search)) {
+            // For search, we'll use a custom query
+            $sql = "SELECT * FROM news WHERE (title LIKE ? OR content LIKE ? OR author_name LIKE ?)";
+            $params = ["%$search%", "%$search%", "%$search%"];
+            
+            if (!empty($filters['type'])) {
+                $sql .= " AND type = ?";
+                $params[] = $filters['type'];
+            }
+            if (!empty($filters['status'])) {
+                $sql .= " AND status = ?";
+                $params[] = $filters['status'];
+            }
+            if (!empty($filters['featured'])) {
+                $sql .= " AND featured = ?";
+                $params[] = (int)$filters['featured'];
+            }
+            
+            $sql .= " ORDER BY created_at DESC";
+            $newsList = $newsModel->query($sql, $params);
+        } else {
+            // Apply filters to conditions
+            if (!empty($filters['type'])) {
+                $conditions['type'] = $filters['type'];
+            }
+            if (!empty($filters['status'])) {
+                $conditions['status'] = $filters['status'];
+            }
+            if (!empty($filters['featured'])) {
+                $conditions['featured'] = (int)$filters['featured'];
+            }
+            
+            $newsList = $newsModel->findAll($conditions);
+        }
+
+        // Handle edit action
+        $action = $_GET['action'] ?? 'list';
+        $editNews = null;
+        if ($action === 'edit' && isset($_GET['id'])) {
+            $editNews = $newsModel->find((int)$_GET['id']);
+        }
+
+        $data = [
+            'newsList' => $newsList,
+            'stats' => $newsModel->getStatistics(),
+            'pageTitle' => 'News & Announcements Management',
+            'error' => $error,
+            'success' => $success,
+            'search' => $search,
+            'filters' => $filters,
+            'action' => $action,
+            'editNews' => $editNews
+        ];
+
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_news', $data);
+        $this->loadView('footer');
+    }
+
+    private function handleNewsAction($newsModel) {
+        $postAction = $_POST['action'] ?? '';
+        try {
+            switch ($postAction) {
+                case 'add':
+                    $data = [
+                        'title' => sanitizeInput($_POST['title'] ?? ''),
+                        'content' => sanitizeInput($_POST['content'] ?? ''),
+                        'type' => sanitizeInput($_POST['type'] ?? 'news'),
+                        'status' => sanitizeInput($_POST['status'] ?? 'active'),
+                        'priority' => (int)($_POST['priority'] ?? 0),
+                        'featured' => isset($_POST['featured']) ? 1 : 0,
+                        'show_in_marquee' => isset($_POST['show_in_marquee']) ? 1 : 0,
+                        'image_url' => sanitizeInput($_POST['image_url'] ?? ''),
+                        'link_url' => sanitizeInput($_POST['link_url'] ?? ''),
+                        'author_name' => sanitizeInput($_POST['author_name'] ?? ''),
+                        'publish_date' => !empty($_POST['publish_date']) ? $_POST['publish_date'] : null,
+                        'expire_date' => !empty($_POST['expire_date']) ? $_POST['expire_date'] : null
+                    ];
+                    
+                    if (empty($data['title']) || empty($data['content'])) {
+                        return ['Title and content are required.', ''];
+                    }
+                    
+                    $result = $newsModel->createNews($data);
+                    return $result ? ['', 'News item created successfully!'] : ['Failed to create news item.', ''];
+
+                case 'edit':
+                    $id = (int)($_POST['id'] ?? 0);
+                    $data = [
+                        'title' => sanitizeInput($_POST['title'] ?? ''),
+                        'content' => sanitizeInput($_POST['content'] ?? ''),
+                        'type' => sanitizeInput($_POST['type'] ?? 'news'),
+                        'status' => sanitizeInput($_POST['status'] ?? 'active'),
+                        'priority' => (int)($_POST['priority'] ?? 0),
+                        'featured' => isset($_POST['featured']) ? 1 : 0,
+                        'show_in_marquee' => isset($_POST['show_in_marquee']) ? 1 : 0,
+                        'image_url' => sanitizeInput($_POST['image_url'] ?? ''),
+                        'link_url' => sanitizeInput($_POST['link_url'] ?? ''),
+                        'author_name' => sanitizeInput($_POST['author_name'] ?? ''),
+                        'publish_date' => !empty($_POST['publish_date']) ? $_POST['publish_date'] : null,
+                        'expire_date' => !empty($_POST['expire_date']) ? $_POST['expire_date'] : null
+                    ];
+                    
+                    if (empty($data['title']) || empty($data['content'])) {
+                        return ['Title and content are required.', ''];
+                    }
+                    
+                    $result = $newsModel->updateNews($id, $data);
+                    return $result ? ['', 'News item updated successfully!'] : ['Failed to update news item.', ''];
+
+                case 'delete':
+                    $id = (int)($_POST['id'] ?? 0);
+                    $result = $newsModel->delete($id);
+                    return $result ? ['', 'News item deleted successfully!'] : ['Failed to delete news item.', ''];
+
+                case 'archive_expired':
+                    $result = $newsModel->archiveExpiredNews();
+                    return $result ? ['', 'Expired news items archived successfully!'] : ['No expired items found or archive failed.', ''];
+            }
+        } catch (Exception $e) {
+            error_log('News management error: ' . $e->getMessage());
+            return ['An error occurred. Please try again.', ''];
+        }
+        return ['', ''];
+    }
+
+    public function quicklinks() {
+        $quickLinkModel = $this->loadModel('QuickLink');
+        $error = '';
+        $success = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            list($error, $success) = $this->handleQuickLinkAction($quickLinkModel);
+        }
+
+        // Filters and search
+        $search = $_GET['search'] ?? '';
+        $filters = [
+            'category' => $_GET['category'] ?? '',
+            'status' => $_GET['status'] ?? ''
+        ];
+
+        // Get quick links list with filters
+        $conditions = [];
+        if (!empty($search)) {
+            // For search, we'll use a custom query
+            $sql = "SELECT * FROM quick_links WHERE (title LIKE ? OR description LIKE ? OR url LIKE ?)";
+            $params = ["%$search%", "%$search%", "%$search%"];
+            
+            if (!empty($filters['category'])) {
+                $sql .= " AND category = ?";
+                $params[] = $filters['category'];
+            }
+            if (!empty($filters['status'])) {
+                $sql .= " AND status = ?";
+                $params[] = $filters['status'];
+            }
+            
+            $sql .= " ORDER BY category ASC, position ASC, created_at DESC";
+            $quickLinksList = $quickLinkModel->query($sql, $params);
+        } else {
+            // Apply filters to conditions
+            if (!empty($filters['category'])) {
+                $conditions['category'] = $filters['category'];
+            }
+            if (!empty($filters['status'])) {
+                $conditions['status'] = $filters['status'];
+            }
+            
+            $quickLinksList = $quickLinkModel->findAll($conditions, 'category ASC, position ASC, created_at DESC');
+        }
+
+        // Handle edit action
+        $action = $_GET['action'] ?? 'list';
+        $editQuickLink = null;
+        if ($action === 'edit' && isset($_GET['id'])) {
+            $editQuickLink = $quickLinkModel->find((int)$_GET['id']);
+        }
+
+        $data = [
+            'quickLinksList' => $quickLinksList,
+            'stats' => $quickLinkModel->getStatistics(),
+            'iconSuggestions' => $quickLinkModel->getIconSuggestions(),
+            'pageTitle' => 'Quick Links Management',
+            'error' => $error,
+            'success' => $success,
+            'search' => $search,
+            'filters' => $filters,
+            'action' => $action,
+            'editQuickLink' => $editQuickLink
+        ];
+
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_quick_links', $data);
+        $this->loadView('footer');
+    }
+
+    private function handleQuickLinkAction($quickLinkModel) {
+        $postAction = $_POST['action'] ?? '';
+        try {
+            switch ($postAction) {
+                case 'add':
+                    // Handle icon upload if provided
+                    $iconPath = null;
+                    if (isset($_FILES['icon_upload']) && $_FILES['icon_upload']['error'] === UPLOAD_ERR_OK) {
+                        try {
+                            $iconPath = $quickLinkModel->uploadIcon($_FILES['icon_upload']);
+                        } catch (Exception $e) {
+                            return ['Icon upload failed: ' . $e->getMessage(), ''];
+                        }
+                    }
+
+                    $data = [
+                        'title' => sanitizeInput($_POST['title'] ?? ''),
+                        'description' => sanitizeInput($_POST['description'] ?? ''),
+                        'url' => sanitizeInput($_POST['url'] ?? ''),
+                        'category' => sanitizeInput($_POST['category'] ?? 'system'),
+                        'icon_type' => sanitizeInput($_POST['icon_type'] ?? 'fontawesome'),
+                        'icon_class' => sanitizeInput($_POST['icon_class'] ?? ''),
+                        'icon_path' => $iconPath,
+                        'position' => (int)($_POST['position'] ?? 0),
+                        'target' => sanitizeInput($_POST['target'] ?? '_self'),
+                        'status' => sanitizeInput($_POST['status'] ?? 'active'),
+                        'author_name' => sanitizeInput($_POST['author_name'] ?? '')
+                    ];
+                    
+                    if (empty($data['title']) || empty($data['url'])) {
+                        return ['Title and URL are required.', ''];
+                    }
+                    
+                    $result = $quickLinkModel->createLink($data);
+                    return $result ? ['', 'Quick link created successfully!'] : ['Failed to create quick link.', ''];
+
+                case 'edit':
+                    $id = (int)($_POST['id'] ?? 0);
+                    
+                    // Handle icon upload if provided
+                    $iconPath = null;
+                    if (isset($_FILES['icon_upload']) && $_FILES['icon_upload']['error'] === UPLOAD_ERR_OK) {
+                        try {
+                            $iconPath = $quickLinkModel->uploadIcon($_FILES['icon_upload']);
+                            
+                            // Delete old icon if exists
+                            $oldLink = $quickLinkModel->find($id);
+                            if ($oldLink && !empty($oldLink['icon_path'])) {
+                                $quickLinkModel->deleteIcon($oldLink['icon_path']);
+                            }
+                        } catch (Exception $e) {
+                            return ['Icon upload failed: ' . $e->getMessage(), ''];
+                        }
+                    }
+
+                    $data = [
+                        'title' => sanitizeInput($_POST['title'] ?? ''),
+                        'description' => sanitizeInput($_POST['description'] ?? ''),
+                        'url' => sanitizeInput($_POST['url'] ?? ''),
+                        'category' => sanitizeInput($_POST['category'] ?? 'system'),
+                        'icon_type' => sanitizeInput($_POST['icon_type'] ?? 'fontawesome'),
+                        'icon_class' => sanitizeInput($_POST['icon_class'] ?? ''),
+                        'position' => (int)($_POST['position'] ?? 0),
+                        'target' => sanitizeInput($_POST['target'] ?? '_self'),
+                        'status' => sanitizeInput($_POST['status'] ?? 'active'),
+                        'author_name' => sanitizeInput($_POST['author_name'] ?? '')
+                    ];
+                    
+                    // Only update icon_path if a new one was uploaded
+                    if ($iconPath) {
+                        $data['icon_path'] = $iconPath;
+                    }
+                    
+                    if (empty($data['title']) || empty($data['url'])) {
+                        return ['Title and URL are required.', ''];
+                    }
+                    
+                    $result = $quickLinkModel->updateLink($id, $data);
+                    return $result ? ['', 'Quick link updated successfully!'] : ['Failed to update quick link.', ''];
+
+                case 'delete':
+                    $id = (int)($_POST['id'] ?? 0);
+                    
+                    // Delete associated icon file
+                    $link = $quickLinkModel->find($id);
+                    if ($link && !empty($link['icon_path'])) {
+                        $quickLinkModel->deleteIcon($link['icon_path']);
+                    }
+                    
+                    $result = $quickLinkModel->delete($id);
+                    return $result ? ['', 'Quick link deleted successfully!'] : ['Failed to delete quick link.', ''];
+
+                case 'update_positions':
+                    $positions = $_POST['positions'] ?? [];
+                    if (!empty($positions)) {
+                        $quickLinkModel->updatePositions($positions);
+                        return ['', 'Link positions updated successfully!'];
+                    }
+                    return ['No position data received.', ''];
+            }
+        } catch (Exception $e) {
+            error_log('Quick link management error: ' . $e->getMessage());
+            return ['An error occurred. Please try again.', ''];
+        }
+        return ['', ''];
+    }
 }

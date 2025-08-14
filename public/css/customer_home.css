@@ -1,0 +1,869 @@
+/**
+ * Customer Home Page Styles
+ * Responsive CSS for customer home page with marquee, cards, and cascades
+ */
+
+/* ====================================
+   MARQUEE SECTION
+   ==================================== */
+.marquee-container {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    padding: 12px 0;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0;
+}
+
+.marquee-content {
+    width: 100%;
+    overflow: hidden;
+}
+
+.marquee-scroll {
+    display: flex;
+    animation: marquee 30s linear infinite;
+    white-space: nowrap;
+}
+
+.marquee-item {
+    display: inline-block;
+    padding: 0 50px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.marquee-item i {
+    margin-right: 8px;
+    color: #ffd700;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Pause marquee on hover */
+.marquee-container:hover .marquee-scroll {
+    animation-play-state: paused;
+}
+
+/* ====================================
+   CUSTOMER HOME LAYOUT
+   ==================================== */
+.customer-home {
+    padding: 20px 15px;
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 200px);
+}
+
+.main-page-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #3498db;
+}
+
+.main-page-title i {
+    margin-right: 15px;
+    color: #3498db;
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 25px;
+    border-left: 4px solid #3498db;
+    padding-left: 15px;
+}
+
+/* ====================================
+   FEATURED CASCADE SECTION
+   ==================================== */
+.featured-cascade {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.featured-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.featured-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+/* Cascade effect - staggered heights */
+.featured-card-1 {
+    margin-top: 0;
+}
+
+.featured-card-2 {
+    margin-top: 15px;
+}
+
+.featured-card-3 {
+    margin-top: 30px;
+}
+
+.featured-image {
+    height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+.featured-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.featured-card:hover .featured-image img {
+    transform: scale(1.05);
+}
+
+.featured-content {
+    padding: 20px;
+}
+
+.featured-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.featured-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.featured-excerpt {
+    color: #6c757d;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+/* ====================================
+   NEWS CARDS SECTION
+   ==================================== */
+.news-section,
+.announcements-section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    height: 100%;
+}
+
+.news-cards,
+.announcements-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.news-card {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border-left: 4px solid #3498db;
+    transition: all 0.3s ease;
+}
+
+.news-card:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.news-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.news-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    flex: 1;
+    margin-right: 15px;
+}
+
+.news-content {
+    color: #6c757d;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.news-card-footer {
+    text-align: right;
+    margin-top: 15px;
+}
+
+/* ====================================
+   ANNOUNCEMENTS CARDS
+   ==================================== */
+.announcement-card {
+    display: flex;
+    background: #fff3cd;
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #ffc107;
+    transition: all 0.3s ease;
+    align-items: flex-start;
+}
+
+.announcement-card:hover {
+    background: #fff2b3;
+    transform: translateX(5px);
+}
+
+.announcement-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: #ffc107;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 15px;
+}
+
+.announcement-content {
+    flex: 1;
+}
+
+.announcement-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: 8px;
+}
+
+.announcement-text {
+    color: #856404;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.announcement-meta {
+    display: flex;
+    gap: 10px;
+}
+
+.announcement-action {
+    flex-shrink: 0;
+}
+
+/* ====================================
+   ADVERTISEMENTS BANNER
+   ==================================== */
+.advertisements-banner {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.advertisement-carousel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.advertisement-slide {
+    display: flex;
+    justify-content: center;
+}
+
+.advertisement-card {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    width: 100%;
+    max-width: 300px;
+    transition: transform 0.3s ease;
+}
+
+.advertisement-card:hover {
+    transform: scale(1.02);
+}
+
+.advertisement-image {
+    height: 120px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.advertisement-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.advertisement-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.advertisement-text {
+    margin-bottom: 15px;
+    opacity: 0.9;
+    line-height: 1.5;
+}
+
+/* ====================================
+   QUICK ACTIONS SECTION
+   ==================================== */
+.quick-actions-section {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.quick-action-card {
+    display: flex;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.quick-action-card:hover {
+    background: #e9ecef;
+    color: inherit;
+    text-decoration: none;
+    transform: translateY(-3px);
+    border-color: #3498db;
+    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.2);
+}
+
+.quick-action-icon {
+    flex-shrink: 0;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    margin-right: 15px;
+}
+
+.quick-action-content h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.quick-action-content p {
+    color: #6c757d;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Railway System Specific Styles */
+.railway-system .quick-action-icon {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.railway-fois .quick-action-icon {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+}
+
+.railway-parcel .quick-action-icon {
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
+}
+
+.railway-rr .quick-action-icon {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.railway-madad .quick-action-icon {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.railway-timetable .quick-action-icon {
+    background: linear-gradient(135deg, #16a085, #1abc9c);
+}
+
+.railway-cr .quick-action-icon {
+    background: linear-gradient(135deg, #d35400, #e67e22);
+}
+
+/* Grievance Action Specific Styles */
+.grievance-action .quick-action-icon {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.grievance-new .quick-action-icon {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.grievance-my .quick-action-icon {
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
+}
+
+/* Railway System Card Hover Effects */
+.railway-system:hover {
+    border-color: #e74c3c;
+    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.2);
+}
+
+.grievance-action:hover {
+    border-color: #3498db;
+    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.2);
+}
+
+/* External System Specific Styles */
+.external-system .quick-action-icon {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.external-system:hover {
+    border-color: #17a2b8;
+    box-shadow: 0 8px 20px rgba(23, 162, 184, 0.2);
+}
+
+/* System Link Specific Styles */
+.system-link .quick-action-icon {
+    background: linear-gradient(135deg, #6c757d, #495057);
+}
+
+.system-link:hover {
+    border-color: #6c757d;
+    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.2);
+}
+
+/* ====================================
+   HELP SECTION
+   ==================================== */
+.help-section {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+}
+
+.help-content h4 {
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.help-content p {
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.help-actions .btn {
+    margin: 5px;
+}
+
+/* ====================================
+   RESPONSIVE DESIGN
+   ==================================== */
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    .customer-home {
+        padding: 30px 25px;
+    }
+    
+    .featured-cascade {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .quick-actions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .main-page-title {
+        font-size: 2.2rem;
+    }
+
+    .featured-cascade {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .advertisement-carousel {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Reduce cascade offset for tablets */
+    .featured-card-2 {
+        margin-top: 10px;
+    }
+    
+    .featured-card-3 {
+        margin-top: 20px;
+    }
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .marquee-item {
+        font-size: 13px;
+        padding: 0 30px;
+    }
+    
+    .main-page-title {
+        font-size: 2rem;
+        padding: 18px;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+    }
+    
+    /* Single column layout */
+    .featured-cascade,
+    .quick-actions-grid,
+    .advertisement-carousel {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Remove cascade offset for small screens */
+    .featured-card-2,
+    .featured-card-3 {
+        margin-top: 0;
+    }
+    
+    .announcement-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .announcement-icon {
+        margin: 0 auto 10px;
+    }
+}
+
+/* Extra small devices (portrait phones, less than 576px) */
+@media (max-width: 575.98px) {
+    .customer-home {
+        padding: 15px 10px;
+    }
+    
+    .marquee-item {
+        font-size: 12px;
+        padding: 0 20px;
+    }
+    
+    .main-page-title {
+        font-size: 1.8rem;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .main-page-title i {
+        margin-right: 10px;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+    }
+    
+    .news-section,
+    .announcements-section,
+    .advertisements-banner,
+    .quick-actions-section {
+        padding: 20px;
+    }
+    
+    .featured-content,
+    .news-card {
+        padding: 15px;
+    }
+    
+    .quick-action-card {
+        padding: 15px;
+    }
+    
+    .quick-action-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .help-section {
+        padding: 20px;
+    }
+    
+    .help-actions .btn {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    /* Stack news card headers on very small screens */
+    .news-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .news-title {
+        margin-right: 0;
+        margin-bottom: 5px;
+    }
+}
+
+/* ====================================
+   ACCESSIBILITY AND ANIMATIONS
+   ==================================== */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    .marquee-scroll {
+        animation: none;
+    }
+    
+    .featured-card,
+    .news-card,
+    .announcement-card,
+    .quick-action-card,
+    .advertisement-card {
+        transition: none;
+    }
+    
+    .featured-card:hover,
+    .quick-action-card:hover {
+        transform: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .marquee-container {
+        background: #000;
+        color: #fff;
+    }
+    
+    .featured-card,
+    .news-section,
+    .announcements-section,
+    .advertisements-banner,
+    .quick-actions-section {
+        border: 2px solid #000;
+    }
+}
+
+/* Focus styles for keyboard navigation */
+.quick-action-card:focus,
+.btn:focus {
+    outline: 3px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* Loading animation for AOS */
+[data-aos] {
+    opacity: 0;
+    transition-property: opacity, transform;
+}
+
+[data-aos].aos-animate {
+    opacity: 1;
+}
+
+/* Print styles */
+@media print {
+    .marquee-container,
+    .quick-actions-section,
+    .help-section {
+        display: none;
+    }
+    
+    .customer-home {
+        background: white;
+        padding: 0;
+    }
+    
+    .featured-card,
+    .news-section,
+    .announcements-section {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+    }
+}
+
+/* Customer Home Styles */
+
+/* Grievances Table Styles */
+.animate-pulse {
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+.table-warning {
+	background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.table-warning:hover {
+	background-color: rgba(255, 193, 7, 0.2) !important;
+}
+
+/* Action buttons in grievances table */
+.grievances-actions .btn {
+	transition: all 0.3s ease;
+}
+
+.grievances-actions .btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+	.table-responsive {
+		font-size: 0.875rem;
+	}
+	
+	.grievances-actions .btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.75rem;
+	}
+}
+
+/* Status badge enhancements */
+.badge.status-resolved {
+	background-color: #28a745;
+}
+
+.badge.status-reverted {
+	background-color: #ffc107;
+	color: #212529;
+}
+
+.badge.status-pending {
+	background-color: #17a2b8;
+}
+
+.badge.status-replied {
+	background-color: #007bff;
+}
+
+/* Priority badge styles */
+.badge.priority-high {
+	background-color: #dc3545;
+}
+
+.badge.priority-medium {
+	background-color: #ffc107;
+	color: #212529;
+}
+
+.badge.priority-low {
+	background-color: #28a745;
+}
+
+/* Rating Button Styles */
+.rating-buttons {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+/* Image Management Styles */
+.object-fit-cover {
+	object-fit: cover;
+}
+
+.form-check-input:checked + .form-check-label {
+	color: #dc3545;
+	font-weight: 500;
+}
+
+.rating-btn {
+	transition: all 0.3s ease;
+}
+
+.rating-btn.selected {
+	transform: scale(1.05);
+}
+
+.rating-btn[data-rating="Excellent"].selected {
+	background-color: #28a745;
+	border-color: #28a745;
+	color: white;
+}
+
+.rating-btn[data-rating="Satisfactory"].selected {
+	background-color: #ffc107;
+	border-color: #ffc107;
+	color: white;
+}
+
+.rating-btn[data-rating="Unsatisfactory"].selected {
+	background-color: #dc3545;
+	border-color: #dc3545;
+	color: white;
+}
+
+/* Modal Styles */
+.modal-lg {
+	max-width: 800px;
+}
+
+.file-upload-area:hover {
+	border-color: #007bff !important;
+	background-color: #f8f9fa;
+}

@@ -7,7 +7,7 @@ This is a comprehensive railway complaint management system designed to streamli
 - **Customer Portal**: Easy complaint submission with evidence upload
 - **Staff Dashboard**: Complaint management and tracking
 - **Multi-Department Routing**: Automatic forwarding to appropriate departments
-- **Real-time Tracking**: Live status updates and notifications
+- **Real-time Tracking**: Live status updates
 - **Evidence Management**: Support for image uploads (up to 3 images per complaint)
 - **Role-based Access**: Customer, Employee, Officer, and Admin roles
 - **Mobile Responsive**: Works on all devices
@@ -125,7 +125,7 @@ The system includes RESTful APIs for:
 - `/api/users` - User management
 - `/api/transactions` - Activity tracking
 - `/api/evidence` - File uploads
-- `/api/notifications` - Real-time notifications
+
 - `/api/dashboard` - Dashboard data
 - `/api/reports` - Reporting
 

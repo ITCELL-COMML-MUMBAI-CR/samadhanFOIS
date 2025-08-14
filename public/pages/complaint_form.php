@@ -1,6 +1,17 @@
 <?php
-// This file is now a view and should not contain business logic.
-// The logic is handled by ComplaintController.php
+/**
+ * Complaint Form View
+ * Form for submitting new grievances
+ */
+
+// Data is passed from the controller
+// $error, $success, $currentUser, $customerDetails, $complaintTypes, $typeSubtypeMapping, $sheds
+
+// Check if data is being passed correctly
+if (!isset($currentUser)) {
+    echo '<div class="alert alert-danger">Error: No user data available</div>';
+    return;
+}
 ?>
 <div class="container">
     <div class="row justify-content-center">
@@ -10,11 +21,6 @@
                 <h1 class="h3">
                     <i class="fas fa-plus-circle text-primary"></i> Submit New Grievance
                 </h1>
-                <div>
-                    <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-railway-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
-                </div>
             </div>
             
             <!-- Customer Info Card -->
@@ -104,7 +110,7 @@
                             <input type="text" class="form-control" id="fnr_no" name="fnr_no" required
                                    placeholder="FNR Number" value="<?php echo htmlspecialchars($_POST['fnr_no'] ?? ''); ?>">
                             <label for="fnr_no">
-                                <i class="fas fa-receipt"></i> FNR Number *
+                                <i class="fas fa-receipt"></i> FNR Number / GSTN IN / eIndent*
                             </label>
                             <div class="form-text">
                                 Enter the Freight Note Receipt (FNR) number if applicable
@@ -212,7 +218,7 @@
                                 <li>You will receive a unique grievance ID</li>
                                 <li>Track progress from your dashboard</li>
                                 <li>Response within 24-48 hours</li>
-                                <li>Updates via email notifications</li>
+                                <li>Updates via email</li>
                             </ul>
                         </div>
                     </div>

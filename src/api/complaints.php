@@ -4,6 +4,9 @@
  * Handles complaint-related requests
  */
 
+// Handle both URL-based actions and form-based actions
+$action = $action ?: ($_POST['action'] ?? $_GET['action'] ?? '');
+
 switch ($action) {
     case 'list':
         if ($method === 'GET') {
@@ -48,6 +51,22 @@ switch ($action) {
     case 'reply':
         if ($method === 'POST') {
             handleReplyToComplaint($id);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+        
+    case 'submit_feedback':
+        if ($method === 'POST') {
+            handleSubmitFeedback();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+        
+    case 'submit_more_info':
+        if ($method === 'POST') {
+            handleSubmitMoreInfo();
         } else {
             sendError('Method not allowed', 405);
         }
@@ -154,6 +173,25 @@ function handleViewComplaint($complaintId) {
                 sendError('Access denied', 403);
             }
             
+            // Get evidence data
+            require_once __DIR__ . '/../models/Evidence.php';
+            $evidenceModel = new Evidence();
+            $evidence = $evidenceModel->findByComplaintId($complaintId);
+            
+            // Prepare evidence images for response
+            $evidenceImages = [];
+            if ($evidence) {
+                for ($i = 1; $i <= 3; $i++) {
+                    $imageField = "image_$i";
+                    if (!empty($evidence[$imageField])) {
+                        $evidenceImages[] = [
+                            'filename' => $evidence[$imageField],
+                            'url' => BASE_URL . 'uploads/evidences/' . $evidence[$imageField]
+                        ];
+                    }
+                }
+            }
+            
             // Filter out internal details for customers
             $customerViewComplaint = [
                 'complaint_id' => $complaint['complaint_id'],
@@ -169,7 +207,8 @@ function handleViewComplaint($complaintId) {
                 'time' => $complaint['time'],
                 'created_at' => $complaint['created_at'],
                 'customer_name' => $complaint['customer_name'],
-                'customer_id' => $complaint['customer_id']
+                'customer_id' => $complaint['customer_id'],
+                'evidence' => $evidenceImages
             ];
             sendSuccess($customerViewComplaint);
         } else {
@@ -276,6 +315,160 @@ function handleReplyToComplaint($complaintId) {
         sendSuccess([], 'Reply sent to customer and status updated to replied');
     } catch (Exception $e) {
         sendError('Failed to reply to complaint: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Customer submits feedback for resolved complaint
+ */
+function handleSubmitFeedback() {
+    try {
+        // Validate user is customer
+        if ($_SESSION['user_role'] !== 'customer') {
+            sendError('Only customers can submit feedback', 403);
+        }
+        
+        // Handle both form data and JSON input
+        $input = $_SERVER['CONTENT_TYPE'] === 'application/json' ? getJsonInput() : $_POST;
+        
+        // Validate CSRF token
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        if (!SessionManager::validateCSRFToken($input['csrf_token'] ?? '')) {
+            sendError('Invalid CSRF token', 403);
+        }
+        
+        $complaintId = $input['complaint_id'] ?? '';
+        $feedback = trim($input['feedback_text'] ?? '');
+        $rating = $input['feedback_rating'] ?? '';
+        
+        if (empty($complaintId)) {
+            sendError('Complaint ID is required');
+        }
+        
+        if (empty($feedback)) {
+            sendError('Please provide feedback');
+        }
+        
+        if (empty($rating) || !in_array($rating, ['Excellent', 'Satisfactory', 'Unsatisfactory'])) {
+            sendError('Please select a rating');
+        }
+        
+        require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../models/Transaction.php';
+        
+        $complaintModel = new Complaint();
+        $transactionModel = new Transaction();
+        
+        // Verify complaint belongs to customer
+        $complaint = $complaintModel->findByComplaintId($complaintId);
+        if (!$complaint) {
+            sendError('Complaint not found', 404);
+        }
+        
+        if ($complaint['customer_id'] !== $_SESSION['user_customer_id']) {
+            sendError('Access denied', 403);
+        }
+        
+        // Update complaint with rating and close it
+        $complaintModel->updateComplaint($complaintId, [
+            'rating' => $rating,
+            'rating_remarks' => $feedback,
+            'status' => 'closed'
+        ]);
+        
+        $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback . ' (Rating: ' . $rating . ')', $_SESSION['user_login_id']);
+        
+        sendSuccess([], 'Feedback submitted successfully');
+        
+    } catch (Exception $e) {
+        sendError('Failed to submit feedback: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Customer submits more information for reverted complaint
+ */
+function handleSubmitMoreInfo() {
+    try {
+        // Validate user is customer
+        if ($_SESSION['user_role'] !== 'customer') {
+            sendError('Only customers can submit additional information', 403);
+        }
+        
+        // Handle both form data and JSON input
+        $input = $_SERVER['CONTENT_TYPE'] === 'application/json' ? getJsonInput() : $_POST;
+        
+        // Validate CSRF token
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        if (!SessionManager::validateCSRFToken($input['csrf_token'] ?? '')) {
+            sendError('Invalid CSRF token', 403);
+        }
+        
+        $complaintId = $input['complaint_id'] ?? '';
+        $moreInfo = trim($input['more_info_text'] ?? '');
+        
+        if (empty($complaintId)) {
+            sendError('Complaint ID is required');
+        }
+        
+        if (strlen($moreInfo) < 3) {
+            sendError('Please provide additional information');
+        }
+        
+        require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../models/Transaction.php';
+        require_once __DIR__ . '/../models/Evidence.php';
+        
+        $complaintModel = new Complaint();
+        $transactionModel = new Transaction();
+        $evidenceModel = new Evidence();
+        
+        // Verify complaint belongs to customer
+        $complaint = $complaintModel->findByComplaintId($complaintId);
+        if (!$complaint) {
+            sendError('Complaint not found', 404);
+        }
+        
+        if ($complaint['customer_id'] !== $_SESSION['user_customer_id']) {
+            sendError('Access denied', 403);
+        }
+        
+        // Handle image deletion if requested
+        $deleteImages = $input['delete_images'] ?? [];
+        if (!empty($deleteImages)) {
+            // Get current evidence to map filenames to indices
+            $currentEvidence = $evidenceModel->findByComplaintId($complaintId);
+            if ($currentEvidence) {
+                foreach ($deleteImages as $filename) {
+                    // Find which image field contains this filename
+                    for ($i = 1; $i <= 3; $i++) {
+                        $imageField = "image_$i";
+                        if ($currentEvidence[$imageField] === $filename) {
+                            $evidenceModel->deleteImage($complaintId, $i);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Handle additional evidence upload if provided
+        if (!empty($_FILES['additional_evidence']['tmp_name'][0])) {
+            $uploadResult = $evidenceModel->handleFileUpload($_FILES['additional_evidence'], $complaintId);
+            if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                sendError('Failed to upload some files: ' . implode(', ', $uploadResult['errors']));
+            }
+        }
+        
+        // Move back to pending and assign to commercial controller for review
+        $complaintModel->updateStatus($complaintId, 'pending');
+        $complaintModel->assignTo($complaintId, 'commercial_controller');
+        $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $_SESSION['user_login_id']);
+        
+        sendSuccess([], 'Additional information submitted successfully');
+        
+    } catch (Exception $e) {
+        sendError('Failed to submit additional information: ' . $e->getMessage());
     }
 }
 ?>

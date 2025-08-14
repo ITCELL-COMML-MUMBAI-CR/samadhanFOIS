@@ -67,9 +67,260 @@ class ComplaintController extends BaseController {
      */
     public function assignedToMe() {
         SessionManager::requireRole('controller');
+        
+        $currentUser = SessionManager::getCurrentUser();
+        $complaintModel = $this->loadModel('Complaint');
+        $userModel = $this->loadModel('User');
+        
+        // Get filters
+        $status = $_GET['status'] ?? '';
+        $priority = $_GET['priority'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 20;
+        $offset = ($page - 1) * $limit;
+        
+        // Handle actions
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $action = $_POST['action'] ?? '';
+                $complaintId = $_POST['complaint_id'] ?? '';
+                
+                // Validate CSRF token
+                if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                    throw new Exception('Invalid security token');
+                }
+                
+                $transactionModel = $this->loadModel('Transaction');
+                $rejectionModel = $this->loadModel('ComplaintRejection');
+                
+                switch ($action) {
+                    case 'close':
+                        // Close complaint -> send for Commercial approval
+                        $actionTaken = sanitizeInput($_POST['action_taken'] ?? '');
+                        $remarks = sanitizeInput($_POST['remarks'] ?? '');
+                        if (empty($actionTaken) || empty($remarks)) {
+                            throw new Exception('Action taken and internal remarks are required');
+                        }
+                        // Set status to awaiting_approval and assign to commercial controller
+                        $result = $complaintModel->updateStatus($complaintId, 'awaiting_approval', $actionTaken);
+                        // Assign to commercial controller for approval
+                        $assignResult = $complaintModel->assignTo($complaintId, 'commercial_controller');
+                        if ($result) {
+                            $transactionModel->logStatusUpdate($complaintId, 'Closed by controller. Awaiting Commercial approval. Remarks: ' . $remarks, $currentUser['login_id']);
+                            $_SESSION['alert_message'] = "Grievance sent for Commercial approval.";
+                            $_SESSION['alert_type'] = 'success';
+                        } else {
+                            $_SESSION['alert_message'] = 'Failed to process close request.';
+                            $_SESSION['alert_type'] = 'error';
+                        }
+                        // Redirect to prevent resubmission
+                        $this->redirect('grievances/tome');
+                        return;
+                        
+                    case 'forward':
+                        $toDepartment = $_POST['to_department'] ?? '';
+                        $toUser = $_POST['to_user'] ?? '';
+                        $forwardRemarks = sanitizeInput($_POST['forward_remarks'] ?? '');
+                        
+                        if (empty($toDepartment) || empty($forwardRemarks)) {
+                            throw new Exception('Department and remarks are required for forwarding');
+                        }
+                        
+                        // Update complaint assignment
+                        if (!empty($toUser)) {
+                            $complaintModel->assignTo($complaintId, $toUser);
+                        }
+                        
+                        // Log forward transaction
+                        $transactionModel->logForward(
+                            $complaintId,
+                            $currentUser['login_id'],
+                            $toUser,
+                            $currentUser['department'],
+                            $toDepartment,
+                            $forwardRemarks,
+                            $currentUser['login_id']
+                        );
+                        
+                        $_SESSION['alert_message'] = 'Grievance forwarded successfully!';
+                        $_SESSION['alert_type'] = 'success';
+                        $this->redirect('grievances/tome');
+                        return;
+                        
+                    case 'revert':
+                        // Only Commercial can revert back to customer
+                        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                            throw new Exception('Only Commercial Controller can revert to customer');
+                        }
+                        $rejectionReason = sanitizeInput($_POST['rejection_reason'] ?? '');
+                        if (empty($rejectionReason)) {
+                            throw new Exception('Remarks are required for revert');
+                        }
+                        
+                        // Fetch complaint and customer user
+                        $complaint = $complaintModel->findByComplaintId($complaintId);
+                        $customerId = $complaint['customer_id'] ?? null;
+                        $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
+                        $customerLoginId = $customerUser['login_id'] ?? null;
+                        
+                        // Log rejection to customer, asking for more information
+                        $rejectionModel->logCommercialToCustomer($complaintId, $currentUser['login_id'], null, $rejectionReason);
+                        
+                        // Update complaint status to reverted and reassign to customer
+                        $complaintModel->updateStatus($complaintId, 'reverted');
+                        if ($customerLoginId) {
+                            $complaintModel->assignTo($complaintId, $customerLoginId);
+                        }
+                        
+                        // Log transaction
+                        $transactionModel->logStatusUpdate($complaintId, 'Reverted to customer for more information: ' . $rejectionReason, $currentUser['login_id']);
+                        
+                        // Email to customer
+                        require_once __DIR__ . '/../utils/EmailService.php';
+                        $emailService = new EmailService();
+                        $customerEmail = $complaint['customer_email'] ?? '';
+                        $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+                        if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+                            $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, ($complaint['status'] ?? 'pending'), 'reverted', $rejectionReason);
+                        }
+                        
+                        $_SESSION['alert_message'] = 'Grievance reverted to customer with remarks.';
+                        $_SESSION['alert_type'] = 'success';
+                        $this->redirect('grievances/tome');
+                        return;
+                        
+                    case 'assign_priority':
+                        $newPriority = $_POST['new_priority'] ?? '';
+                        
+                        if (empty($newPriority)) {
+                            throw new Exception('Priority is required');
+                        }
+                        
+                        $result = $complaintModel->updatePriority($complaintId, $newPriority);
+                        
+                        if ($result) {
+                            $transactionModel->logStatusUpdate($complaintId, "Priority updated to: $newPriority", $currentUser['login_id']);
+                            $_SESSION['alert_message'] = 'Priority updated successfully!';
+                            $_SESSION['alert_type'] = 'success';
+                        } else {
+                            $_SESSION['alert_message'] = 'Failed to update priority.';
+                            $_SESSION['alert_type'] = 'error';
+                        }
+                        $this->redirect('grievances/tome');
+                        return;
+                }
+                
+            } catch (Exception $e) {
+                error_log('Controller action error: ' . $e->getMessage());
+                $_SESSION['alert_message'] = $e->getMessage();
+                $_SESSION['alert_type'] = 'error';
+                $this->redirect('grievances/tome');
+                return;
+            }
+        }
+        
+        // Get grievances assigned to current user
+        $grievances = [];
+        $totalCount = 0;
+        
+        try {
+            // Update auto-priorities before displaying
+            $complaintModel->updateAutoPriorities();
+            
+            // Build filter conditions
+            $filters = [
+                'assigned_to' => $currentUser['login_id']
+            ];
+            
+            if (!empty($status)) {
+                $filters['status'] = $status;
+            }
+            
+            if (!empty($priority)) {
+                $filters['priority'] = $priority;
+            }
+            
+            // Get filtered grievances
+            if (!empty($search)) {
+                $grievances = $complaintModel->search($search, $filters);
+            } else {
+                $grievances = $complaintModel->findAssignedTo($currentUser['login_id']);
+                
+                // Exclude forwarded away or reverted to customer from "Assigned to Me"
+                $grievances = array_filter($grievances, function($g) use ($currentUser) {
+                    // If complaint is awaiting approval but not with commercial controller, hide
+                    if (($g['status'] ?? '') === 'awaiting_approval' && ($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                        return false;
+                    }
+                                    // If complaint has been reverted to customer (status reverted) and assigned to a customer login, hide
+                if (($g['status'] ?? '') === 'reverted') {
+                        if (($g['assigned_to'] ?? '') !== ($currentUser['login_id'] ?? '')) {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                // Apply additional filters
+                if (!empty($status) || !empty($priority)) {
+                    $grievances = array_filter($grievances, function($g) use ($status, $priority) {
+                        if (!empty($status) && $g['status'] !== $status) return false;
+                        if (!empty($priority) && $g['priority'] !== $priority) return false;
+                        return true;
+                    });
+                }
+            }
+            
+            $totalCount = count($grievances);
+            
+            // Apply pagination
+            $grievances = array_slice($grievances, $offset, $limit);
+            
+            // Calculate auto-priority for each grievance
+            foreach ($grievances as &$grievance) {
+                $grievance['display_priority'] = $complaintModel->calculateAutoPriority($grievance['created_at']);
+            }
+            
+        } catch (Exception $e) {
+            $error = 'Unable to load grievances.';
+        }
+        
+        // Get department users for forwarding
+        $departmentUsers = [];
+        $departments = ['COMMERCIAL', 'OPERATING', 'MECHANICAL', 'ELECTRICAL', 'ENGINEERING', 'SECURITY', 'MEDICAL', 'ACCOUNTS', 'PERSONNEL'];
+        
+        try {
+            foreach ($departments as $dept) {
+                $departmentUsers[$dept] = $userModel->findByDepartment($dept);
+            }
+        } catch (Exception $e) {
+            // Handle silently
+        }
+        
+        // Calculate pagination
+        $totalPages = ceil($totalCount / $limit);
+        
+        // Check for session alerts
+        $error = '';
+        $success = '';
+        if (isset($_SESSION['alert_message'])) {
+            if ($_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+        }
+        
+        $data = compact(
+            'grievances', 'totalCount', 'currentUser', 'error', 'success',
+            'status', 'priority', 'search', 'page', 'totalPages',
+            'departmentUsers', 'departments'
+        );
+        
         $this->loadView('header', ['pageTitle' => 'Assigned to Me']);
-        // Legacy page with embedded logic
-        require_once __DIR__ . '/../../public/pages/complaints_to_me.php';
+        $this->loadView('pages/complaints_to_me', $data);
         $this->loadView('footer');
     }
 
@@ -86,8 +337,82 @@ class ComplaintController extends BaseController {
             return;
         }
 
+        $error = '';
+        $success = '';
+
+        // Check for session alerts
+        if (isset($_SESSION['alert_message'])) {
+            if ($_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+        }
+
+        // Handle POST actions
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                    throw new Exception('Invalid security token');
+                }
+
+                $action = $_POST['action'] ?? '';
+                $complaintId = $_POST['complaint_id'] ?? '';
+                $remarks = sanitizeInput($_POST['remarks'] ?? '');
+
+                $complaintModel = $this->loadModel('Complaint');
+                $transactionModel = $this->loadModel('Transaction');
+                $userModel = $this->loadModel('User');
+
+                if ($action === 'approve') {
+                    $complaint = $complaintModel->findByComplaintId($complaintId);
+                    if (!$complaint) {
+                        throw new Exception('Complaint not found');
+                    }
+                    $customerId = $complaint['customer_id'] ?? null;
+                    $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
+                    $customerLoginId = $customerUser['login_id'] ?? null;
+
+                    // Update status to resolved and assign to customer
+                    $complaintModel->updateStatus($complaintId, 'resolved');
+                    if ($customerLoginId) {
+                        $complaintModel->assignTo($complaintId, $customerLoginId);
+                    }
+
+                    // Log approval
+                    $transactionModel->logStatusUpdate($complaintId, 'Commercial approval granted. ' . ($remarks ? ('Remarks: ' . $remarks) : ''), $currentUser['login_id']);
+
+                    // Email customer about resolved status
+                    require_once __DIR__ . '/../utils/EmailService.php';
+                    $emailService = new EmailService();
+                    $customerEmail = $complaint['customer_email'] ?? '';
+                    $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+                    if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+                        $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, 'awaiting_approval', 'resolved', $remarks);
+                    }
+
+                    $_SESSION['alert_message'] = 'Action taken approved and sent to customer for feedback.';
+                    $_SESSION['alert_type'] = 'success';
+                    $this->redirect('grievances/approvals');
+                    return;
+                }
+            } catch (Exception $e) {
+                $_SESSION['alert_message'] = $e->getMessage();
+                $_SESSION['alert_type'] = 'error';
+                $this->redirect('grievances/approvals');
+                return;
+            }
+        }
+
+        // Fetch approvals list
+        $complaintModel = $this->loadModel('Complaint');
+        $approvals = $complaintModel->findByStatus('awaiting_approval');
+
+        $data = compact('approvals', 'currentUser', 'error', 'success');
+        
         $this->loadView('header', ['pageTitle' => 'Approvals']);
-        require_once __DIR__ . '/../../public/pages/approvals.php';
+        $this->loadView('pages/approvals', $data);
         $this->loadView('footer');
     }
 
@@ -131,20 +456,60 @@ class ComplaintController extends BaseController {
                     switch ($action) {
                         case 'submit_feedback':
                             $feedback = trim($_POST['feedback_text'] ?? '');
+                            $rating = $_POST['feedback_rating'] ?? '';
+                            
                             if (strlen($feedback) < 3) {
                                 throw new Exception('Please provide brief feedback');
                             }
-                            // Close complaint on feedback
-                            $complaintModel->updateStatus($complaintId, 'closed');
-                            $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback, $currentUser['login_id']);
+                            
+                            if (empty($rating) || !in_array($rating, ['Excellent', 'Satisfactory', 'Unsatisfactory'])) {
+                                throw new Exception('Please select a rating');
+                            }
+                            
+                            // Update complaint with rating and close it
+                            $complaintModel->updateComplaint($complaintId, [
+                                'rating' => $rating,
+                                'rating_remarks' => $feedback,
+                                'status' => 'closed'
+                            ]);
+                            $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback . ' (Rating: ' . $rating . ')', $currentUser['login_id']);
                             break;
                         case 'submit_more_info':
                             $moreInfo = trim($_POST['more_info_text'] ?? '');
                             if (strlen($moreInfo) < 3) {
                                 throw new Exception('Please provide additional information');
                             }
-                            // Move back to pending for review by Commercial
+                            
+                            // Handle image deletion if requested
+                            $deleteImages = $_POST['delete_images'] ?? [];
+                            if (!empty($deleteImages)) {
+                                // Get current evidence to map filenames to indices
+                                $currentEvidence = $evidenceModel->findByComplaintId($complaintId);
+                                if ($currentEvidence) {
+                                    foreach ($deleteImages as $filename) {
+                                        // Find which image field contains this filename
+                                        for ($i = 1; $i <= 3; $i++) {
+                                            $imageField = "image_$i";
+                                            if ($currentEvidence[$imageField] === $filename) {
+                                                $evidenceModel->deleteImage($complaintId, $i);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Handle additional evidence upload if provided
+                            if (!empty($_FILES['additional_evidence']['tmp_name'][0])) {
+                                $uploadResult = $evidenceModel->handleFileUpload($_FILES['additional_evidence'], $complaintId);
+                                if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                                    throw new Exception('Failed to upload some files: ' . implode(', ', $uploadResult['errors']));
+                                }
+                            }
+                            
+                            // Move back to pending and assign to commercial controller for review
                             $complaintModel->updateStatus($complaintId, 'pending');
+                            $complaintModel->assignTo($complaintId, 'commercial_controller');
                             $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
                             break;
                     }
@@ -232,7 +597,7 @@ class ComplaintController extends BaseController {
 
         $data = compact('error', 'success', 'currentUser', 'customerDetails', 'complaintTypes', 'typeSubtypeMapping', 'sheds');
         $this->loadView('header', ['pageTitle' => 'New Grievance']);
-        require_once __DIR__ . '/../../public/pages/complaint_form.php';
+        $this->loadView('pages/complaint_form', $data);
         $this->loadView('footer');
     }
 

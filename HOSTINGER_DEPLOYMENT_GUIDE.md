@@ -88,7 +88,7 @@ define('BASE_URL', '/subfolder/'); // If in subfolder
 
 1. **Test login functionality**
 2. **Test complaint submission**
-3. **Test email notifications**
+3. **Test email functionality**
 4. **Test file uploads**
 
 ## Troubleshooting

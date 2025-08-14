@@ -34,7 +34,7 @@ class LoginController
             if ($user) {
                 Logger::logAuth('LOGIN', $loginId, true, ['user_role' => $user['role']]);
                 SessionManager::login($user);
-                header('Location: ' . BASE_URL . 'dashboard');
+                header('Location: ' . BASE_URL . 'customer-home');
                 exit;
             } else {
                 Logger::logAuth('LOGIN', $loginId, false, ['error' => 'Invalid credentials']);

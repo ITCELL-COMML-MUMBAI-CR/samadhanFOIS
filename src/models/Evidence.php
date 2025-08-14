@@ -68,6 +68,46 @@ class Evidence extends BaseModel {
     }
     
     /**
+     * Add images to existing evidence record by finding next available slots
+     */
+    public function addImagesToEvidence($complaintId, $newImages = []) {
+        $existing = $this->findByComplaintId($complaintId);
+        if (!$existing) {
+            return false;
+        }
+        
+        $data = [];
+        $imageIndex = 0;
+        
+        // Find next available slots and add new images
+        for ($i = 1; $i <= 3 && $imageIndex < count($newImages); $i++) {
+            $imageField = "image_$i";
+            if (empty($existing[$imageField])) {
+                // This slot is empty, add the next new image
+                $data[$imageField] = $newImages[$imageIndex];
+                $imageIndex++;
+            }
+        }
+        
+        if (empty($data)) {
+            return false;
+        }
+        
+        $columns = array_keys($data);
+        $setClause = array_map(function($column) {
+            return "$column = ?";
+        }, $columns);
+        
+        $sql = "UPDATE evidence SET " . implode(', ', $setClause) . " WHERE complaint_id = ?";
+        
+        $params = array_values($data);
+        $params[] = $complaintId;
+        
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
      * Delete evidence
      */
     public function deleteByComplaintId($complaintId) {
@@ -186,7 +226,7 @@ class Evidence extends BaseModel {
         if (!empty($uploadedFiles)) {
             $existing = $this->findByComplaintId($complaintId);
             if ($existing) {
-                $this->updateEvidence($complaintId, $uploadedFiles);
+                $this->addImagesToEvidence($complaintId, $uploadedFiles);
             } else {
                 $this->createEvidence($complaintId, $uploadedFiles);
             }
@@ -362,12 +402,23 @@ class Evidence extends BaseModel {
         if ($evidence) {
             for ($i = 1; $i <= 3; $i++) {
                 $imagePath = $evidence["image_$i"];
-                if ($imagePath && file_exists(UPLOAD_DIR . $imagePath)) {
-                    $images[] = [
-                        'filename' => $imagePath,
-                        'url' => BASE_URL . UPLOAD_URL . $imagePath,
-                        'size' => filesize(UPLOAD_DIR . $imagePath)
-                    ];
+                if ($imagePath) {
+                    $fullPath = UPLOAD_DIR . $imagePath;
+                    if (file_exists($fullPath)) {
+                        $images[] = [
+                            'filename' => $imagePath,
+                            'url' => BASE_URL . 'uploads/evidences/' . $imagePath,
+                            'size' => filesize($fullPath)
+                        ];
+                    } else {
+                        // File doesn't exist, but still include it with a note
+                        $images[] = [
+                            'filename' => $imagePath,
+                            'url' => BASE_URL . 'uploads/evidences/' . $imagePath,
+                            'size' => 0,
+                            'missing' => true
+                        ];
+                    }
                 }
             }
         }

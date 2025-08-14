@@ -102,10 +102,7 @@ try {
             include 'evidence.php';
             break;
             
-        case 'notifications':
-            requireAuth();
-            include 'notifications.php';
-            break;
+
             
         case 'dashboard':
             requireAuth();

@@ -1,14 +1,8 @@
 <?php
 /**
- * 404 Not Found Page
+ * 404 Not Found Page View
  * Displayed when a page or route is not found
  */
-
-// Prevent direct access
-if (!defined('BASE_URL')) {
-    header('Location: /');
-    exit;
-}
 ?>
 
 <div class="container mt-5">

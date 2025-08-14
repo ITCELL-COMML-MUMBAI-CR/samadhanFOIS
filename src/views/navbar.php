@@ -20,6 +20,14 @@ $userRole = $_SESSION['user_role'] ?? '';
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <?php if (SessionManager::isLoggedIn()): ?>
+                    <!-- Home Link -->
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>customer-home">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                    </li>
+                    
                     <!-- Dashboard Link -->
                     <li class="nav-item">
                         <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>dashboard">
@@ -49,21 +57,6 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <span>Track Status</span>
                             </a>
                         </li>
-                        <ul class="dropdown-menu dropdown-menu-animated">
-                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/FOISWebPortal/index.jsp">
-                                    <i class="fas fa-users"></i> FOIS Official
-                                </a></li>
-                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/RailSAHAY/">
-                                    <i class="fas fa-tags"></i> Freight Business Devlopment
-                                </a></li>
-                                <li><a class="dropdown-item" href="https://www.fois.indianrail.gov.in/FOISWebPortal/pages/digilib/foisdiglib.jsp">
-                                    <i class="fas fa-chart-line"></i> FOIS Digital Library & User Manuals
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="https://rbs.indianrail.gov.in/ShortPath/ShortPath.jsp">
-                                    <i class="fas fa-user-plus"></i> RBS Shortest Pathfinder
-                                </a></li>
-                            </ul>
                         
                     <?php elseif ($userRole === 'controller'): ?>
                         <!-- Controller Navigation -->
@@ -108,12 +101,16 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/categories">
                                     <i class="fas fa-tags"></i> Manage Categories
                                 </a></li>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/news">
+                                    <i class="fas fa-newspaper"></i> News & Announcements
+                                </a></li>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/quicklinks">
+                                    <i class="fas fa-external-link-alt"></i> Quick Links
+                                </a></li>
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/reports">
                                     <i class="fas fa-chart-line"></i> Analytics
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/notifications">
-                                    <i class="fas fa-bullhorn"></i> Send Notifications
-                                </a></li>
+
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer/add">
                                     <i class="fas fa-user-plus"></i> Add Customer
@@ -137,14 +134,6 @@ $userRole = $_SESSION['user_role'] ?? '';
                             </a>
                         </li>
                     <?php endif; ?>
-                    
-                    <!-- Common Links for All Logged-in Users -->
-                    <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>help">
-                            <i class="fas fa-question-circle"></i>
-                            <span>Help</span>
-                        </a>
-                    </li>
                     
                 <?php else: ?>
                     <!-- Public Navigation -->
@@ -172,33 +161,7 @@ $userRole = $_SESSION['user_role'] ?? '';
             <!-- User Actions Section -->
             <ul class="navbar-nav ms-auto">
                 <?php if (SessionManager::isLoggedIn()): ?>
-                    <!-- Notifications -->
-                    <li class="nav-item dropdown">
-                        <div class="nav-link notification-bell-container" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-bell notification-bell"></i>
-                            <span class="notification-count" id="notificationCount">0</span>
-                            <div class="notification-pulse"></div>
-                        </div>
-                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
-                            <div class="notification-header">
-                                <h6 class="mb-0">Notifications</h6>
-                                <button class="btn btn-sm btn-link text-decoration-none" onclick="markAllAsRead()">Mark all read</button>
-                            </div>
-                            <div class="notification-list" id="notificationList">
-                                <div class="notification-item">
-                                    <div class="d-flex justify-content-center align-items-center p-3">
-                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                        <span class="ms-2">Loading notifications...</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="notification-footer">
-                                <a href="<?php echo BASE_URL; ?>notifications" class="text-decoration-none">View all notifications</a>
-                            </div>
-                        </div>
-                    </li>
+
                     
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
@@ -212,23 +175,9 @@ $userRole = $_SESSION['user_role'] ?? '';
                             </div>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
-                            <li class="dropdown-header">
-                                <div class="user-profile-header">
-                                    <div class="user-avatar-small">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div>
-                                        <h6 class="mb-0"><?php echo htmlspecialchars($currentUser['name']); ?></h6>
-                                        <small class="text-muted"><?php echo htmlspecialchars($currentUser['department'] ?? 'No Department'); ?></small>
-                                    </div>
-                                </div>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
+                            
                             <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>profile">
                                 <i class="fas fa-user"></i> Profile
-                            </a></li>
-                            <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>settings">
-                                <i class="fas fa-cog"></i> Settings
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item logout-link" href="<?php echo BASE_URL; ?>logout">

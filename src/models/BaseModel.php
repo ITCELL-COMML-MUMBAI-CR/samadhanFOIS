@@ -156,5 +156,12 @@ class BaseModel {
     public function getLastInsertId() {
         return $this->connection->lastInsertId();
     }
+    
+    /**
+     * Get database connection (for custom queries)
+     */
+    public function getConnection() {
+        return $this->connection;
+    }
 }
 ?>

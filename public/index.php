@@ -55,6 +55,11 @@ switch ($controllerName) {
         $controller->home();
         break;
         
+    case 'customer-home':
+        $controller = new PageController();
+        $controller->customerHome();
+        break;
+        
     case 'login':
         $controller = new LoginController();
         $controller->handleLoginRequest();
@@ -118,6 +123,10 @@ switch ($controllerName) {
             $controller->users();
         } elseif ($action === 'reports') {
             $controller->reports();
+        } elseif ($action === 'news') {
+            $controller->news();
+        } elseif ($action === 'quicklinks') {
+            $controller->quicklinks();
         } else {
             $controller->categories();
         }
@@ -135,10 +144,6 @@ switch ($controllerName) {
         $controller = new PageController();
         $controller->contact();
         break;
-    case 'help':
-        $controller = new PageController();
-        $controller->help();
-        break;
     case 'faq':
         $controller = new PageController();
         $controller->faq();
@@ -150,10 +155,6 @@ switch ($controllerName) {
     case 'profile':
         $controller = new PageController();
         $controller->profile();
-        break;
-    case 'settings':
-        $controller = new PageController();
-        $controller->settings();
         break;
     case 'track':
         $controller = new PageController();

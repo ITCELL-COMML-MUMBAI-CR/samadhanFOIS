@@ -107,7 +107,7 @@ $formData = [
                                     <label for="email">
                                         <i class="fas fa-envelope"></i> Email Address
                                     </label>
-                                    <div class="form-text">Optional - for notifications and password recovery</div>
+                                    <div class="form-text">Optional - for password recovery</div>
                                 </div>
                             </div>
                             

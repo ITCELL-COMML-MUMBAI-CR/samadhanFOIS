@@ -38,11 +38,11 @@ function initializeNavbarAnimations() {
     const navLinks = document.querySelectorAll('.nav-link-animated');
     navLinks.forEach(link => {
         link.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-3px) scale(1.05)';
+            this.style.transform = 'scale(1.05)';
         });
         
         link.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0) scale(1)';
+            this.style.transform = 'scale(1)';
         });
     });
     
@@ -116,6 +116,28 @@ function initializeUserProfile() {
             this.style.transform = 'scale(1) rotate(0deg)';
         });
     }
+    
+    // Ensure dropdown functionality works
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+    dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const dropdownMenu = this.nextElementSibling;
+            if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu')) {
+                dropdownMenu.classList.toggle('show');
+            }
+        });
+    });
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown')) {
+            const openDropdowns = document.querySelectorAll('.dropdown-menu.show');
+            openDropdowns.forEach(dropdown => {
+                dropdown.classList.remove('show');
+            });
+        }
+    });
     
     // Add logout confirmation
     const logoutLink = document.querySelector('.logout-link');
@@ -327,7 +349,7 @@ function addEnhancedStyles() {
         
         /* Enhanced hover effects */
         .nav-link-animated:hover {
-            transform: translateY(-3px) scale(1.05);
+            transform: scale(1.05);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
         

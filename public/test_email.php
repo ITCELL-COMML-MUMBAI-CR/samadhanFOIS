@@ -5,8 +5,8 @@
  */
 
 // Include configuration
-require_once '../config/config.php';
-require_once '../src/utils/EmailService.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/utils/EmailService.php';
 
 // Set environment to production for testing
 define('ENVIRONMENT', 'production');

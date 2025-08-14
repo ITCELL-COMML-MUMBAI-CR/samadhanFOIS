@@ -1,107 +1,17 @@
 <?php
 /**
- * Commercial Approvals Page
+ * Commercial Approvals Page View
  * Lists complaints awaiting Commercial approval and allows approval action
  */
 
-require_once '../src/utils/SessionManager.php';
+// Data is passed from the controller
+// $approvals, $currentUser, $error, $success
 
-// Require controller access and Commercial department
-SessionManager::requireRole('controller');
-$currentUser = SessionManager::getCurrentUser();
-if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
-    if (!headers_sent()) {
-        header('Location: ' . BASE_URL . 'dashboard?error=access_denied');
-        exit;
-    }
+// Check if data is being passed correctly
+if (!isset($currentUser)) {
+    echo '<div class="alert alert-danger">Error: No user data available</div>';
+    return;
 }
-
-$error = '';
-$success = '';
-
-// Check for session alerts (from redirect after POST)
-if (isset($_SESSION['alert_message'])) {
-    if ($_SESSION['alert_type'] === 'success') {
-        $success = $_SESSION['alert_message'];
-    } else {
-        $error = $_SESSION['alert_message'];
-    }
-    unset($_SESSION['alert_message'], $_SESSION['alert_type']);
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
-            throw new Exception('Invalid security token');
-        }
-
-        $action = $_POST['action'] ?? '';
-        $complaintId = $_POST['complaint_id'] ?? '';
-        $remarks = sanitizeInput($_POST['remarks'] ?? '');
-
-        require_once '../src/models/Complaint.php';
-        require_once '../src/models/Transaction.php';
-        require_once '../src/models/User.php';
-        require_once '../src/utils/EmailService.php';
-
-        $complaintModel = new Complaint();
-        $transactionModel = new Transaction();
-        $userModel = new User();
-        $emailService = new EmailService();
-
-        if ($action === 'approve') {
-            $complaint = $complaintModel->findByComplaintId($complaintId);
-            if (!$complaint) {
-                throw new Exception('Complaint not found');
-            }
-            $customerId = $complaint['customer_id'] ?? null;
-            $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
-            $customerLoginId = $customerUser['login_id'] ?? null;
-
-            // Update status to resolved and assign to customer
-            $complaintModel->updateStatus($complaintId, 'resolved');
-            if ($customerLoginId) {
-                $complaintModel->assignTo($complaintId, $customerLoginId);
-            }
-
-            // Log approval
-            $transactionModel->logStatusUpdate($complaintId, 'Commercial approval granted. ' . ($remarks ? ('Remarks: ' . $remarks) : ''), $currentUser['login_id']);
-
-            // Email customer about resolved status
-            $customerEmail = $complaint['customer_email'] ?? '';
-            $customerName = $complaint['customer_name'] ?? 'Valued Customer';
-            if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
-                $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, 'awaiting_approval', 'resolved', $remarks);
-            }
-
-            // Set success message in session and redirect to prevent resubmission
-            $_SESSION['alert_message'] = 'Action taken approved and sent to customer for feedback.';
-            $_SESSION['alert_type'] = 'success';
-            header('Location: ' . BASE_URL . 'grievances/approvals');
-            exit;
-        }
-    } catch (Exception $e) {
-        $_SESSION['alert_message'] = $e->getMessage();
-        $_SESSION['alert_type'] = 'error';
-        header('Location: ' . BASE_URL . 'grievances/approvals');
-        exit;
-    }
-}
-
-// Fetch approvals list
-require_once '../src/models/Complaint.php';
-$complaintModel = new Complaint();
-// Show all complaints awaiting approval, regardless of current assignment
-$approvals = $complaintModel->findByStatus('awaiting_approval');
-
-// Debug: Show all complaints to see what statuses exist
-$allComplaints = $complaintModel->search('');
-$statusCount = [];
-foreach ($allComplaints as $c) {
-    $status = $c['status'] ?? 'null';
-    $statusCount[$status] = ($statusCount[$status] ?? 0) + 1;
-}
-
 ?>
 
 <div class="container-fluid">
@@ -113,10 +23,6 @@ foreach ($allComplaints as $c) {
             </h1>
             <div>
                 <span class="badge bg-info">Commercial</span>
-                <!-- Debug info -->
-                <small class="text-muted">
-                    Statuses in DB: <?php foreach($statusCount as $s => $c) echo "$s($c) "; ?>
-                </small>
             </div>
         </div>
     </div>
