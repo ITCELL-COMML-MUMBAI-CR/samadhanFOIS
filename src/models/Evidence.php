@@ -5,6 +5,7 @@
  */
 
 require_once 'BaseModel.php';
+require_once __DIR__ . '/../utils/Logger.php';
 
 class Evidence extends BaseModel {
     protected $table = 'evidence';
@@ -107,8 +108,16 @@ class Evidence extends BaseModel {
         }
         
         $uploadDir = UPLOAD_DIR;
-        if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        if (!is_dir($uploadDir)) {
+            if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                $errors[] = 'Failed to create upload directory';
+                Logger::error('Failed to create upload directory', ['dir' => $uploadDir]);
+                return [
+                    'success' => false,
+                    'uploaded_files' => [],
+                    'errors' => $errors
+                ];
+            }
         }
         
         for ($i = 0; $i < count($files['tmp_name']) && $i < MAX_IMAGES_PER_COMPLAINT; $i++) {
@@ -121,6 +130,7 @@ class Evidence extends BaseModel {
                 $validation = $this->validateFile($fileName, $fileSize, $tmpName);
                 if (!$validation['valid']) {
                     $errors[] = $validation['error'];
+                    Logger::warning('File validation failed', ['file' => $fileName, 'error' => $validation['error']]);
                     continue;
                 }
                 
@@ -131,22 +141,44 @@ class Evidence extends BaseModel {
                 
                 // Compress and save the image
                 if (move_uploaded_file($tmpName, $targetPath . '.original')) {
+                    Logger::info('Uploaded original image', [
+                        'file' => $fileName,
+                        'saved_as' => $newFileName,
+                        'original_size' => @filesize($targetPath . '.original')
+                    ]);
                     // Compress the image
                     if ($this->compressImage($targetPath . '.original', $targetPath)) {
                         // Remove original file after successful compression
                         unlink($targetPath . '.original');
+                        Logger::info('Compression successful', [
+                            'file' => $newFileName,
+                            'final_size' => @filesize($targetPath)
+                        ]);
                         $uploadedFiles[] = $newFileName;
                     } else {
                         // If compression fails, use original file (fallback)
                         rename($targetPath . '.original', $targetPath);
                         $uploadedFiles[] = $newFileName;
                         $errors[] = "Warning: Could not compress $fileName, using original size";
+                        Logger::warning('Compression failed, used original', [
+                            'file' => $newFileName,
+                            'size' => @filesize($targetPath)
+                        ]);
                     }
                 } else {
                     $errors[] = "Failed to upload: $fileName";
+                    Logger::error('move_uploaded_file failed', [
+                        'file' => $fileName,
+                        'error_code' => $files['error'][$i] ?? null,
+                        'target' => $targetPath . '.original'
+                    ]);
                 }
             } else {
-                $errors[] = "Upload error for: " . $files['name'][$i];
+                $errors[] = "Upload error for: " . $files['name'][$i] . ' (code ' . ($files['error'][$i] ?? 'unknown') . ')';
+                Logger::warning('Upload error code', [
+                    'file' => $files['name'][$i] ?? 'unknown',
+                    'error_code' => $files['error'][$i] ?? null
+                ]);
             }
         }
         
@@ -196,8 +228,15 @@ class Evidence extends BaseModel {
      * Compress image to below 2MB while maintaining quality
      */
     private function compressImage($sourcePath, $targetPath, $maxSizeBytes = 2097152) { // 2MB = 2 * 1024 * 1024
-        $imageInfo = getimagesize($sourcePath);
+        // Ensure GD extension is available
+        if (!function_exists('imagecreatetruecolor') || !function_exists('imagecopyresampled')) {
+            Logger::warning('GD extension not available, skipping compression');
+            // Fallback to copying original
+            return @copy($sourcePath, $targetPath);
+        }
+        $imageInfo = @getimagesize($sourcePath);
         if (!$imageInfo) {
+            Logger::warning('getimagesize failed', ['source' => $sourcePath]);
             return false;
         }
         
@@ -217,16 +256,18 @@ class Evidence extends BaseModel {
                 $sourceImage = imagecreatefromgif($sourcePath);
                 break;
             default:
+                Logger::warning('Unsupported image mime type', ['mime' => $mime, 'source' => $sourcePath]);
                 return false;
         }
         
         if (!$sourceImage) {
+            Logger::warning('Failed to create image resource', ['mime' => $mime, 'source' => $sourcePath]);
             return false;
         }
         
         // If original file is already under 2MB, just copy it
         if (filesize($sourcePath) <= $maxSizeBytes) {
-            copy($sourcePath, $targetPath);
+            @copy($sourcePath, $targetPath);
             imagedestroy($sourceImage);
             return true;
         }
@@ -301,7 +342,14 @@ class Evidence extends BaseModel {
         imagedestroy($sourceImage);
         imagedestroy($compressedImage);
         
-        return file_exists($targetPath);
+        $exists = file_exists($targetPath);
+        if ($exists) {
+            Logger::debug('Compression result', [
+                'target' => $targetPath,
+                'size' => @filesize($targetPath)
+            ]);
+        }
+        return $exists;
     }
     
     /**
@@ -317,7 +365,7 @@ class Evidence extends BaseModel {
                 if ($imagePath && file_exists(UPLOAD_DIR . $imagePath)) {
                     $images[] = [
                         'filename' => $imagePath,
-                        'url' => BASE_URL . UPLOAD_DIR . $imagePath,
+                        'url' => BASE_URL . UPLOAD_URL . $imagePath,
                         'size' => filesize(UPLOAD_DIR . $imagePath)
                     ];
                 }

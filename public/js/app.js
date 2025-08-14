@@ -1,5 +1,8 @@
 /**
- * Main JavaScript file for Samadhan FOIS - Railway Complaint System
+ * Main JavaScript file for SAMPARK FOIS - Railway Complaint System
+ * 
+ * This file can be used for general purpose JavaScript functions
+ * that are used across the application.
  */
 
 // Global App Object

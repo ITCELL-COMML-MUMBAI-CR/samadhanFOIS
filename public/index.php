@@ -80,8 +80,30 @@ switch ($controllerName) {
         $controller = new ComplaintController();
         if ($action === 'new') {
             $controller->create();
+        } elseif ($action === 'my') {
+            $controller->my();
+        } elseif ($action === 'tome') {
+            $controller->assignedToMe();
+        } elseif ($action === 'view' && !empty($params[0])) {
+            $controller->view($params[0]);
+        } else {
+            $controller->index();
         }
-        // ... other complaint actions
+        break;
+    case 'complaints':
+        // Alias routes to grievances for backward compatibility
+        $controller = new ComplaintController();
+        if ($action === 'new') {
+            $controller->create();
+        } elseif ($action === 'my') {
+            $controller->my();
+        } elseif ($action === 'tome') {
+            $controller->assignedToMe();
+        } elseif ($action === 'view' && !empty($params[0])) {
+            $controller->view($params[0]);
+        } else {
+            $controller->index();
+        }
         break;
         
     case 'admin':
@@ -90,12 +112,54 @@ switch ($controllerName) {
             $controller->categories();
         } elseif ($action === 'logs') {
             $controller->logs();
+        } elseif ($action === 'users') {
+            $controller->users();
+        } elseif ($action === 'reports') {
+            $controller->reports();
+        } else {
+            $controller->categories();
         }
         break;
         
     case 'policy':
         $controller = new PageController();
         $controller->policy();
+        break;
+    case 'about':
+        $controller = new PageController();
+        $controller->about();
+        break;
+    case 'contact':
+        $controller = new PageController();
+        $controller->contact();
+        break;
+    case 'help':
+        $controller = new PageController();
+        $controller->help();
+        break;
+    case 'faq':
+        $controller = new PageController();
+        $controller->faq();
+        break;
+    case 'guidelines':
+        $controller = new PageController();
+        $controller->guidelines();
+        break;
+    case 'profile':
+        $controller = new PageController();
+        $controller->profile();
+        break;
+    case 'settings':
+        $controller = new PageController();
+        $controller->settings();
+        break;
+    case 'track':
+        $controller = new PageController();
+        $controller->track();
+        break;
+    case 'reports':
+        $controller = new PageController();
+        $controller->reports();
         break;
         
     case 'logout':

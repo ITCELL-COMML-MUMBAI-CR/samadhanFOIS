@@ -8,6 +8,100 @@ class ComplaintController extends BaseController {
         SessionManager::requireLogin();
     }
 
+    /**
+     * List all grievances (admin/controller)
+     */
+    public function index() {
+        SessionManager::requireAnyRole(['admin', 'controller']);
+
+        $status = $_GET['status'] ?? '';
+        $priority = $_GET['priority'] ?? '';
+        $department = $_GET['department'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $dateFrom = $_GET['date_from'] ?? '';
+        $dateTo = $_GET['date_to'] ?? '';
+
+        $filters = [];
+        if (!empty($status)) $filters['status'] = $status;
+        if (!empty($priority)) $filters['priority'] = $priority;
+        if (!empty($department)) $filters['department'] = $department;
+        if (!empty($dateFrom)) $filters['date_from'] = $dateFrom;
+        if (!empty($dateTo)) $filters['date_to'] = $dateTo;
+
+        $complaintModel = $this->loadModel('Complaint');
+        $grievances = !empty($search) ? $complaintModel->search($search, $filters) : $complaintModel->search('', $filters);
+
+        $data = compact('grievances', 'status', 'priority', 'department', 'search', 'dateFrom', 'dateTo');
+        $this->loadView('header', ['pageTitle' => 'All Grievances']);
+        $this->loadView('pages/grievances', $data);
+        $this->loadView('footer');
+    }
+
+    /**
+     * List grievances for the logged-in customer
+     */
+    public function my() {
+        SessionManager::requireRole('customer');
+        $currentUser = SessionManager::getCurrentUser();
+
+        $complaintModel = $this->loadModel('Complaint');
+        $grievances = $complaintModel->findByCustomer($currentUser['customer_id']);
+
+        $data = compact('grievances', 'currentUser');
+        $this->loadView('header', ['pageTitle' => 'My Grievances']);
+        $this->loadView('pages/my_grievances', $data);
+        $this->loadView('footer');
+    }
+
+    /**
+     * Grievances assigned to me (controller)
+     */
+    public function assignedToMe() {
+        SessionManager::requireRole('controller');
+        $this->loadView('header', ['pageTitle' => 'Assigned to Me']);
+        // Legacy page with embedded logic
+        require_once __DIR__ . '/../../public/pages/complaints_to_me.php';
+        $this->loadView('footer');
+    }
+
+    /**
+     * Detailed complaint view
+     */
+    public function view($complaintId) {
+        $complaintModel = $this->loadModel('Complaint');
+        $evidenceModel = $this->loadModel('Evidence');
+        $transactionModel = $this->loadModel('Transaction');
+        $rejectionModel = $this->loadModel('ComplaintRejection');
+
+        $complaint = $complaintModel->findByComplaintId($complaintId);
+        if (!$complaint) {
+            $this->loadView('header', ['pageTitle' => 'Complaint Not Found']);
+            $this->loadView('pages/404');
+            $this->loadView('footer');
+            return;
+        }
+
+        // Access control: admin/controller/viewer, or complaint owner (customer)
+        $currentUser = SessionManager::getCurrentUser();
+        $role = $currentUser['role'] ?? '';
+        $isOwner = isset($currentUser['customer_id']) && $currentUser['customer_id'] === ($complaint['customer_id'] ?? null);
+        $allowedRoles = ['admin', 'controller', 'viewer'];
+        if (!$isOwner && !in_array($role, $allowedRoles, true)) {
+            if (!headers_sent()) {
+                header('Location: ' . BASE_URL . 'dashboard?error=access_denied');
+            }
+            return;
+        }
+
+        $images = $evidenceModel->getImages($complaintId);
+        $history = $transactionModel->getComplaintHistory($complaintId);
+        $rejections = $rejectionModel->findByComplaintId($complaintId);
+
+        $data = compact('complaint', 'images', 'history', 'rejections', 'currentUser');
+        $this->loadView('header', ['pageTitle' => 'Complaint Details']);
+        $this->loadView('pages/complaint_details', $data);
+        $this->loadView('footer');
+    }
     public function create() {
         SessionManager::requireRole('customer');
 

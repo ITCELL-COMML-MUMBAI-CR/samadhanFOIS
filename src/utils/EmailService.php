@@ -17,7 +17,7 @@ class EmailService {
             $this->fromName = EMAIL_FROM_NAME;
         } else {
             $this->from = 'admin@itcellbbcr.in';
-            $this->fromName = 'Samadhan FOIS - Railway Complaint System';
+            $this->fromName = 'SAMPARK FOIS - Railway Complaint System';
         }
         
         $this->headers = [
@@ -93,7 +93,7 @@ class EmailService {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>🚂 Samadhan FOIS</h1>
+                    <h1>🚂 SAMPARK FOIS</h1>
                     <p>Railway Complaint Management System</p>
                 </div>
                 
@@ -134,7 +134,7 @@ class EmailService {
                 </div>
                 
                 <div class='footer'>
-                    <p>This is an automated message from Samadhan FOIS - Railway Complaint Management System</p>
+                    <p>This is an automated message from SAMPARK FOIS - Railway Complaint Management System</p>
                     <p>Central Railway, Ministry of Railways, Government of India</p>
                     <p>Please do not reply to this email. For support, use the contact information above.</p>
                 </div>
@@ -181,7 +181,7 @@ class EmailService {
         <body>
             <div class='container'>
                 <div class='header'>
-                    <h1>🚂 Samadhan FOIS</h1>
+                    <h1>🚂 SAMPARK FOIS</h1>
                     <p>Complaint Status Update</p>
                 </div>
                 
@@ -212,7 +212,7 @@ class EmailService {
                 </div>
                 
                 <div class='footer'>
-                    <p>This is an automated message from Samadhan FOIS - Railway Complaint Management System</p>
+                    <p>This is an automated message from SAMPARK FOIS - Railway Complaint Management System</p>
                     <p>Central Railway, Ministry of Railways, Government of India</p>
                     <p>Please do not reply to this email. For support, use the contact information above.</p>
                 </div>

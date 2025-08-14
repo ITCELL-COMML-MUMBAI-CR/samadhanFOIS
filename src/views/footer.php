@@ -6,7 +6,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <h5><i class="fas fa-train"></i> Samadhan FOIS</h5>
+                    <h5><i class="fas fa-train"></i> SAMPARK FOIS</h5>
                                          <p class="text-light" style="color: #e2e8f0 !important;">
                          Central Railway Freight Customer Complaint Management System
                      </p>
@@ -70,7 +70,7 @@
             <div class="row align-items-center">
                                  <div class="col-md-8">
                      <p class="text-light mb-0" style="color: #e2e8f0 !important;">
-                         &copy; <?php echo date('Y'); ?> Central Railway. All rights reserved.
+                         &copy; <?php echo date('Y'); ?> Central Railway. All rights reserved. Designed and Developed by ITCell Mumbai Commercial CR.
                          
                      </p>
                  </div>

@@ -59,7 +59,7 @@ class Logger {
         
         // For critical errors, also log to PHP error log
         if (in_array($level, [self::EMERGENCY, self::ALERT, self::CRITICAL, self::ERROR])) {
-            error_log("[Samadhan FOIS] {$message}");
+            error_log("[SAMPARK FOIS] {$message}");
         }
     }
     

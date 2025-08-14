@@ -87,4 +87,18 @@ class AdminController extends BaseController {
         $this->loadView('pages/admin_logs', $data);
         $this->loadView('footer');
     }
+
+    public function users() {
+        $data['pageTitle'] = 'User Management';
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_users', $data);
+        $this->loadView('footer');
+    }
+
+    public function reports() {
+        $data['pageTitle'] = 'Analytics & Reports';
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_reports', $data);
+        $this->loadView('footer');
+    }
 }

@@ -1,6 +1,6 @@
-# Samadhan FOIS - Railway Complaint Management System
+# SAMPARK FOIS - Railway Complaint Management System
 
-A comprehensive web-based complaint handling system for Central Railway freight customers built with PHP, MySQL, HTML, CSS, and JavaScript.
+This is a comprehensive railway complaint management system designed to streamline the process of handling freight-related customer complaints for Central Railway.
 
 ## Features
 
@@ -215,3 +215,5 @@ This system is developed for Central Railway, Ministry of Railways, Government o
 ---
 
 **Note**: This system contains sensitive configuration files. Ensure proper security measures are in place before deploying to production.
+
+**Note for developers:** After cloning, you might need to adjust file permissions for the `logs` and `public/uploads` directories to make them writable by the web server.
