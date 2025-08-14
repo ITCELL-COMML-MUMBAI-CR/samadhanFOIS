@@ -86,7 +86,10 @@
     
     <!-- Custom JavaScript -->
     <script src="<?php echo BASE_URL; ?>js/app.js"></script>
-    <script src="<?php echo BASE_URL; ?>js/navbar.js"></script>
+    <?php if (!isset($_SESSION['user_logged_in']) || !$_SESSION['user_logged_in']): ?>
+        <!-- Only load navbar.js for non-logged-in users to avoid conflicts with notifications.js -->
+        <script src="<?php echo BASE_URL; ?>js/navbar.js"></script>
+    <?php endif; ?>
     
     <!-- Page-specific JavaScript -->
     <?php if (isset($customJS)): ?>
@@ -104,12 +107,9 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
             
-            // Notification count update (if user is logged in)
+            // Load notification system for logged-in users
             <?php if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in']): ?>
-                updateNotificationCount();
-                
-                // Update notification count every 30 seconds
-                setInterval(updateNotificationCount, 30000);
+                // Notification system is now handled by notifications.js
             <?php endif; ?>
 
             // Display session alert if available
@@ -149,21 +149,7 @@
             });
         }
         
-        function updateNotificationCount() {
-            fetch('<?php echo BASE_URL; ?>api/notifications/count')
-                .then(response => response.json())
-                .then(data => {
-                    const countElement = document.getElementById('notificationCount');
-                    const count = (data && data.data && typeof data.data.count !== 'undefined') ? data.data.count : 0;
-                    if (countElement) {
-                        countElement.textContent = count;
-                        countElement.style.display = count > 0 ? 'flex' : 'none';
-                    }
-                })
-                .catch(error => {
-                    console.log('Error fetching notification count:', error);
-                });
-        }
+        // Notification count function moved to notifications.js
         
         function formatDateTime(dateString) {
             const date = new Date(dateString);

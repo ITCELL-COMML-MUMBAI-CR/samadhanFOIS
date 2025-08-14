@@ -43,8 +43,14 @@
 				<div class="card-body">
 					<div class="row">
 						<div class="col-md-6 mb-3">
-							<label class="text-muted small">Type / Subtype</label>
-							<div><strong><?php echo htmlspecialchars($complaint['complaint_type']); ?></strong><br><small class="text-muted"><?php echo htmlspecialchars($complaint['complaint_subtype']); ?></small></div>
+							<label class="text-muted small">Category / Type / Subtype</label>
+							<div>
+								<?php if (!empty($complaint['category'])): ?>
+									<span class="badge bg-primary"><?php echo htmlspecialchars($complaint['category']); ?></span><br>
+								<?php endif; ?>
+								<strong><?php echo htmlspecialchars($complaint['complaint_type']); ?></strong><br>
+								<small class="text-muted"><?php echo htmlspecialchars($complaint['complaint_subtype']); ?></small>
+							</div>
 						</div>
 						<?php if (($currentUser['role'] ?? '') !== 'customer'): ?>
 						<div class="col-md-6 mb-3">

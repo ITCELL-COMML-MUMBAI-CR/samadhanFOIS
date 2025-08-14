@@ -418,55 +418,63 @@ $totalPages = ceil($totalCount / $limit);
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Type</th>
-                                <th>Customer</th>
-                                <th>Location</th>
-                                <th>Priority</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                                <th width="200">Actions</th>
+                            <tr class="text-center">
+                                <th class="text-center align-middle">ID</th>
+                                <th class="text-center align-middle">Category</th>
+                                <th class="text-center align-middle">Type</th>
+                                <th class="text-center align-middle">Customer</th>
+                                <th class="text-center align-middle">Location</th>
+                                <th class="text-center align-middle">Priority</th>
+                                <th class="text-center align-middle">Status</th>
+                                <th class="text-center align-middle">Date</th>
+                                <th class="text-center align-middle" width="200">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($grievances as $grievance): ?>
                                 <tr>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <small class="text-muted"><?php echo htmlspecialchars($grievance['complaint_id']); ?></small>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
+                                        <?php if (!empty($grievance['category'])): ?>
+                                            <span class="badge bg-success"><?php echo htmlspecialchars($grievance['category']); ?></span>
+                                        <?php else: ?>
+                                            <small class="text-muted">N/A</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center align-middle">
                                         <strong><?php echo htmlspecialchars($grievance['complaint_type']); ?></strong>
                                         <br>
                                         <small class="text-muted"><?php echo htmlspecialchars($grievance['complaint_subtype']); ?></small>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <strong><?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?></strong>
                                         <br>
                                         <small class="text-muted"><?php echo htmlspecialchars($grievance['customer_id']); ?></small>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <i class="fas fa-map-marker-alt text-muted"></i>
                                         <?php echo htmlspecialchars($grievance['location']); ?>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <span class="badge priority-<?php echo $grievance['display_priority']; ?>">
                                             <?php echo ucfirst($grievance['display_priority']); ?>
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <span class="badge status-<?php echo str_replace('_', '-', $grievance['status']); ?>">
                                             <?php echo ucfirst(str_replace('_', ' ', $grievance['status'])); ?>
                                         </span>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <small>
                                             <?php echo date('d-M-Y', strtotime($grievance['date'])); ?>
                                             <br>
                                             <?php echo date('H:i', strtotime($grievance['time'])); ?>
                                         </small>
                                     </td>
-                                    <td>
+                                    <td class="text-center align-middle">
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-outline-primary" 
                                                     onclick="viewGrievance('<?php echo $grievance['complaint_id']; ?>')"

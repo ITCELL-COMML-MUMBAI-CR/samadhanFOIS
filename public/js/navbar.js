@@ -78,87 +78,25 @@ function createRippleEffect(event, element) {
 }
 
 /**
- * Initialize notification system
+ * Initialize notification system - now handled by notifications.js
  */
 function initializeNotifications() {
-    const notificationBell = document.querySelector('.notification-bell-container');
-    const notificationCount = document.getElementById('notificationCount');
-    
-    if (notificationBell && notificationCount) {
-        // Add click handler for notifications
-        notificationBell.addEventListener('click', function() {
-            showNotificationPanel();
-        });
-        
-        // Simulate notification updates (replace with real API calls)
-        setInterval(() => {
-            updateNotificationCount();
-        }, 30000); // Update every 30 seconds
-    }
+    // Notification system moved to notifications.js
+    // This function is kept for compatibility but does nothing
 }
 
 /**
- * Show notification panel
+ * Show notification panel - removed, handled by notifications.js
  */
 function showNotificationPanel() {
-    // Create notification panel
-    const panel = document.createElement('div');
-    panel.className = 'notification-panel';
-    panel.innerHTML = `
-        <div class="notification-panel-header">
-            <h6>Notifications</h6>
-            <button class="close-notifications">&times;</button>
-        </div>
-        <div class="notification-list">
-            <div class="notification-item">
-                <i class="fas fa-info-circle text-primary"></i>
-                <div class="notification-content">
-                    <div class="notification-title">System Update</div>
-                    <div class="notification-message">New features have been added to the system.</div>
-                    <div class="notification-time">2 minutes ago</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add to page
-    document.body.appendChild(panel);
-    
-    // Add close functionality
-    const closeBtn = panel.querySelector('.close-notifications');
-    closeBtn.addEventListener('click', () => {
-        panel.remove();
-    });
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (panel.parentNode) {
-            panel.remove();
-        }
-    }, 5000);
+    // Functionality moved to notifications.js
 }
 
 /**
- * Update notification count
+ * Update notification count - removed, handled by notifications.js
  */
 function updateNotificationCount() {
-    const countElement = document.getElementById('notificationCount');
-    if (countElement) {
-        // Simulate random notification count (replace with real API call)
-        const newCount = Math.floor(Math.random() * 5);
-        countElement.textContent = newCount;
-        
-        if (newCount > 0) {
-            countElement.style.display = 'flex';
-            // Add pulse animation
-            countElement.classList.add('notification-pulse-active');
-            setTimeout(() => {
-                countElement.classList.remove('notification-pulse-active');
-            }, 1000);
-        } else {
-            countElement.style.display = 'none';
-        }
-    }
+    // Functionality moved to notifications.js
 }
 
 /**

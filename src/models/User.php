@@ -245,5 +245,42 @@ class User extends BaseModel {
         
         return $stats;
     }
+    
+    /**
+     * Find all active users with optional conditions
+     */
+    public function findAll($conditions = [], $orderBy = 'created_at DESC', $limit = null) {
+        $sql = "SELECT * FROM users WHERE status = 'active'";
+        $params = [];
+        
+        // Add additional conditions if provided
+        foreach ($conditions as $field => $value) {
+            $sql .= " AND $field = ?";
+            $params[] = $value;
+        }
+        
+        $sql .= " ORDER BY $orderBy";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Find users by specific role
+     */
+    public function getUsersByRole($role) {
+        $stmt = $this->connection->prepare("
+            SELECT * FROM users 
+            WHERE role = ? AND status = 'active' 
+            ORDER BY name ASC
+        ");
+        $stmt->execute([$role]);
+        return $stmt->fetchAll();
+    }
 }
 ?>

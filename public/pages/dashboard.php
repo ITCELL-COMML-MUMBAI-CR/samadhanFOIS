@@ -146,39 +146,57 @@
                         <div class="table-responsive">
                             <table class="table table-sm table-hover">
                                 <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Type</th>
+                                    <tr class="text-center">
+                                        <th class="text-center align-middle">ID</th>
+                                        <th class="text-center align-middle">Category</th>
+                                        <th class="text-center align-middle">Type</th>
                                         <?php if ($userRole !== 'customer'): ?>
-                                            <th>Customer</th>
+                                            <th class="text-center align-middle">Customer</th>
                                         <?php endif; ?>
-                                        <th>Status</th>
-                                        <th>Priority</th>
-                                        <th>Date</th>
+                                        <th class="text-center align-middle">Status</th>
+                                        <?php if ($userRole !== 'customer'): ?>
+                                            <th class="text-center align-middle">Priority</th>
+                                        <?php else: ?>
+                                            <th class="text-center align-middle">Location</th>
+                                        <?php endif; ?>
+                                        <th class="text-center align-middle">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($recentGrievances as $grievance): ?>
                                         <tr onclick="viewGrievance('<?php echo $grievance['complaint_id']; ?>')" style="cursor: pointer;">
-                                            <td><small><?php echo htmlspecialchars($grievance['complaint_id']); ?></small></td>
-                                            <td>
+                                            <td class="text-center align-middle"><small><?php echo htmlspecialchars($grievance['complaint_id']); ?></small></td>
+                                            <td class="text-center align-middle">
+                                                <?php if (!empty($grievance['category'])): ?>
+                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($grievance['category']); ?></span>
+                                                <?php else: ?>
+                                                    <small class="text-muted">N/A</small>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center align-middle">
                                                 <strong><?php echo htmlspecialchars($grievance['complaint_type']); ?></strong>
                                                 <br><small class="text-muted"><?php echo htmlspecialchars($grievance['complaint_subtype']); ?></small>
                                             </td>
                                             <?php if ($userRole !== 'customer'): ?>
-                                                <td><?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?></td>
+                                                <td class="text-center align-middle"><?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?></td>
                                             <?php endif; ?>
-                                            <td>
+                                            <td class="text-center align-middle">
                                                 <span class="badge status-<?php echo str_replace('_', '-', $grievance['status']); ?>">
                                                     <?php echo ucfirst(str_replace('_', ' ', $grievance['status'])); ?>
                                                 </span>
                                             </td>
-                                            <td>
-                                                <span class="badge priority-<?php echo $grievance['priority']; ?>">
-                                                    <?php echo ucfirst($grievance['priority']); ?>
+                                            <?php if ($userRole !== 'customer'): ?>
+                                            <td class="text-center align-middle">
+                                                <span class="badge priority-<?php echo $grievance['display_priority'] ?? $grievance['priority']; ?>">
+                                                    <?php echo ucfirst($grievance['display_priority'] ?? $grievance['priority']); ?>
                                                 </span>
                                             </td>
-                                            <td><small><?php echo date('d-M-Y', strtotime($grievance['date'])); ?></small></td>
+                                            <?php else: ?>
+                                            <td class="text-center align-middle">
+                                                <small class="text-muted"><?php echo htmlspecialchars($grievance['location'] ?? 'N/A'); ?></small>
+                                            </td>
+                                            <?php endif; ?>
+                                            <td class="text-center align-middle"><small><?php echo date('d-M-Y', strtotime($grievance['date'])); ?></small></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

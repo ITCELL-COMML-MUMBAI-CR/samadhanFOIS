@@ -111,6 +111,9 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/reports">
                                     <i class="fas fa-chart-line"></i> Analytics
                                 </a></li>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/notifications">
+                                    <i class="fas fa-bullhorn"></i> Send Notifications
+                                </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer/add">
                                     <i class="fas fa-user-plus"></i> Add Customer
@@ -170,11 +173,30 @@ $userRole = $_SESSION['user_role'] ?? '';
             <ul class="navbar-nav ms-auto">
                 <?php if (SessionManager::isLoggedIn()): ?>
                     <!-- Notifications -->
-                    <li class="nav-item">
-                        <div class="nav-link notification-bell-container">
+                    <li class="nav-item dropdown">
+                        <div class="nav-link notification-bell-container" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-bell notification-bell"></i>
                             <span class="notification-count" id="notificationCount">0</span>
                             <div class="notification-pulse"></div>
+                        </div>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" id="notificationDropdown">
+                            <div class="notification-header">
+                                <h6 class="mb-0">Notifications</h6>
+                                <button class="btn btn-sm btn-link text-decoration-none" onclick="markAllAsRead()">Mark all read</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-item">
+                                    <div class="d-flex justify-content-center align-items-center p-3">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <span class="ms-2">Loading notifications...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="<?php echo BASE_URL; ?>notifications" class="text-decoration-none">View all notifications</a>
+                            </div>
                         </div>
                     </li>
                     

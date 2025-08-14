@@ -70,7 +70,17 @@ function handleComplaintList() {
         
         if ($userRole === 'customer') {
             // Customers see only their own complaints
-            $complaints = $complaintModel->findByCustomer($userId);
+            $customerId = $_SESSION['user_customer_id'] ?? null;
+            if (!$customerId) {
+                sendError('Customer ID not found in session', 403);
+            }
+            $complaints = $complaintModel->findByCustomer($customerId);
+            
+            // Filter out internal details for customers (but keep category)
+            foreach ($complaints as &$complaint) {
+                unset($complaint['assigned_to'], $complaint['assigned_to_name'], $complaint['department'], $complaint['priority']);
+                // category is kept for customers
+            }
         } else {
             // Staff see all complaints or assigned complaints based on role
             if ($userRole === 'controller') {
@@ -135,7 +145,38 @@ function handleViewComplaint($complaintId) {
             sendError('Complaint not found', 404);
         }
         
-        sendSuccess($complaint);
+        $userRole = $_SESSION['user_role'];
+        $customerId = $_SESSION['user_customer_id'] ?? null;
+        
+        // Access control: customers can only view their own complaints
+        if ($userRole === 'customer') {
+            if ($complaint['customer_id'] !== $customerId) {
+                sendError('Access denied', 403);
+            }
+            
+            // Filter out internal details for customers
+            $customerViewComplaint = [
+                'complaint_id' => $complaint['complaint_id'],
+                'category' => $complaint['category'],
+                'complaint_type' => $complaint['complaint_type'],
+                'complaint_subtype' => $complaint['complaint_subtype'],
+                'location' => $complaint['location'],
+                'fnr_no' => $complaint['fnr_no'],
+                'description' => $complaint['description'],
+                'action_taken' => $complaint['action_taken'],
+                'status' => $complaint['status'],
+                'date' => $complaint['date'],
+                'time' => $complaint['time'],
+                'created_at' => $complaint['created_at'],
+                'customer_name' => $complaint['customer_name'],
+                'customer_id' => $complaint['customer_id']
+            ];
+            sendSuccess($customerViewComplaint);
+        } else {
+            // Admin/controllers see full details including auto-priority
+            $complaint['display_priority'] = $complaintModel->calculateAutoPriority($complaint['created_at']);
+            sendSuccess($complaint);
+        }
         
     } catch (Exception $e) {
         sendError('Failed to get complaint: ' . $e->getMessage());

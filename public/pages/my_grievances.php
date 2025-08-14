@@ -17,29 +17,37 @@
 			<div class="table-responsive">
 				<table class="table table-hover mb-0">
 					<thead>
-						<tr>
-							<th>ID</th>
-							<th>Type</th>
-							<th>Location</th>
-							<th>Status</th>
-							<th>Date</th>
-							<th></th>
+						<tr class="text-center">
+							<th class="text-center align-middle">ID</th>
+							<th class="text-center align-middle">Category</th>
+							<th class="text-center align-middle">Type</th>
+							<th class="text-center align-middle">Location</th>
+							<th class="text-center align-middle">Status</th>
+							<th class="text-center align-middle">Date</th>
+							<th class="text-center align-middle">Actions</th>
 						</tr>
 					</thead>
 					<tbody>
 						<?php if (empty($grievances)): ?>
-						<tr><td colspan="6" class="text-center py-4 text-muted">You have not submitted any grievances yet.</td></tr>
+						<tr><td colspan="7" class="text-center align-middle py-4 text-muted">You have not submitted any grievances yet.</td></tr>
 						<?php else: foreach ($grievances as $g): ?>
 						<tr>
-							<td><small class="text-muted"><?php echo htmlspecialchars($g['complaint_id']); ?></small></td>
-							<td>
+							<td class="text-center align-middle"><small class="text-muted"><?php echo htmlspecialchars($g['complaint_id']); ?></small></td>
+							<td class="text-center align-middle">
+								<?php if (!empty($g['category'])): ?>
+									<span class="badge bg-info"><?php echo htmlspecialchars($g['category']); ?></span>
+								<?php else: ?>
+									<small class="text-muted">N/A</small>
+								<?php endif; ?>
+							</td>
+							<td class="text-center align-middle">
 								<strong><?php echo htmlspecialchars($g['complaint_type']); ?></strong><br>
 								<small class="text-muted"><?php echo htmlspecialchars($g['complaint_subtype']); ?></small>
 							</td>
-							<td><small class="text-muted"><?php echo htmlspecialchars($g['location'] ?? 'N/A'); ?></small></td>
-                            <td><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo $g['status']==='replied'?'Replied':ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
-							<td><small><?php echo date('d-M-Y H:i', strtotime($g['date'] . ' ' . ($g['time'] ?? '00:00:00'))); ?></small></td>
-							<td class="text-end">
+							<td class="text-center align-middle"><small class="text-muted"><?php echo htmlspecialchars($g['location'] ?? 'N/A'); ?></small></td>
+                            <td class="text-center align-middle"><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo $g['status']==='replied'?'Replied':ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
+							<td class="text-center align-middle"><small><?php echo date('d-M-Y H:i', strtotime($g['date'] . ' ' . ($g['time'] ?? '00:00:00'))); ?></small></td>
+							<td class="text-center align-middle">
 								<a class="btn btn-outline-primary btn-sm" href="<?php echo BASE_URL; ?>complaints/view/<?php echo urlencode($g['complaint_id']); ?>">
 									<i class="fas fa-eye"></i>
 								</a>

@@ -138,6 +138,15 @@
         </div>
     </header>
     
+    <!-- JavaScript Files -->
+    <?php if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in']): ?>
+        <script>
+            // Define BASE_URL for JavaScript
+            const BASE_URL = '<?php echo BASE_URL; ?>';
+        </script>
+        <script src="<?php echo BASE_URL; ?>js/notifications.js"></script>
+    <?php endif; ?>
+    
     <!-- Navigation Bar - Hide on login page -->
     <?php 
     $currentPage = $_SERVER['REQUEST_URI'] ?? '';

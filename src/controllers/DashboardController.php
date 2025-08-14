@@ -16,6 +16,9 @@ class DashboardController extends BaseController {
         $recentGrievances = [];
         $dashboardData = [];
 
+        // Update auto-priorities before loading dashboard data
+        $complaintModel->updateAutoPriorities();
+
         switch ($userRole) {
             case 'customer':
                 $filters = ['customer_id' => $currentUser['customer_id']];
@@ -31,6 +34,11 @@ class DashboardController extends BaseController {
                 $statistics = $complaintModel->getStatistics();
                 $recentGrievances = $complaintModel->getRecent(5);
                 break;
+        }
+
+        // Calculate auto-priority for recent grievances display
+        foreach ($recentGrievances as &$grievance) {
+            $grievance['display_priority'] = $complaintModel->calculateAutoPriority($grievance['created_at']);
         }
 
         if ($userRole === 'admin') {
@@ -82,7 +90,7 @@ class DashboardController extends BaseController {
     }
 
     private function getPriorityColor($priority) {
-        $colors = ['low' => '#22c55e', 'medium' => '#fbbf24', 'high' => '#ea580c', 'critical' => '#dc2626'];
+        $colors = ['normal' => '#22c55e', 'medium' => '#fbbf24', 'high' => '#ea580c', 'critical' => '#dc2626', 'low' => '#22c55e']; // Added 'normal' and legacy 'low' support
         return $colors[$priority] ?? '#6b7280';
     }
 }

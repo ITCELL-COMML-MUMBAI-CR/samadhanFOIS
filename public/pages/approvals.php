@@ -150,19 +150,27 @@ foreach ($allComplaints as $c) {
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Type</th>
-                                <th>Customer</th>
-                                <th>Location</th>
-                                <th>Date</th>
-                                <th width="160">Actions</th>
+                            <tr class="text-center">
+                                <th class="text-center align-middle">ID</th>
+                                <th class="text-center align-middle">Category</th>
+                                <th class="text-center align-middle">Type</th>
+                                <th class="text-center align-middle">Customer</th>
+                                <th class="text-center align-middle">Location</th>
+                                <th class="text-center align-middle">Date</th>
+                                <th class="text-center align-middle" width="160">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($approvals as $row): ?>
                             <tr>
                                 <td><small class="text-muted"><?php echo htmlspecialchars($row['complaint_id']); ?></small></td>
+                                <td>
+                                    <?php if (!empty($row['category'])): ?>
+                                        <span class="badge bg-primary"><?php echo htmlspecialchars($row['category']); ?></span>
+                                    <?php else: ?>
+                                        <small class="text-muted">N/A</small>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <strong><?php echo htmlspecialchars($row['complaint_type']); ?></strong>
                                     <br>
