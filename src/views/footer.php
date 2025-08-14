@@ -136,7 +136,7 @@
 
             Swal.fire({
                 icon: iconMap[type] || 'info',
-                title: message,
+                html: message,
                 toast: true,
                 position: 'top-end',
                 showConfirmButton: false,
@@ -154,9 +154,10 @@
                 .then(response => response.json())
                 .then(data => {
                     const countElement = document.getElementById('notificationCount');
-                    if (countElement && data.count !== undefined) {
-                        countElement.textContent = data.count;
-                        countElement.style.display = data.count > 0 ? 'flex' : 'none';
+                    const count = (data && data.data && typeof data.data.count !== 'undefined') ? data.data.count : 0;
+                    if (countElement) {
+                        countElement.textContent = count;
+                        countElement.style.display = count > 0 ? 'flex' : 'none';
                     }
                 })
                 .catch(error => {

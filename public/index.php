@@ -84,6 +84,8 @@ switch ($controllerName) {
             $controller->my();
         } elseif ($action === 'tome') {
             $controller->assignedToMe();
+        } elseif ($action === 'approvals') {
+            $controller->approvals();
         } elseif ($action === 'view' && !empty($params[0])) {
             $controller->view($params[0]);
         } else {
@@ -160,6 +162,11 @@ switch ($controllerName) {
     case 'reports':
         $controller = new PageController();
         $controller->reports();
+        break;
+        
+    case 'register':
+        $controller = new PageController();
+        $controller->register();
         break;
         
     case 'logout':

@@ -18,7 +18,7 @@
 				<div class="col-md-2">
 					<select class="form-select" name="status">
 						<option value="">All Status</option>
-						<?php foreach (['pending','in_progress','resolved','closed'] as $s): ?>
+                    <?php foreach (['pending','replied','closed'] as $s): ?>
 						<option value="<?php echo $s; ?>" <?php echo ($status??'')===$s?'selected':''; ?>><?php echo ucfirst(str_replace('_',' ',$s)); ?></option>
 						<?php endforeach; ?>
 					</select>
@@ -74,7 +74,7 @@
 							</td>
 							<td><?php echo htmlspecialchars($g['customer_name'] ?? 'Unknown'); ?></td>
 							<td><span class="badge priority-<?php echo $g['priority']; ?>"><?php echo ucfirst($g['priority']); ?></span></td>
-							<td><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
+                            <td><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo $g['status']==='replied'?'Replied':ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
 							<td><small><?php echo date('d-M-Y', strtotime($g['date'])); ?></small></td>
 							<td class="text-end">
 								<a class="btn btn-outline-primary btn-sm" href="<?php echo BASE_URL; ?>complaints/view/<?php echo urlencode($g['complaint_id']); ?>">

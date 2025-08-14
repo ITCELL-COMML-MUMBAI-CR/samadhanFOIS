@@ -44,6 +44,14 @@ switch ($action) {
             sendError('Method not allowed', 405);
         }
         break;
+    
+    case 'reply':
+        if ($method === 'POST') {
+            handleReplyToComplaint($id);
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
         
     default:
         sendError('Invalid complaint action', 400);
@@ -95,6 +103,10 @@ function handleCreateComplaint() {
             }
         }
         
+        // Ensure default assignment to commercial controller
+        if (empty($input['assigned_to'])) {
+            $input['assigned_to'] = 'commercial_controller';
+        }
         $complaintId = $complaintModel->createComplaint($input);
         
         if ($complaintId) {
@@ -180,6 +192,49 @@ function handleAssignComplaint($complaintId) {
         
     } catch (Exception $e) {
         sendError('Failed to assign complaint: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Controller sets complaint as replied to customer.
+ * Moves status to 'replied', logs transaction, and emails customer.
+ */
+function handleReplyToComplaint($complaintId) {
+    try {
+        if (empty($complaintId)) {
+            sendError('Complaint ID is required');
+        }
+        $input = getJsonInput();
+        $actionTaken = $input['action_taken'] ?? '';
+        $remarks = $input['remarks'] ?? '';
+
+        require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../models/Transaction.php';
+        require_once __DIR__ . '/../utils/EmailService.php';
+
+        $complaintModel = new Complaint();
+        $transactionModel = new Transaction();
+        $emailService = new EmailService();
+
+        $complaint = $complaintModel->findByComplaintId($complaintId);
+        if (!$complaint) {
+            sendError('Complaint not found', 404);
+        }
+
+        // Update status to replied
+        $complaintModel->updateStatus($complaintId, 'replied', $actionTaken);
+        $transactionModel->logStatusUpdate($complaintId, ($remarks ?: 'Replied to customer'), $_SESSION['user_login_id']);
+
+        // Email customer
+        $customerEmail = $complaint['customer_email'] ?? '';
+        $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+        if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+            $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, $complaint['status'], 'replied', $remarks);
+        }
+
+        sendSuccess([], 'Reply sent to customer and status updated to replied');
+    } catch (Exception $e) {
+        sendError('Failed to reply to complaint: ' . $e->getMessage());
     }
 }
 ?>

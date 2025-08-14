@@ -13,6 +13,16 @@ $error = '';
 $success = '';
 $currentUser = SessionManager::getCurrentUser();
 
+// Check for session alerts (from redirect after POST)
+if (isset($_SESSION['alert_message'])) {
+    if ($_SESSION['alert_type'] === 'success') {
+        $success = $_SESSION['alert_message'];
+    } else {
+        $error = $_SESSION['alert_message'];
+    }
+    unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+}
+
 // Get filters
 $status = $_GET['status'] ?? '';
 $priority = $_GET['priority'] ?? '';
@@ -35,32 +45,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         require_once '../src/models/Complaint.php';
         require_once '../src/models/Transaction.php';
         require_once '../src/models/ComplaintRejection.php';
+        require_once '../src/models/User.php';
         
         $complaintModel = new Complaint();
         $transactionModel = new Transaction();
         $rejectionModel = new ComplaintRejection();
         
         switch ($action) {
-            case 'update_status':
-                $newStatus = $_POST['new_status'] ?? '';
+            case 'close':
+                // Close complaint -> send for Commercial approval
                 $actionTaken = sanitizeInput($_POST['action_taken'] ?? '');
                 $remarks = sanitizeInput($_POST['remarks'] ?? '');
-                
-                if (empty($newStatus) || empty($remarks)) {
-                    throw new Exception('Status and remarks are required');
+                if (empty($actionTaken) || empty($remarks)) {
+                    throw new Exception('Action taken and internal remarks are required');
                 }
-                
-                // Update complaint status
-                $result = $complaintModel->updateStatus($complaintId, $newStatus, $actionTaken);
-                
+                // Fetch complaint for context
+                $complaint = $complaintModel->findByComplaintId($complaintId);
+                // Set status to awaiting_approval and assign to commercial controller
+                $result = $complaintModel->updateStatus($complaintId, 'awaiting_approval', $actionTaken);
+                // Assign to commercial controller for approval (even if current user is commercial)
+                $assignResult = $complaintModel->assignTo($complaintId, 'commercial_controller');
                 if ($result) {
-                    // Log transaction
-                    $transactionModel->logStatusUpdate($complaintId, $remarks, $currentUser['login_id']);
-                    $success = 'Grievance status updated successfully!';
+                    $transactionModel->logStatusUpdate($complaintId, 'Closed by controller. Awaiting Commercial approval. Remarks: ' . $remarks, $currentUser['login_id']);
+                    $_SESSION['alert_message'] = "Grievance sent for Commercial approval. (Status: $result, Assign: $assignResult)";
+                    $_SESSION['alert_type'] = 'success';
                 } else {
-                    $error = 'Failed to update grievance status.';
+                    $_SESSION['alert_message'] = 'Failed to process close request.';
+                    $_SESSION['alert_type'] = 'error';
                 }
-                break;
+                // Redirect to prevent resubmission
+                header('Location: ' . BASE_URL . 'grievances/tome');
+                exit;
                 
             case 'forward':
                 $toDepartment = $_POST['to_department'] ?? '';
@@ -87,28 +102,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $currentUser['login_id']
                 );
                 
-                $success = 'Grievance forwarded successfully!';
-                break;
+                $_SESSION['alert_message'] = 'Grievance forwarded successfully!';
+                $_SESSION['alert_type'] = 'success';
+                // Redirect to prevent resubmission
+                header('Location: ' . BASE_URL . 'grievances/tome');
+                exit;
                 
-            case 'reject':
+            case 'revert':
+                // Only Commercial can revert back to customer
+                if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                    throw new Exception('Only Commercial Controller can revert to customer');
+                }
                 $rejectionReason = sanitizeInput($_POST['rejection_reason'] ?? '');
                 $rejectTo = $_POST['reject_to'] ?? '';
-                
                 if (empty($rejectionReason)) {
-                    throw new Exception('Rejection reason is required');
+                    throw new Exception('Remarks are required for revert');
+                }
+                // Fetch complaint and customer user
+                $complaint = $complaintModel->findByComplaintId($complaintId);
+                $customerId = $complaint['customer_id'] ?? null;
+                $userModel = new User();
+                $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
+                $customerLoginId = $customerUser['login_id'] ?? null;
+                
+                // Log rejection to customer, asking for more information
+                $rejectionModel->logCommercialToCustomer($complaintId, $currentUser['login_id'], $rejectTo, $rejectionReason);
+                
+                // Update complaint status to rejected (visible to customer) and reassign to customer
+                $complaintModel->updateStatus($complaintId, 'rejected');
+                if ($customerLoginId) {
+                    $complaintModel->assignTo($complaintId, $customerLoginId);
                 }
                 
-                // Log rejection
-                $rejectionModel->logCommercialToConcern($complaintId, $currentUser['login_id'], $rejectTo, $rejectionReason);
-                
-                // Update complaint status
-                $complaintModel->updateStatus($complaintId, 'pending');
-                
                 // Log transaction
-                $transactionModel->logStatusUpdate($complaintId, "Rejected: $rejectionReason", $currentUser['login_id']);
+                $transactionModel->logStatusUpdate($complaintId, 'Reverted to customer for more information: ' . $rejectionReason, $currentUser['login_id']);
                 
-                $success = 'Grievance rejected and sent back with remarks.';
-                break;
+                // Email notification to customer
+                require_once '../src/utils/EmailService.php';
+                $emailService = new EmailService();
+                $customerEmail = $complaint['customer_email'] ?? '';
+                $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+                if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+                    $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, ($complaint['status'] ?? 'pending'), 'rejected', $rejectionReason);
+                }
+                
+                $_SESSION['alert_message'] = 'Grievance reverted to customer with remarks.';
+                $_SESSION['alert_type'] = 'success';
+                // Redirect to prevent resubmission
+                header('Location: ' . BASE_URL . 'grievances/tome');
+                exit;
                 
             case 'assign_priority':
                 $newPriority = $_POST['new_priority'] ?? '';
@@ -121,16 +163,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($result) {
                     $transactionModel->logStatusUpdate($complaintId, "Priority updated to: $newPriority", $currentUser['login_id']);
-                    $success = 'Priority updated successfully!';
+                    $_SESSION['alert_message'] = 'Priority updated successfully!';
+                    $_SESSION['alert_type'] = 'success';
                 } else {
-                    $error = 'Failed to update priority.';
+                    $_SESSION['alert_message'] = 'Failed to update priority.';
+                    $_SESSION['alert_type'] = 'error';
                 }
-                break;
+                // Redirect to prevent resubmission
+                header('Location: ' . BASE_URL . 'grievances/tome');
+                exit;
         }
         
     } catch (Exception $e) {
         error_log('Controller action error: ' . $e->getMessage());
-        $error = $e->getMessage();
+        $_SESSION['alert_message'] = $e->getMessage();
+        $_SESSION['alert_type'] = 'error';
+        // Redirect to prevent resubmission
+        header('Location: ' . BASE_URL . 'grievances/tome');
+        exit;
     }
 }
 
@@ -141,6 +191,9 @@ $totalCount = 0;
 try {
     require_once '../src/models/Complaint.php';
     $complaintModel = new Complaint();
+    
+    // Update auto-priorities before displaying
+    $complaintModel->updateAutoPriorities();
     
     // Build filter conditions
     $filters = [
@@ -161,6 +214,22 @@ try {
     } else {
         $grievances = $complaintModel->findAssignedTo($currentUser['login_id']);
         
+        // Exclude forwarded away or reverted to customer from "Assigned to Me"
+        $grievances = array_filter($grievances, function($g) use ($currentUser) {
+            // If complaint is awaiting approval but not with commercial controller, hide
+            if (($g['status'] ?? '') === 'awaiting_approval' && ($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                return false;
+            }
+            // If complaint has been reverted to customer (status rejected) and assigned to a customer login, hide
+            if (($g['status'] ?? '') === 'rejected') {
+                // Customers have role 'customer'; we don't have role on this list, so infer: if assigned_to differs from current controller after revert
+                if (($g['assigned_to'] ?? '') !== ($currentUser['login_id'] ?? '')) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
         // Apply additional filters
         if (!empty($status) || !empty($priority)) {
             $grievances = array_filter($grievances, function($g) use ($status, $priority) {
@@ -175,6 +244,11 @@ try {
     
     // Apply pagination
     $grievances = array_slice($grievances, $offset, $limit);
+    
+    // Calculate auto-priority for each grievance
+    foreach ($grievances as &$grievance) {
+        $grievance['display_priority'] = $complaintModel->calculateAutoPriority($grievance['created_at']);
+    }
     
 } catch (Exception $e) {
     $error = 'Unable to load grievances.';
@@ -244,11 +318,11 @@ $totalPages = ceil($totalCount / $limit);
                 <div class="card-body">
                     <h3 class="display-6 fw-bold">
                         <?php 
-                        $inProgressCount = count(array_filter($grievances, fn($g) => $g['status'] === 'in_progress'));
+                        $inProgressCount = 0;
                         echo $inProgressCount;
                         ?>
                     </h3>
-                    <p class="mb-0">In Progress</p>
+                    <p class="mb-0">—</p>
                 </div>
             </div>
         </div>
@@ -290,15 +364,14 @@ $totalPages = ceil($totalCount / $limit);
                     <select class="form-select" name="status">
                         <option value="">All Status</option>
                         <option value="pending" <?php echo $status === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                        <option value="in_progress" <?php echo $status === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
-                        <option value="resolved" <?php echo $status === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
+                        <option value="replied" <?php echo $status === 'replied' ? 'selected' : ''; ?>>Replied</option>
                         <option value="closed" <?php echo $status === 'closed' ? 'selected' : ''; ?>>Closed</option>
                     </select>
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" name="priority">
                         <option value="">All Priorities</option>
-                        <option value="low" <?php echo $priority === 'low' ? 'selected' : ''; ?>>Low</option>
+                        <option value="normal" <?php echo $priority === 'normal' ? 'selected' : ''; ?>>Normal</option>
                         <option value="medium" <?php echo $priority === 'medium' ? 'selected' : ''; ?>>Medium</option>
                         <option value="high" <?php echo $priority === 'high' ? 'selected' : ''; ?>>High</option>
                         <option value="critical" <?php echo $priority === 'critical' ? 'selected' : ''; ?>>Critical</option>
@@ -377,8 +450,8 @@ $totalPages = ceil($totalCount / $limit);
                                         <?php echo htmlspecialchars($grievance['location']); ?>
                                     </td>
                                     <td>
-                                        <span class="badge priority-<?php echo $grievance['priority']; ?>">
-                                            <?php echo ucfirst($grievance['priority']); ?>
+                                        <span class="badge priority-<?php echo $grievance['display_priority']; ?>">
+                                            <?php echo ucfirst($grievance['display_priority']); ?>
                                         </span>
                                     </td>
                                     <td>
@@ -397,24 +470,26 @@ $totalPages = ceil($totalCount / $limit);
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-outline-primary" 
                                                     onclick="viewGrievance('<?php echo $grievance['complaint_id']; ?>')"
-                                                    title="View Details">
+                                                    title="View Complaint">
                                                 <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-success" 
-                                                    onclick="updateStatus('<?php echo $grievance['complaint_id']; ?>')"
-                                                    title="Update Status">
-                                                <i class="fas fa-edit"></i>
                                             </button>
                                             <button type="button" class="btn btn-outline-warning" 
                                                     onclick="forwardGrievance('<?php echo $grievance['complaint_id']; ?>')"
-                                                    title="Forward">
+                                                    title="Forward Complaint">
                                                 <i class="fas fa-share"></i>
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger" 
-                                                    onclick="rejectGrievance('<?php echo $grievance['complaint_id']; ?>')"
-                                                    title="Reject">
-                                                <i class="fas fa-times"></i>
+                                            <button type="button" class="btn btn-outline-success" 
+                                                    onclick="closeGrievance('<?php echo $grievance['complaint_id']; ?>')"
+                                                    title="Close Complaint (Action taken + internal remarks)">
+                                                <i class="fas fa-check-circle"></i>
                                             </button>
+                                            <?php if (strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="revertGrievance('<?php echo $grievance['complaint_id']; ?>')"
+                                                    title="Revert back to customer">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
@@ -454,51 +529,25 @@ $totalPages = ceil($totalCount / $limit);
     </div>
 </div>
 
-<!-- Update Status Modal -->
-<div class="modal fade" id="updateStatusModal" tabindex="-1">
+<!-- Close Complaint Modal -->
+<div class="modal fade" id="closeModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-edit"></i> Update Grievance Status
+                    <i class="fas fa-check-circle"></i> Close Complaint
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
-                <input type="hidden" name="action" value="update_status">
-                <input type="hidden" name="complaint_id" id="updateComplaintId">
+                <input type="hidden" name="action" value="close">
+                <input type="hidden" name="complaint_id" id="closeComplaintId">
                 
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <select class="form-select" name="new_status" required>
-                                    <option value="">Select Status</option>
-                                    <option value="in_progress">In Progress</option>
-                                    <option value="resolved">Resolved</option>
-                                    <option value="closed">Closed</option>
-                                </select>
-                                <label>New Status *</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <select class="form-select" name="new_priority">
-                                    <option value="">Keep Current</option>
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High</option>
-                                    <option value="critical">Critical</option>
-                                </select>
-                                <label>Priority</label>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="form-floating mb-3">
-                        <textarea class="form-control" name="action_taken" placeholder="Action Taken" style="height: 100px"></textarea>
-                        <label>Action Taken</label>
+                        <textarea class="form-control" name="action_taken" placeholder="Action Taken" style="height: 100px" required></textarea>
+                        <label>Action Taken *</label>
                     </div>
                     
                     <div class="form-floating mb-3">
@@ -510,7 +559,7 @@ $totalPages = ceil($totalCount / $limit);
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-railway-primary">
-                        <i class="fas fa-save"></i> Update Status
+                        <i class="fas fa-check"></i> Send for Approval
                     </button>
                 </div>
             </form>
@@ -568,27 +617,22 @@ $totalPages = ceil($totalCount / $limit);
     </div>
 </div>
 
-<!-- Reject Modal -->
-<div class="modal fade" id="rejectModal" tabindex="-1">
+<!-- Revert Modal (Commercial only) -->
+<div class="modal fade" id="revertModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-times text-danger"></i> Reject Grievance
+                    <i class="fas fa-undo text-danger"></i> Revert back to customer
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
-                <input type="hidden" name="action" value="reject">
-                <input type="hidden" name="complaint_id" id="rejectComplaintId">
+                <input type="hidden" name="action" value="revert">
+                <input type="hidden" name="complaint_id" id="revertComplaintId">
                 
                 <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        This will send the grievance back with rejection remarks.
-                    </div>
-                    
                     <div class="form-floating mb-3">
                         <select class="form-select" name="reject_to">
                             <option value="">Select User (Optional)</option>
@@ -596,19 +640,19 @@ $totalPages = ceil($totalCount / $limit);
                                 <option value="<?php echo $user['login_id']; ?>"><?php echo htmlspecialchars($user['name']); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <label>Reject to User</label>
+                        <label>CC User (optional)</label>
                     </div>
                     
                     <div class="form-floating mb-3">
-                        <textarea class="form-control" name="rejection_reason" placeholder="Rejection Reason" style="height: 120px" required></textarea>
-                        <label>Rejection Reason *</label>
+                        <textarea class="form-control" name="rejection_reason" placeholder="Remarks to customer (what more info is needed)" style="height: 120px" required></textarea>
+                        <label>Remarks to Customer *</label>
                     </div>
                 </div>
                 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-times"></i> Reject
+                        <i class="fas fa-undo"></i> Revert
                     </button>
                 </div>
             </form>
@@ -644,9 +688,9 @@ function viewGrievance(complaintId) {
     window.open('<?php echo BASE_URL; ?>grievances/view/' + complaintId, '_blank');
 }
 
-function updateStatus(complaintId) {
-    document.getElementById('updateComplaintId').value = complaintId;
-    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+function closeGrievance(complaintId) {
+    document.getElementById('closeComplaintId').value = complaintId;
+    const modal = new bootstrap.Modal(document.getElementById('closeModal'));
     modal.show();
 }
 
@@ -656,9 +700,9 @@ function forwardGrievance(complaintId) {
     modal.show();
 }
 
-function rejectGrievance(complaintId) {
-    document.getElementById('rejectComplaintId').value = complaintId;
-    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+function revertGrievance(complaintId) {
+    document.getElementById('revertComplaintId').value = complaintId;
+    const modal = new bootstrap.Modal(document.getElementById('revertModal'));
     modal.show();
 }
 

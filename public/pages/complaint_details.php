@@ -6,6 +6,15 @@
 ?>
 
 <div class="container-fluid">
+	<!-- Alert Messages -->
+	<?php if (!empty($alert_message)): ?>
+		<div class="alert alert-<?php echo $alert_type === 'success' ? 'success' : 'danger'; ?> alert-dismissible fade show" role="alert">
+			<i class="fas fa-<?php echo $alert_type === 'success' ? 'check-circle' : 'exclamation-triangle'; ?>"></i>
+			<?php echo htmlspecialchars($alert_message); ?>
+			<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+		</div>
+	<?php endif; ?>
+	
 	<div class="row mb-3">
 		<div class="col-12 d-flex justify-content-between align-items-center">
 			<h1 class="h3 mb-0">
@@ -37,10 +46,12 @@
 							<label class="text-muted small">Type / Subtype</label>
 							<div><strong><?php echo htmlspecialchars($complaint['complaint_type']); ?></strong><br><small class="text-muted"><?php echo htmlspecialchars($complaint['complaint_subtype']); ?></small></div>
 						</div>
+						<?php if (($currentUser['role'] ?? '') !== 'customer'): ?>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Priority</label>
 							<div><span class="badge priority-<?php echo $complaint['priority']; ?>"><?php echo ucfirst($complaint['priority']); ?></span></div>
 						</div>
+						<?php endif; ?>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Location</label>
 							<div><i class="fas fa-map-marker-alt text-muted"></i> <?php echo htmlspecialchars($complaint['location']); ?></div>
@@ -95,6 +106,8 @@
 
 		<!-- Right Column: Parties & Timeline -->
 		<div class="col-lg-4">
+			<?php if (($currentUser['role'] ?? '') !== 'customer'): ?>
+			<!-- Only non-customers can see parties and timeline -->
 			<div class="card mb-3">
 				<div class="card-header">
 					<h5 class="mb-0"><i class="fas fa-user"></i> Parties</h5>
@@ -107,8 +120,8 @@
 					</div>
 					<div class="mb-3">
 						<label class="text-muted small">Assigned To</label>
-						<div><strong><?php echo htmlspecialchars($complaint['assigned_to_name'] ?? 'Unassigned'); ?></strong></div>
-						<small class="text-muted"><?php echo htmlspecialchars($complaint['assigned_to'] ?? '-'); ?></small>
+                        <div><strong><?php echo htmlspecialchars($complaint['assigned_to_name'] ?? 'Commercial Controller'); ?></strong></div>
+                        <small class="text-muted"><?php echo htmlspecialchars($complaint['assigned_to'] ?? 'commercial_controller'); ?></small>
 					</div>
 					<div class="mb-0">
 						<label class="text-muted small">Department</label>
@@ -163,6 +176,155 @@
 					<?php endif; ?>
 				</div>
 			</div>
+			<?php else: ?>
+			<!-- Customer-only section: Status info -->
+			<div class="card mb-3">
+				<div class="card-header">
+					<h5 class="mb-0"><i class="fas fa-info-circle"></i> Status Information</h5>
+				</div>
+				<div class="card-body">
+					<div class="mb-3">
+						<label class="text-muted small">Current Status</label>
+						<div>
+							<span class="badge status-<?php echo str_replace('_','-',$complaint['status']); ?>">
+								<?php echo ucfirst(str_replace('_',' ', $complaint['status'])); ?>
+							</span>
+						</div>
+					</div>
+					<div class="mb-0">
+						<label class="text-muted small">Last Updated</label>
+						<div><?php echo date('d-M-Y H:i', strtotime($complaint['updated_at'] ?? $complaint['created_at'])); ?></div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Customer Transaction History -->
+			<div class="card">
+				<div class="card-header">
+					<h5 class="mb-0"><i class="fas fa-history"></i> Activity</h5>
+				</div>
+				<div class="card-body">
+					<?php 
+					// Filter transactions for customers - show only customer-relevant activities
+					$customerTransactions = [];
+					foreach ($history as $event) {
+						$transactionType = $event['transaction_type'] ?? '';
+						$remarks = $event['remarks'] ?? '';
+						
+						// Include customer's own feedback
+						if (strpos($remarks, 'Customer feedback:') === 0) {
+							$customerTransactions[] = [
+								'type' => 'Your Feedback',
+								'date' => $event['created_at'],
+								'content' => str_replace('Customer feedback: ', '', $remarks),
+								'icon' => 'comment'
+							];
+						}
+						// Include customer providing more information
+						elseif (strpos($remarks, 'Customer provided more information:') === 0) {
+							$customerTransactions[] = [
+								'type' => 'Additional Information Provided',
+								'date' => $event['created_at'],
+								'content' => str_replace('Customer provided more information: ', '', $remarks),
+								'icon' => 'info-circle'
+							];
+						}
+						// Include action taken by staff (when status changes to replied/resolved)
+						elseif ($transactionType === 'status_update' && 
+								(strpos($remarks, 'Closed by controller') === 0 || 
+								 strpos($remarks, 'Commercial approval granted') === 0 ||
+								 strpos($remarks, 'Action taken:') !== false)) {
+							$customerTransactions[] = [
+								'type' => 'Action Taken',
+								'date' => $event['created_at'],
+								'content' => $remarks,
+								'icon' => 'check-circle'
+							];
+						}
+						// Include rejection/revert messages to customer
+						elseif (strpos($remarks, 'Reverted to customer') === 0) {
+							$customerTransactions[] = [
+								'type' => 'More Information Requested',
+								'date' => $event['created_at'],
+								'content' => $remarks,
+								'icon' => 'question-circle'
+							];
+						}
+					}
+
+					// Also check rejections for customer-relevant content
+					foreach ($rejections as $rej) {
+						if ($rej['rejection_stage'] === 'commercial_to_customer') {
+							$customerTransactions[] = [
+								'type' => 'More Information Requested',
+								'date' => $rej['created_at'],
+								'content' => $rej['rejection_reason'] ?? '',
+								'icon' => 'question-circle'
+							];
+						}
+					}
+
+					// Sort by date (newest first)
+					usort($customerTransactions, function($a, $b) {
+						return strtotime($b['date']) - strtotime($a['date']);
+					});
+					?>
+
+					<?php if (empty($customerTransactions)): ?>
+						<p class="text-muted mb-0">No activity yet.</p>
+					<?php else: ?>
+						<div class="timeline">
+							<?php foreach ($customerTransactions as $transaction): ?>
+							<div class="timeline-item">
+								<div class="d-flex justify-content-between align-items-start">
+									<div class="d-flex align-items-center">
+										<i class="fas fa-<?php echo $transaction['icon']; ?> text-primary me-2"></i>
+										<strong><?php echo htmlspecialchars($transaction['type']); ?></strong>
+									</div>
+									<small class="text-muted"><?php echo date('d-M-Y H:i', strtotime($transaction['date'])); ?></small>
+								</div>
+								<div class="mt-2"><?php echo nl2br(htmlspecialchars($transaction['content'])); ?></div>
+							</div>
+							<?php endforeach; ?>
+						</div>
+					<?php endif; ?>
+				</div>
+			</div>
+			<?php endif; ?>
+
+			<?php if (($currentUser['role'] ?? '') === 'customer' && ($complaint['customer_id'] ?? '') === ($currentUser['customer_id'] ?? '')): ?>
+			<!-- Customer Actions: Feedback or Provide More Information -->
+			<div class="card">
+				<div class="card-header">
+					<h5 class="mb-0"><i class="fas fa-reply"></i> Your Action</h5>
+				</div>
+				<div class="card-body">
+                    <?php if (in_array($complaint['status'], ['replied','resolved'])): ?>
+						<form method="POST" class="mb-3">
+							<input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
+							<input type="hidden" name="action" value="submit_feedback">
+							<div class="form-floating mb-2">
+								<textarea class="form-control" name="feedback_text" placeholder="Your feedback" style="height: 90px"></textarea>
+                                <label>Provide Feedback (will close the complaint)</label>
+							</div>
+							<button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i> Submit Feedback & Close</button>
+						</form>
+					<?php endif; ?>
+
+					<?php if ($complaint['status'] === 'rejected'): ?>
+						<form method="POST">
+							<input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
+							<input type="hidden" name="action" value="submit_more_info">
+							<div class="form-floating mb-2">
+								<textarea class="form-control" name="more_info_text" placeholder="Add more information requested" style="height: 120px"></textarea>
+								<label>Provide More Information (requested by Commercial)</label>
+							</div>
+							<button type="submit" class="btn btn-warning btn-sm"><i class="fas fa-paper-plane"></i> Submit Additional Info</button>
+						</form>
+					<?php endif; ?>
+				</div>
+			</div>
+			<?php endif; ?>
 		</div>
 	</div>
 </div>

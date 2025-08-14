@@ -174,7 +174,7 @@
                     <h3 class="display-6 fw-bold">
                         <?php
                         try {
-                            $resolvedComplaints = $complaintModel->count(['status' => 'resolved']);
+                            $resolvedComplaints = $complaintModel->count(['status' => 'replied']) + $complaintModel->count(['status' => 'closed']);
                             echo number_format($resolvedComplaints);
                         } catch (Exception $e) {
                             echo "N/A";

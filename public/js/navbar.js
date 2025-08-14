@@ -193,9 +193,26 @@ function initializeUserProfile() {
  * Confirm logout action
  */
 function confirmLogout(logoutUrl) {
-    if (confirm('Are you sure you want to logout?')) {
-        window.location.href = logoutUrl;
+    if (typeof Swal === 'undefined') {
+        if (confirm('Are you sure you want to logout?')) {
+            window.location.href = logoutUrl;
+        }
+        return;
     }
+    Swal.fire({
+        title: 'Logout?',
+        text: 'Are you sure you want to logout?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, logout',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = logoutUrl;
+        }
+    });
 }
 
 /**

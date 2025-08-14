@@ -77,7 +77,7 @@ class DashboardController extends BaseController {
     }
 
     private function getStatusColor($status) {
-        $colors = ['pending' => '#fbbf24', 'in_progress' => '#3b82f6', 'resolved' => '#16a34a', 'closed' => '#6b7280', 'rejected' => '#dc2626'];
+        $colors = ['pending' => '#fbbf24', 'replied' => '#3b82f6', 'closed' => '#6b7280', 'rejected' => '#dc2626'];
         return $colors[$status] ?? '#6b7280';
     }
 

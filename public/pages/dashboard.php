@@ -62,8 +62,8 @@
                 <div class="card-body text-center">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h3 class="display-6 fw-bold"><?php echo ($statistics['by_status']['resolved'] ?? 0) + ($statistics['by_status']['closed'] ?? 0); ?></h3>
-                            <p class="mb-0">Resolved</p>
+                            <h3 class="display-6 fw-bold"><?php echo ($statistics['by_status']['replied'] ?? 0) + ($statistics['by_status']['closed'] ?? 0); ?></h3>
+                            <p class="mb-0">Replied/Closed</p>
                         </div>
                         <div class="align-self-center">
                             <i class="fas fa-check-circle fa-2x text-success"></i>
@@ -78,8 +78,8 @@
                 <div class="card-body text-center">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['in_progress'] ?? 0; ?></h3>
-                            <p class="mb-0">In Progress</p>
+                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['pending'] ?? 0; ?></h3>
+                            <p class="mb-0">Awaiting Reply</p>
                         </div>
                         <div class="align-self-center">
                             <i class="fas fa-spinner fa-2x text-info"></i>

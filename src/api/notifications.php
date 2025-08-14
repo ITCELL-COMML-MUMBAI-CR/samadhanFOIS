@@ -38,6 +38,7 @@ function handleNotificationCount() {
     try {
         $userId = $_SESSION['user_login_id'];
         $userRole = $_SESSION['user_role'];
+        $customerId = $_SESSION['user_customer_id'] ?? null;
         
         $count = 0;
         
@@ -47,10 +48,20 @@ function handleNotificationCount() {
             require_once __DIR__ . '/../models/Complaint.php';
             $complaintModel = new Complaint();
             
-            // Count pending assignments
+            // Count pending assignments and approvals (for Commercial)
             $pendingComplaints = $complaintModel->findAssignedTo($userId);
-            $count = count(array_filter($pendingComplaints, function($complaint) {
-                return $complaint['status'] === 'pending' || $complaint['status'] === 'in_progress';
+            $count = count(array_filter($pendingComplaints, function($complaint) use ($userRole) {
+                if ($complaint['status'] === 'pending') return true;
+                if ($userRole === 'controller' && ($complaint['status'] ?? '') === 'awaiting_approval') return true;
+                return false;
+            }));
+        } else {
+            // Customer notifications: replied, rejected, or resolved (awaiting feedback)
+            require_once __DIR__ . '/../models/Complaint.php';
+            $complaintModel = new Complaint();
+            $customerComplaints = $complaintModel->findByCustomer($customerId);
+            $count = count(array_filter($customerComplaints, function($complaint) {
+                return in_array($complaint['status'], ['replied', 'rejected', 'resolved']);
             }));
         }
         
@@ -65,6 +76,7 @@ function handleNotificationList() {
     try {
         $userId = $_SESSION['user_login_id'];
         $userRole = $_SESSION['user_role'];
+        $customerId = $_SESSION['user_customer_id'] ?? null;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
         
         $notifications = [];
@@ -81,15 +93,25 @@ function handleNotificationList() {
             $assignedComplaints = $complaintModel->findAssignedTo($userId, $limit);
             
             foreach ($assignedComplaints as $complaint) {
-                if ($complaint['status'] === 'pending' || $complaint['status'] === 'in_progress') {
+                if ($complaint['status'] === 'pending') {
                     $notifications[] = [
                         'id' => 'complaint_' . $complaint['complaint_id'],
                         'type' => 'complaint_assigned',
-                        'title' => 'Complaint Assigned',
-                        'message' => "Complaint {$complaint['complaint_id']} has been assigned to you",
+                        'title' => 'New Complaint Assigned',
+                        'message' => "Complaint {$complaint['complaint_id']} is pending your reply",
                         'created_at' => $complaint['created_at'],
                         'read' => false,
                         'url' => BASE_URL . 'complaints/view/' . $complaint['complaint_id']
+                    ];
+                } elseif ($complaint['status'] === 'awaiting_approval') {
+                    $notifications[] = [
+                        'id' => 'approval_' . $complaint['complaint_id'],
+                        'type' => 'approval',
+                        'title' => 'Approval Needed',
+                        'message' => "Complaint {$complaint['complaint_id']} awaiting your approval",
+                        'created_at' => $complaint['updated_at'] ?? $complaint['created_at'],
+                        'read' => false,
+                        'url' => BASE_URL . 'grievances/approvals'
                     ];
                 }
             }
@@ -107,6 +129,26 @@ function handleNotificationList() {
                     'read' => false,
                     'url' => BASE_URL . 'complaints/view/' . $transaction['complaint_id']
                 ];
+            }
+        } else {
+            // Customer notifications for replied/rejected/resolved complaints
+            require_once __DIR__ . '/../models/Complaint.php';
+            $complaintModel = new Complaint();
+            $customerComplaints = $complaintModel->findByCustomer($customerId, $limit);
+            foreach ($customerComplaints as $complaint) {
+                if (in_array($complaint['status'], ['replied', 'rejected', 'resolved'])) {
+                    $notifications[] = [
+                        'id' => 'cust_update_' . $complaint['complaint_id'],
+                        'type' => $complaint['status'] === 'replied' ? 'reply' : ($complaint['status'] === 'resolved' ? 'resolved' : 'rejection'),
+                        'title' => $complaint['status'] === 'replied' ? 'Reply Received' : ($complaint['status'] === 'resolved' ? 'Action Taken Approved' : 'More Information Requested'),
+                        'message' => $complaint['status'] === 'replied'
+                            ? "Complaint {$complaint['complaint_id']} has a reply from Commercial."
+                            : ($complaint['status'] === 'resolved' ? "Complaint {$complaint['complaint_id']} action taken has been approved. Please provide feedback." : "Complaint {$complaint['complaint_id']} needs more information per remarks."),
+                        'created_at' => $complaint['updated_at'] ?? $complaint['created_at'],
+                        'read' => false,
+                        'url' => BASE_URL . 'complaints/view/' . $complaint['complaint_id']
+                    ];
+                }
             }
         }
         

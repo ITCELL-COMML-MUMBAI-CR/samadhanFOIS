@@ -153,6 +153,67 @@ class User extends BaseModel {
     }
     
     /**
+     * Update user fields (except password). Allows changing login_id.
+     */
+    public function updateUser($originalLoginId, $data) {
+        $allowed = ['login_id','name','email','mobile','role','department','customer_id','status'];
+        $setParts = [];
+        $params = [];
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data)) {
+                $setParts[] = "$field = ?";
+                $params[] = $data[$field];
+            }
+        }
+        $setParts[] = 'updated_at = ?';
+        $params[] = getCurrentDateTime();
+        if (empty($setParts)) {
+            return false;
+        }
+        $sql = 'UPDATE users SET ' . implode(', ', $setParts) . ' WHERE login_id = ?';
+        $params[] = $originalLoginId;
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
+     * Delete user by login id
+     */
+    public function deleteByLoginId($loginId) {
+        $stmt = $this->connection->prepare('DELETE FROM users WHERE login_id = ?');
+        return $stmt->execute([$loginId]);
+    }
+    
+    /**
+     * Search users with optional filters
+     */
+    public function search($searchTerm = '', $filters = []) {
+        $sql = "SELECT * FROM users WHERE 1=1";
+        $params = [];
+        if ($searchTerm !== '') {
+            $sql .= " AND (login_id LIKE ? OR name LIKE ? OR email LIKE ? OR mobile LIKE ?)";
+            $like = "%$searchTerm%";
+            array_push($params, $like, $like, $like, $like);
+        }
+        if (!empty($filters['role'])) {
+            $sql .= " AND role = ?";
+            $params[] = $filters['role'];
+        }
+        if (!empty($filters['department'])) {
+            $sql .= " AND department = ?";
+            $params[] = $filters['department'];
+        }
+        if (!empty($filters['status'])) {
+            $sql .= " AND status = ?";
+            $params[] = $filters['status'];
+        }
+        $sql .= " ORDER BY updated_at DESC";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
      * Get user statistics
      */
     public function getStatistics() {

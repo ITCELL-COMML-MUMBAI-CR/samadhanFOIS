@@ -12,6 +12,16 @@ class CustomerController extends BaseController {
         $error = '';
         $success = '';
 
+        // Check for session alerts (from redirect after successful submission)
+        if (isset($_SESSION['alert_message'])) {
+            if ($_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             list($error, $success) = $this->handleAddCustomerRequest();
         }
@@ -89,7 +99,10 @@ class CustomerController extends BaseController {
                     'customer_name' => $formData['name']
                 ]);
 
-                return ['', "Customer created successfully!"];
+                // Set success message in session and redirect to prevent resubmission
+                $_SESSION['alert_message'] = "Customer created successfully!";
+                $_SESSION['alert_type'] = 'success';
+                $this->redirect('customer/add');
 
             } catch (Exception $e) {
                 $connection->rollBack();

@@ -64,6 +64,14 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <span>Assigned to Me</span>
                             </a>
                         </li>
+                        <?php if (strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances/approvals">
+                                <i class="fas fa-clipboard-check"></i>
+                                <span>Approvals</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
                         <li class="nav-item">
                             <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>reports">
                                 <i class="fas fa-chart-bar"></i>

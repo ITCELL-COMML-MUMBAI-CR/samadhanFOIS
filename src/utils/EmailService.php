@@ -151,11 +151,12 @@ class EmailService {
         $updateDate = date('d-m-Y H:i A');
         
         $statusLabels = [
-            'pending' => 'Pending Review',
-            'in_progress' => 'In Progress',
-            'resolved' => 'Resolved',
+            'pending' => 'Pending (with Commercial)',
+            'replied' => 'Replied',
             'closed' => 'Closed',
-            'rejected' => 'Rejected'
+            'rejected' => 'More Information Requested',
+            'resolved' => 'Resolved (awaiting your feedback)',
+            'awaiting_approval' => 'Awaiting Commercial Approval'
         ];
         
         $oldStatusLabel = $statusLabels[$oldStatus] ?? ucfirst($oldStatus);

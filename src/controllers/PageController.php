@@ -90,4 +90,11 @@ class PageController extends BaseController {
         $this->loadView('pages/reports');
         $this->loadView('footer');
     }
+
+    public function register() {
+        SessionManager::requireAnyRole(['admin']);
+        $this->loadView('header', ['pageTitle' => 'Register']);
+        $this->loadView('pages/register');
+        $this->loadView('footer');
+    }
 }

@@ -29,7 +29,16 @@ class ComplaintController extends BaseController {
         if (!empty($dateTo)) $filters['date_to'] = $dateTo;
 
         $complaintModel = $this->loadModel('Complaint');
+        
+        // Update auto-priorities before displaying
+        $complaintModel->updateAutoPriorities();
+        
         $grievances = !empty($search) ? $complaintModel->search($search, $filters) : $complaintModel->search('', $filters);
+
+        // Calculate auto-priority for each grievance for display
+        foreach ($grievances as &$grievance) {
+            $grievance['display_priority'] = $complaintModel->calculateAutoPriority($grievance['created_at']);
+        }
 
         $data = compact('grievances', 'status', 'priority', 'department', 'search', 'dateFrom', 'dateTo');
         $this->loadView('header', ['pageTitle' => 'All Grievances']);
@@ -65,6 +74,24 @@ class ComplaintController extends BaseController {
     }
 
     /**
+     * Approvals queue for Commercial Controller
+     */
+    public function approvals() {
+        SessionManager::requireRole('controller');
+        $currentUser = SessionManager::getCurrentUser();
+        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+            if (!headers_sent()) {
+                header('Location: ' . BASE_URL . 'dashboard?error=access_denied');
+            }
+            return;
+        }
+
+        $this->loadView('header', ['pageTitle' => 'Approvals']);
+        require_once __DIR__ . '/../../public/pages/approvals.php';
+        $this->loadView('footer');
+    }
+
+    /**
      * Detailed complaint view
      */
     public function view($complaintId) {
@@ -93,11 +120,60 @@ class ComplaintController extends BaseController {
             return;
         }
 
+        // Handle customer actions: feedback and more information
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                    throw new Exception('Invalid security token');
+                }
+                $action = $_POST['action'] ?? '';
+                if ($role === 'customer' && $isOwner) {
+                    switch ($action) {
+                        case 'submit_feedback':
+                            $feedback = trim($_POST['feedback_text'] ?? '');
+                            if (strlen($feedback) < 3) {
+                                throw new Exception('Please provide brief feedback');
+                            }
+                            // Close complaint on feedback
+                            $complaintModel->updateStatus($complaintId, 'closed');
+                            $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback, $currentUser['login_id']);
+                            break;
+                        case 'submit_more_info':
+                            $moreInfo = trim($_POST['more_info_text'] ?? '');
+                            if (strlen($moreInfo) < 3) {
+                                throw new Exception('Please provide additional information');
+                            }
+                            // Move back to pending for review by Commercial
+                            $complaintModel->updateStatus($complaintId, 'pending');
+                            $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
+                            break;
+                    }
+                    // Set success message and redirect to prevent resubmission
+                    $_SESSION['alert_message'] = 'Action submitted successfully!';
+                    $_SESSION['alert_type'] = 'success';
+                    $this->redirect("grievances/view/$complaintId");
+                }
+            } catch (Exception $e) {
+                $_SESSION['alert_message'] = $e->getMessage();
+                $_SESSION['alert_type'] = 'error';
+                $this->redirect("grievances/view/$complaintId");
+            }
+        }
+
         $images = $evidenceModel->getImages($complaintId);
         $history = $transactionModel->getComplaintHistory($complaintId);
         $rejections = $rejectionModel->findByComplaintId($complaintId);
 
-        $data = compact('complaint', 'images', 'history', 'rejections', 'currentUser');
+        // Handle session alerts
+        $alert_message = '';
+        $alert_type = '';
+        if (isset($_SESSION['alert_message'])) {
+            $alert_message = $_SESSION['alert_message'];
+            $alert_type = $_SESSION['alert_type'];
+            unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+        }
+
+        $data = compact('complaint', 'images', 'history', 'rejections', 'currentUser', 'alert_message', 'alert_type');
         $this->loadView('header', ['pageTitle' => 'Complaint Details']);
         $this->loadView('pages/complaint_details', $data);
         $this->loadView('footer');
@@ -213,8 +289,8 @@ class ComplaintController extends BaseController {
                     'fnr_no' => $formData['fnr_no'],
                     'description' => $formData['description'],
                     'customer_id' => $currentUser['customer_id'],
-                    'department' => 'COMMERCIAL',
-                    'priority' => 'medium'
+                    'department' => 'COMMERCIAL'
+                    // priority will be set to 'normal' by default in createComplaint()
                 ];
                 
                 $complaintId = $complaintModel->createComplaint($complaintData);
@@ -227,11 +303,11 @@ class ComplaintController extends BaseController {
                         }
                     }
                     
-                    $transactionModel->logStatusUpdate($complaintId, 'Grievance submitted by customer. Assigned to Commercial Department for review.', $currentUser['login_id']);
+                    $transactionModel->logStatusUpdate($complaintId, 'Grievance submitted by customer. Assigned to Commercial Controller for review.', $currentUser['login_id']);
                     
                     $this->sendConfirmationEmail($currentUser, $complaintId, $complaintData);
                     
-                    $_SESSION['alert_message'] = "Grievance submitted successfully! Your grievance ID is: <strong>$complaintId</strong>";
+                    $_SESSION['alert_message'] = "Grievance submitted successfully! Your grievance ID is: $complaintId";
                     $_SESSION['alert_type'] = 'success';
                     $this->redirect('complaints/new');
                 } else {

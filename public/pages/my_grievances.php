@@ -20,7 +20,7 @@
 						<tr>
 							<th>ID</th>
 							<th>Type</th>
-							<th>Priority</th>
+							<th>Location</th>
 							<th>Status</th>
 							<th>Date</th>
 							<th></th>
@@ -36,9 +36,9 @@
 								<strong><?php echo htmlspecialchars($g['complaint_type']); ?></strong><br>
 								<small class="text-muted"><?php echo htmlspecialchars($g['complaint_subtype']); ?></small>
 							</td>
-							<td><span class="badge priority-<?php echo $g['priority']; ?>"><?php echo ucfirst($g['priority']); ?></span></td>
-							<td><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
-							<td><small><?php echo date('d-M-Y', strtotime($g['date'])); ?></small></td>
+							<td><small class="text-muted"><?php echo htmlspecialchars($g['location'] ?? 'N/A'); ?></small></td>
+                            <td><span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>"><?php echo $g['status']==='replied'?'Replied':ucfirst(str_replace('_',' ',$g['status'])); ?></span></td>
+							<td><small><?php echo date('d-M-Y H:i', strtotime($g['date'] . ' ' . ($g['time'] ?? '00:00:00'))); ?></small></td>
 							<td class="text-end">
 								<a class="btn btn-outline-primary btn-sm" href="<?php echo BASE_URL; ?>complaints/view/<?php echo urlencode($g['complaint_id']); ?>">
 									<i class="fas fa-eye"></i>

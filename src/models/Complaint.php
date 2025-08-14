@@ -19,7 +19,12 @@ class Complaint extends BaseModel {
         $data['time'] = getCurrentTime();
         $data['created_at'] = getCurrentDateTime();
         $data['status'] = 'pending';
+        $data['priority'] = 'normal'; // Default priority is now 'normal'
         $data['department'] = $data['department'] ?? 'COMMERCIAL';
+        // Default assignment to Commercial Controller if not explicitly provided
+        if (empty($data['assigned_to'])) {
+            $data['assigned_to'] = 'commercial_controller';
+        }
         
         return $this->createWithId($data);
     }
@@ -143,7 +148,7 @@ class Complaint extends BaseModel {
     public function assignTo($complaintId, $loginId) {
         $stmt = $this->connection->prepare("
             UPDATE complaints 
-            SET assigned_to = ?, status = 'in_progress', updated_at = ? 
+            SET assigned_to = ?, updated_at = ? 
             WHERE complaint_id = ?
         ");
         return $stmt->execute([$loginId, getCurrentDateTime(), $complaintId]);
@@ -159,6 +164,77 @@ class Complaint extends BaseModel {
             WHERE complaint_id = ?
         ");
         return $stmt->execute([$priority, getCurrentDateTime(), $complaintId]);
+    }
+    
+    /**
+     * Calculate automatic priority based on complaint age
+     * Rules: normal -> 1 hour -> medium -> 3 hours -> high -> 1 day -> critical
+     */
+    public function calculateAutoPriority($createdAt) {
+        $now = time();
+        $created = strtotime($createdAt);
+        $ageInHours = ($now - $created) / 3600; // Convert to hours
+        
+        if ($ageInHours >= 24) { // 1 day or more
+            return 'critical';
+        } elseif ($ageInHours >= 3) { // 3 hours or more
+            return 'high';
+        } elseif ($ageInHours >= 1) { // 1 hour or more
+            return 'medium';
+        } else {
+            return 'normal'; // Less than 1 hour
+        }
+    }
+    
+    /**
+     * Update priorities for all pending complaints based on age
+     * This should be called periodically (via cron job or on page load)
+     */
+    public function updateAutoPriorities() {
+        try {
+            // Get all pending complaints that might need priority updates
+            $stmt = $this->connection->prepare("
+                SELECT complaint_id, created_at, priority 
+                FROM complaints 
+                WHERE status IN ('pending', 'assigned', 'replied') 
+                ORDER BY created_at ASC
+            ");
+            $stmt->execute();
+            $complaints = $stmt->fetchAll();
+            
+            $updatedCount = 0;
+            foreach ($complaints as $complaint) {
+                $currentPriority = $complaint['priority'];
+                $autoPriority = $this->calculateAutoPriority($complaint['created_at']);
+                
+                // Only update if auto-calculated priority is higher than current
+                $priorityLevels = ['normal' => 1, 'medium' => 2, 'high' => 3, 'critical' => 4];
+                $currentLevel = $priorityLevels[$currentPriority] ?? 1;
+                $autoLevel = $priorityLevels[$autoPriority] ?? 1;
+                
+                if ($autoLevel > $currentLevel) {
+                    $this->updatePriority($complaint['complaint_id'], $autoPriority);
+                    $updatedCount++;
+                }
+            }
+            
+            return $updatedCount;
+        } catch (Exception $e) {
+            error_log('Auto priority update error: ' . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    /**
+     * Get complaint with calculated auto priority
+     */
+    public function findByComplaintIdWithAutoPriority($complaintId) {
+        $complaint = $this->findByComplaintId($complaintId);
+        if ($complaint) {
+            $complaint['auto_priority'] = $this->calculateAutoPriority($complaint['created_at']);
+            $complaint['display_priority'] = $complaint['auto_priority']; // Use auto-calculated priority for display
+        }
+        return $complaint;
     }
     
     /**
@@ -319,7 +395,7 @@ class Complaint extends BaseModel {
      * Assign complaint to user
      */
     public function assignComplaint($complaintId, $assignedTo) {
-        $sql = "UPDATE complaints SET assigned_to = ?, status = 'in_progress', updated_at = ? WHERE complaint_id = ?";
+        $sql = "UPDATE complaints SET assigned_to = ?, updated_at = ? WHERE complaint_id = ?";
         $stmt = $this->connection->prepare($sql);
         return $stmt->execute([$assignedTo, getCurrentDateTime(), $complaintId]);
     }

@@ -45,7 +45,7 @@ body {
     color: #000;
 }
 
-.status-in-progress {
+.status-replied {
     background-color: #3b82f6;
     color: white;
 }
@@ -65,8 +65,13 @@ body {
     color: white;
 }
 
-/* Priority Badges */
-.priority-low {
+.status-awaiting-approval {
+    background-color: var(--railway-orange);
+    color: white;
+}
+
+/* Priority Badges - Auto-escalating System */
+.priority-normal {
     background-color: #22c55e;
     color: white;
 }
@@ -83,6 +88,20 @@ body {
 
 .priority-critical {
     background-color: var(--railway-red);
+    color: white;
+    animation: pulse 2s infinite;
+}
+
+/* Critical priority pulse animation */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* Legacy support for old 'low' priority */
+.priority-low {
+    background-color: #22c55e;
     color: white;
 }
 
