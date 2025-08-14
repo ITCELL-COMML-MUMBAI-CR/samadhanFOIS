@@ -249,9 +249,8 @@
                         </div>
                         <div class="col-lg-6">
                             <h5>Contact Support</h5>
-                            <p><strong>Email:</strong> complaints@cr.railnet.gov.in</p>
+                            <p><strong>Email:</strong> sampark-admin@itcellbbcr.in</p>
                             <p><strong>Phone:</strong> +91 12345 67890</p>
-                            <p><strong>Working Hours:</strong> 24/7 Support Available</p>
                             <p><strong>Response Time:</strong> Within 24 hours</p>
                             
                             <div class="mt-3">

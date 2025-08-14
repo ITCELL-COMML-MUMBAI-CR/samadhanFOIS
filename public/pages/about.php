@@ -8,7 +8,7 @@
 					<ul>
 						<li>Role-based access (Customer, Controller, Viewer, Admin)</li>
 						<li>End-to-end complaint lifecycle tracking</li>
-						<li>Evidence uploads and audit trail</li>
+						<li>Evidence uploads and Action Taken Updates.</li>
 					</ul>
 				</div>
 			</div>
