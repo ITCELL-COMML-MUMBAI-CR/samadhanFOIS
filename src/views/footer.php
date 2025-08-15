@@ -25,6 +25,7 @@
     
     <!-- Custom JavaScript -->
     <script src="<?php echo BASE_URL; ?>js/app.js"></script>
+    <script src="<?php echo BASE_URL; ?>js/help.js"></script>
     <?php if (!isset($_SESSION['user_logged_in']) || !$_SESSION['user_logged_in']): ?>
         <!-- Load navbar.js for non-logged-in users -->
         <script src="<?php echo BASE_URL; ?>js/navbar.js"></script>
@@ -139,6 +140,54 @@
             
             return true;
         }
+
+
+         // Initialize AOS (Animate On Scroll)
+         AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+
+        // Initialize Mermaid diagrams
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#374151',
+                primaryBorderColor: '#667eea',
+                lineColor: '#667eea',
+                secondaryColor: '#764ba2',
+                tertiaryColor: '#f3e5f5'
+            }
+        });
+
+        // Add data-aos attributes to sections
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add animations to help sections
+            document.querySelectorAll('.help-section').forEach((section, index) => {
+                section.setAttribute('data-aos', 'fade-up');
+                section.setAttribute('data-aos-delay', (index * 100).toString());
+            });
+
+            // Add animations to diagram sections
+            document.querySelectorAll('.diagram-section').forEach((section, index) => {
+                section.setAttribute('data-aos', 'zoom-in');
+                section.setAttribute('data-aos-delay', (index * 150).toString());
+            });
+
+            // Add animations to flow charts
+            document.querySelectorAll('.flow-chart').forEach((chart, index) => {
+                chart.setAttribute('data-aos', 'slide-up');
+                chart.setAttribute('data-aos-delay', (index * 200).toString());
+            });
+        });
     </script>
 </body>
 </html>

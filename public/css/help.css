@@ -1,0 +1,112 @@
+/* Custom styles for the Help & User Manual page */
+
+.help-container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+.help-header {
+    background: linear-gradient(135deg, var(--railway-blue), var(--railway-dark-blue));
+    color: white;
+    padding: 3rem;
+    border-radius: 0.75rem;
+    text-align: center;
+    margin-bottom: 3.5rem;
+}
+
+.help-header h1 {
+    font-weight: 700;
+}
+
+.role-section {
+    margin-bottom: 3.5rem;
+    padding: 3rem;
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.role-title {
+    font-weight: 700;
+    color: var(--railway-dark-blue);
+    border-bottom: 4px solid var(--railway-gold);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 0.6em 0.9em;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.35rem;
+    color: #fff;
+    margin-right: 1rem;
+}
+
+.role-customer { background-color: #28a745; }
+.role-controller { background-color: #ffc107; color: #000 !important; }
+/* Changed viewer role to a neutral grey */
+.role-viewer { background-color: #6c757d; }
+.role-admin { background-color: #dc3545; }
+
+.flowchart-container {
+    background-color: #f8f9fa;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    margin-top: 2rem;
+    margin-bottom: 2.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.manual h4 {
+    color: var(--railway-blue);
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+.manual h5 {
+    color: var(--railway-dark-blue);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.manual ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.manual li {
+    margin-bottom: 1rem;
+    padding-left: 2.5rem;
+    position: relative;
+    line-height: 1.7;
+}
+
+.manual li::before {
+    content: "\f058"; /* FontAwesome check-circle icon */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    left: 0;
+    top: 6px;
+    color: #28a745;
+    font-size: 1.2rem;
+}
+
+/* Mermaid diagram specific styles */
+.mermaid {
+    text-align: center;
+}

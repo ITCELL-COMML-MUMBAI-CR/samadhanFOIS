@@ -12,9 +12,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- AOS (Animate On Scroll) CSS -->
     <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <!-- Custom CSS -->
     <link href="<?php echo BASE_URL; ?>css/style.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>css/navbar.css" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>css/help.css" rel="stylesheet">
     <?php if (isset($pageTitle) && ($pageTitle === 'My Grievances' || $pageTitle === 'Customer Home')): ?>
     <link href="<?php echo BASE_URL; ?>css/customer_home.css" rel="stylesheet">
     <?php endif; ?>

@@ -79,6 +79,16 @@ class PageController extends BaseController {
         $this->loadView('footer');
     }
 
+    public function help() {
+        $this->loadView('header', ['pageTitle' => 'Help & User Manual']);
+        $this->loadView('pages/help');
+        $this->loadView('footer');
+    }
+
+    public function helpStandalone() {
+        require_once __DIR__ . '/../../public/pages/help_standalone.php';
+    }
+
     public function profile() {
         SessionManager::requireLogin();
         

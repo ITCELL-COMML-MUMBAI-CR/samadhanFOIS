@@ -116,7 +116,7 @@ $editingTemplate = $data['editingTemplate'] ?? null;
                 <h5 class="modal-title" id="templateModalTitle">Add New Template</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="templateForm" method="POST" action="<?php echo BASE_URL; ?>api/email_templates">
+            <form id="templateForm" method="POST">
                 <div class="modal-body">
                     <input type="hidden" id="template_id" name="template_id">
                     <input type="hidden" id="action" name="action" value="create">

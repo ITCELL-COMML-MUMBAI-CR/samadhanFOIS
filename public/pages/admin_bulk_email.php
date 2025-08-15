@@ -2,68 +2,9 @@
 // Get users from controller data
 $users = $data['users'] ?? [];
 
-// Email templates
-$emailTemplates = [
-    'sampark_invitation' => [
-        'name' => 'SAMPARK Portal Invitation',
-        'subject' => 'Welcome to SAMPARK FOIS - Railway Complaint Management System',
-        'content' => '<p>Dear {name},</p>
-<p>You have been invited to join the SAMPARK FOIS (Feedback, Opinions, Information, Suggestions) portal - our comprehensive Railway Complaint Management System.</p>
-<p><strong>Portal Features:</strong></p>
-<ul>
-<li>Submit and track complaints easily</li>
-<li>Real-time status updates</li>
-<li>Direct communication with railway officials</li>
-<li>Comprehensive reporting and analytics</li>
-</ul>
-<p><strong>Your Login Details:</strong></p>
-<ul>
-<li>Login ID: {login_id}</li>
-<li>Portal URL: {portal_url}</li>
-</ul>
-<p>Please contact the system administrator if you need assistance with your login credentials.</p>
-<p>Best regards,<br>SAMPARK FOIS Team<br>Central Railway</p>'
-    ],
-    'system_maintenance' => [
-        'name' => 'System Maintenance Notice',
-        'subject' => 'SAMPARK FOIS - Scheduled Maintenance Notice',
-        'content' => '<p>Dear {name},</p>
-<p>This is to inform you that the SAMPARK FOIS portal will undergo scheduled maintenance on {maintenance_date} from {maintenance_time}.</p>
-<p><strong>Maintenance Details:</strong></p>
-<ul>
-<li>Date: {maintenance_date}</li>
-<li>Time: {maintenance_time}</li>
-<li>Duration: Approximately 2 hours</li>
-<li>Services Affected: Portal access and complaint submission</li>
-</ul>
-<p>We apologize for any inconvenience this may cause. The portal will be fully functional after the maintenance period.</p>
-<p>For urgent matters during maintenance, please contact: sampark-admin@itcellbbcr.in</p>
-<p>Thank you for your understanding.</p>
-<p>Best regards,<br>SAMPARK FOIS Team<br>Central Railway</p>'
-    ],
-    'policy_update' => [
-        'name' => 'Policy Update Notification',
-        'subject' => 'SAMPARK FOIS - Important Policy Updates',
-        'content' => '<p>Dear {name},</p>
-<p>We would like to inform you about important updates to the SAMPARK FOIS portal policies and procedures.</p>
-<p><strong>Key Updates:</strong></p>
-<ul>
-<li>Enhanced complaint categorization</li>
-<li>Improved response time commitments</li>
-<li>New evidence upload features</li>
-<li>Updated user guidelines</li>
-</ul>
-<p>Please review the updated policies in the portal under the "Guidelines" section.</p>
-<p>These changes are effective immediately and will help improve our service delivery.</p>
-<p>If you have any questions about these updates, please contact the system administrator.</p>
-<p>Best regards,<br>SAMPARK FOIS Team<br>Central Railway</p>'
-    ],
-    'custom' => [
-        'name' => 'Custom Email',
-        'subject' => '',
-        'content' => ''
-    ]
-];
+// Get email templates from database
+$emailTemplates = $data['emailTemplates'] ?? [];
+?>
 ?>
 
 <div class="container-fluid">
@@ -216,8 +157,15 @@ $emailTemplates = [
                             <label for="email_template" class="form-label">Email Template</label>
                             <select class="form-select" id="email_template" name="template">
                                 <option value="">-- Select Template --</option>
-                                <?php foreach ($emailTemplates as $key => $template): ?>
-                                    <option value="<?php echo $key; ?>"><?php echo htmlspecialchars($template['name']); ?></option>
+                                <?php foreach ($emailTemplates as $template): ?>
+                                    <option value="<?php echo $template['id']; ?>" 
+                                            data-subject="<?php echo htmlspecialchars($template['subject']); ?>"
+                                            data-content="<?php echo htmlspecialchars($template['content']); ?>">
+                                        <?php echo htmlspecialchars($template['name']); ?>
+                                        <?php if ($template['is_default']): ?>
+                                            (Default)
+                                        <?php endif; ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -325,9 +273,4 @@ $emailTemplates = [
 
 <!-- Include CSS and JS files -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/bulk_email.css">
-
-<script>
-// Email templates data
-const emailTemplates = <?php echo json_encode($emailTemplates); ?>;
-</script>
 <script src="<?php echo BASE_URL; ?>js/bulk_email.js"></script>

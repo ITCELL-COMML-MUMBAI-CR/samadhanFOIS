@@ -9,13 +9,10 @@ if (!isset($_SESSION['user_logged_in']) || !$_SESSION['user_logged_in']) {
     sendError('Authentication required', 401);
 }
 
-// Debug: Log session variables for troubleshooting
-error_log('Bulk Email API - Session variables: ' . print_r($_SESSION, true));
-
-// Temporarily allow any authenticated user for testing
-// if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
-//     sendError('Access denied - Admin privileges required. User role: ' . ($_SESSION['user_role'] ?? 'not set'), 403);
-// }
+// Check if user is admin
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+    sendError('Access denied - Admin privileges required', 403);
+}
 
 // Handle POST requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -131,9 +128,16 @@ function handleBulkEmail() {
     
     // Process template variables if needed
     $templateVars = [];
-    if ($template === 'system_maintenance') {
-        $templateVars['maintenance_date'] = $_POST['maintenance_date'] ?? '';
-        $templateVars['maintenance_time'] = $_POST['maintenance_time'] ?? '';
+    if (!empty($template)) {
+        // Load template from database to check category
+        require_once __DIR__ . '/../models/EmailTemplate.php';
+        $templateModel = new EmailTemplate();
+        $templateData = $templateModel->findById($template);
+        
+        if ($templateData && $templateData['category'] === 'maintenance') {
+            $templateVars['maintenance_date'] = $_POST['maintenance_date'] ?? '';
+            $templateVars['maintenance_time'] = $_POST['maintenance_time'] ?? '';
+        }
     }
     
     // Send emails
@@ -168,6 +172,11 @@ function handleBulkEmail() {
     
     // Log the bulk email operation
     $logger = new Logger();
+    $templateName = 'Custom';
+    if (!empty($template) && isset($templateData)) {
+        $templateName = $templateData['name'];
+    }
+    
     $logger->log('bulk_email', [
         'admin_id' => $_SESSION['user_login_id'],
         'admin_name' => $_SESSION['user_name'] ?? $_SESSION['user_login_id'],
@@ -175,7 +184,8 @@ function handleBulkEmail() {
         'success_count' => $successCount,
         'error_count' => $errorCount,
         'subject' => $subject,
-        'template' => $template
+        'template' => $templateName,
+        'template_id' => $template
     ]);
     
     // Return results

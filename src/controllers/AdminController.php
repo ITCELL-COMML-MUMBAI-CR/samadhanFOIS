@@ -96,11 +96,16 @@ class AdminController extends BaseController {
         $userModel = $this->loadModel('User');
         $users = $userModel->getAllUsers();
         
+        // Load the EmailTemplate model and get templates
+        $templateModel = $this->loadModel('EmailTemplate');
+        $emailTemplates = $templateModel->getAll();
+        
         $data = [
             'pageTitle' => 'Bulk Email Management',
             'error' => $error,
             'success' => $success,
-            'users' => $users
+            'users' => $users,
+            'emailTemplates' => $emailTemplates
         ];
 
         $this->loadView('header', $data);

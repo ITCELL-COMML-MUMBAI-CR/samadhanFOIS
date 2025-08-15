@@ -5,9 +5,7 @@
 
 class BulkEmailManager {
     constructor() {
-        this.emailTemplates = {};
         this.initializeEventListeners();
-        this.loadTemplates();
     }
 
     /**
@@ -40,19 +38,7 @@ class BulkEmailManager {
         this.setupRealTimeValidation();
     }
 
-    /**
-     * Load email templates from the page
-     */
-    loadTemplates() {
-        try {
-            // Templates are embedded in the page via PHP
-            if (typeof emailTemplates !== 'undefined') {
-                this.emailTemplates = emailTemplates;
-            }
-        } catch (error) {
-            console.error('Error loading templates:', error);
-        }
-    }
+
 
     /**
      * Handle recipient type change
@@ -79,22 +65,25 @@ class BulkEmailManager {
      * Handle template selection change
      */
     handleTemplateChange(event) {
-        const template = this.emailTemplates[event.target.value];
-        if (template) {
-            document.getElementById('email_subject').value = template.subject;
-            document.getElementById('email_content').value = template.content;
+        const selectedOption = event.target.options[event.target.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const subject = selectedOption.getAttribute('data-subject');
+            const content = selectedOption.getAttribute('data-content');
             
-            // Show/hide template variables
-            this.toggleTemplateVariables(event.target.value);
+            document.getElementById('email_subject').value = subject || '';
+            document.getElementById('email_content').value = content || '';
+            
+            // Show/hide template variables based on template category
+            this.toggleTemplateVariables(selectedOption.textContent.toLowerCase());
         }
     }
 
     /**
      * Toggle template variables section
      */
-    toggleTemplateVariables(templateKey) {
+    toggleTemplateVariables(templateName) {
         const templateVariables = document.getElementById('templateVariables');
-        if (templateKey === 'system_maintenance') {
+        if (templateName.includes('maintenance')) {
             templateVariables.style.display = 'block';
         } else {
             templateVariables.style.display = 'none';

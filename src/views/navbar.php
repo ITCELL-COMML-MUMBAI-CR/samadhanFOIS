@@ -169,6 +169,14 @@ $userRole = $_SESSION['user_role'] ?? '';
                 <?php if (SessionManager::isLoggedIn()): ?>
 
                     
+                    <!-- Help Link -->
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>help">
+                            <i class="fas fa-life-ring"></i>
+                            <span>Help</span>
+                        </a>
+                    </li>
+
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

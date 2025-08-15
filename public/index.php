@@ -156,6 +156,14 @@ switch ($controllerName) {
         $controller = new PageController();
         $controller->guidelines();
         break;
+    case 'help':
+        $controller = new PageController();
+        if ($action === 'share') {
+            $controller->helpStandalone();
+        } else {
+            $controller->help();
+        }
+        break;
     case 'profile':
         $controller = new PageController();
         $controller->profile();
