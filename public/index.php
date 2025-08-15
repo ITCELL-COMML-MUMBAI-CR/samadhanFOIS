@@ -129,6 +129,8 @@ switch ($controllerName) {
             $controller->quicklinks();
         } elseif ($action === 'bulk-email') {
             $controller->bulkEmail();
+        } elseif ($action === 'email-templates') {
+            $controller->emailTemplates();
         } else {
             $controller->categories();
         }

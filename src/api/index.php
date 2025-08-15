@@ -119,6 +119,11 @@ try {
             include 'bulk_email.php';
             break;
             
+        case 'email_templates':
+            requireAuth();
+            include 'email_templates.php';
+            break;
+            
         default:
             sendError('API endpoint not found', 404);
             break;

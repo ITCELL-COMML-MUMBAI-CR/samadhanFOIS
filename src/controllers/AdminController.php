@@ -107,6 +107,26 @@ class AdminController extends BaseController {
         $this->loadView('pages/admin_bulk_email', $data);
         $this->loadView('footer');
     }
+    
+    public function emailTemplates() {
+        $error = $_GET['error'] ?? '';
+        $success = $_GET['success'] ?? '';
+        
+        // Load the EmailTemplate model and get templates
+        $templateModel = $this->loadModel('EmailTemplate');
+        $templates = $templateModel->getAll();
+        
+        $data = [
+            'pageTitle' => 'Email Template Management',
+            'error' => $error,
+            'success' => $success,
+            'templates' => $templates
+        ];
+    
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_email_templates', $data);
+        $this->loadView('footer');
+    }
 
     public function users() {
         $error = '';

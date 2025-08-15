@@ -31,6 +31,11 @@ class BulkEmailManager {
             form.addEventListener('submit', (e) => this.handleFormSubmission(e));
         }
 
+        // Role checkbox change handlers
+        document.querySelectorAll('.role-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.updateRecipientCount());
+        });
+
         // Real-time validation
         this.setupRealTimeValidation();
     }
@@ -54,11 +59,19 @@ class BulkEmailManager {
      */
     handleRecipientTypeChange(event) {
         const userSelection = document.getElementById('userSelection');
+        const userTypeSelection = document.getElementById('userTypeSelection');
+        
+        // Hide all selection areas first
+        userSelection.style.display = 'none';
+        userTypeSelection.style.display = 'none';
+        
+        // Show appropriate selection area
         if (event.target.value === 'select') {
             userSelection.style.display = 'block';
-        } else {
-            userSelection.style.display = 'none';
+        } else if (event.target.value === 'by_role') {
+            userTypeSelection.style.display = 'block';
         }
+        
         this.updateRecipientCount();
     }
 
@@ -92,18 +105,47 @@ class BulkEmailManager {
      * Update recipient count display
      */
     updateRecipientCount() {
-        const selectedUsers = document.querySelectorAll('.user-checkbox:checked');
+        const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
         const countElement = document.querySelector('.recipient-count');
+        const countDisplay = document.querySelector('.recipient-count-display');
+        
+        let count = 0;
+        
+        if (recipientType === 'select') {
+            const selectedUsers = document.querySelectorAll('.user-checkbox:checked');
+            count = selectedUsers.length;
+        } else if (recipientType === 'by_role') {
+            const selectedRoles = document.querySelectorAll('.role-checkbox:checked');
+            count = this.getUserCountByRoles(selectedRoles);
+        } else if (recipientType === 'all') {
+            count = document.querySelectorAll('.user-checkbox').length;
+        }
+        
         if (countElement) {
-            countElement.textContent = selectedUsers.length;
+            countElement.textContent = count;
         }
         
         // Update the display visibility
-        const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
-        const countDisplay = document.querySelector('.recipient-count-display');
         if (countDisplay) {
             countDisplay.style.display = recipientType === 'select' ? 'block' : 'none';
         }
+    }
+    
+    /**
+     * Get user count by selected roles
+     */
+    getUserCountByRoles(selectedRoles) {
+        let count = 0;
+        selectedRoles.forEach(roleCheckbox => {
+            const role = roleCheckbox.value;
+            const roleLabel = roleCheckbox.closest('.form-check').querySelector('label');
+            const countText = roleLabel.querySelector('small').textContent;
+            const match = countText.match(/\((\d+) users\)/);
+            if (match) {
+                count += parseInt(match[1]);
+            }
+        });
+        return count;
     }
 
     /**
@@ -151,6 +193,36 @@ class BulkEmailManager {
         document.getElementById('emailPreview').innerHTML = preview;
         new bootstrap.Modal(document.getElementById('previewModal')).show();
     }
+    
+    /**
+     * Preview selected users by role
+     */
+    previewSelectedUsers() {
+        const selectedRoles = document.querySelectorAll('.role-checkbox:checked');
+        if (selectedRoles.length === 0) {
+            this.showAlert('Please select at least one user type.', 'warning');
+            return;
+        }
+        
+        const previewContainer = document.getElementById('selectedUsersPreview');
+        let previewHTML = '<div class="mb-2"><strong>Selected Users:</strong></div>';
+        
+        selectedRoles.forEach(roleCheckbox => {
+            const role = roleCheckbox.value;
+            const roleLabel = roleCheckbox.closest('.form-check').querySelector('label');
+            const countText = roleLabel.querySelector('small').textContent;
+            
+            previewHTML += `
+                <div class="alert alert-info alert-sm mb-2">
+                    <i class="fas fa-users"></i> <strong>${role.charAt(0).toUpperCase() + role.slice(1)}s</strong>
+                    <span class="text-muted">${countText}</span>
+                </div>
+            `;
+        });
+        
+        previewContainer.innerHTML = previewHTML;
+        previewContainer.style.display = 'block';
+    }
 
     /**
      * Show test email modal
@@ -188,12 +260,12 @@ class BulkEmailManager {
             
             const data = await response.json();
             
-            if (data.success) {
-                this.showAlert('Test email sent successfully!', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('testEmailModal')).hide();
-            } else {
-                this.showAlert('Error sending test email: ' + data.message, 'danger');
-            }
+                         if (!data.error) {
+                 this.showAlert('Test email sent successfully!', 'success');
+                 bootstrap.Modal.getInstance(document.getElementById('testEmailModal')).hide();
+             } else {
+                 this.showAlert('Error sending test email: ' + data.message, 'danger');
+             }
         } catch (error) {
             console.error('Error:', error);
             this.showAlert('Error sending test email. Please try again.', 'danger');
@@ -262,6 +334,12 @@ class BulkEmailManager {
                 this.showAlert('Please select at least one user.', 'warning');
                 return false;
             }
+        } else if (recipientType === 'by_role') {
+            const selectedRoles = document.querySelectorAll('.role-checkbox:checked');
+            if (selectedRoles.length === 0) {
+                this.showAlert('Please select at least one user type.', 'warning');
+                return false;
+            }
         }
         
         return true;
@@ -272,11 +350,17 @@ class BulkEmailManager {
      */
     getRecipientCount() {
         const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
+        
         if (recipientType === 'all') {
             return document.querySelectorAll('.user-checkbox').length;
-        } else {
+        } else if (recipientType === 'select') {
             return document.querySelectorAll('.user-checkbox:checked').length;
+        } else if (recipientType === 'by_role') {
+            const selectedRoles = document.querySelectorAll('.role-checkbox:checked');
+            return this.getUserCountByRoles(selectedRoles);
         }
+        
+        return 0;
     }
 
     /**
@@ -399,6 +483,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     window.sendTestEmail = function() {
         bulkEmailManager.sendTestEmail();
+    };
+    
+    window.previewSelectedUsers = function() {
+        bulkEmailManager.previewSelectedUsers();
     };
     
     // Initialize the bulk email manager

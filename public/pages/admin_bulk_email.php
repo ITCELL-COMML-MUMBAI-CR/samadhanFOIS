@@ -68,10 +68,17 @@ $emailTemplates = [
 
 <div class="container-fluid">
     <div class="row mb-3">
-        <div class="col-12 d-flex justify-content-between align-items-center">
-            <h1 class="h3 mb-0"><i class="fas fa-envelope text-primary"></i> Bulk Email Management</h1>
-            <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
-        </div>
+                    <div class="col-12 d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0"><i class="fas fa-envelope text-primary"></i> Bulk Email Management</h1>
+                <div>
+                    <a href="<?php echo BASE_URL; ?>admin/email-templates" class="btn btn-outline-primary btn-sm me-2">
+                        <i class="fas fa-envelope-open-text"></i> Manage Templates
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
     </div>
 
     <!-- Alerts -->
@@ -109,6 +116,16 @@ $emailTemplates = [
                         
                         <div class="mb-3">
                             <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recipient_type" id="by_role" value="by_role">
+                                <label class="form-check-label" for="by_role">
+                                    <strong>Send by User Type</strong>
+                                    <small class="text-muted d-block">(Select by role)</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
                                 <input class="form-check-input" type="radio" name="recipient_type" id="select_users" value="select">
                                 <label class="form-check-label" for="select_users">
                                     <strong>Select Specific Users</strong>
@@ -117,6 +134,53 @@ $emailTemplates = [
                             </div>
                         </div>
 
+                        <!-- User Type Selection -->
+                        <div id="userTypeSelection" class="mt-3" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label"><strong>Select User Types:</strong></label>
+                                <div class="row">
+                                    <?php
+                                    // Group users by role and count them
+                                    $roleCounts = [];
+                                    foreach ($users as $user) {
+                                        $role = $user['role'];
+                                        if (!isset($roleCounts[$role])) {
+                                            $roleCounts[$role] = 0;
+                                        }
+                                        $roleCounts[$role]++;
+                                    }
+                                    ?>
+                                    <?php foreach ($roleCounts as $role => $count): ?>
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input role-checkbox" type="checkbox" name="selected_roles[]" 
+                                                       value="<?php echo htmlspecialchars($role); ?>" 
+                                                       id="role_<?php echo htmlspecialchars($role); ?>">
+                                                <label class="form-check-label" for="role_<?php echo htmlspecialchars($role); ?>">
+                                                    <strong><?php echo ucfirst($role); ?>s</strong>
+                                                    <small class="text-muted d-block">(<?php echo $count; ?> users)</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">Selected users will be shown below:</span>
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="previewSelectedUsers()">
+                                        <i class="fas fa-eye"></i> Preview Users
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="selectedUsersPreview" class="user-list" style="max-height: 200px; overflow-y: auto; display: none;">
+                                <!-- Selected users will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Individual User Selection -->
                         <div id="userSelection" class="mt-3" style="display: none;">
                             <div class="mb-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllUsers()">Select All</button>
