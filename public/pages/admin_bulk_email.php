@@ -88,7 +88,7 @@ $emailTemplates = [
         </div>
     <?php endif; ?>
 
-    <form id="bulkEmailForm" method="POST" action="<?php echo BASE_URL; ?>api/bulk_email.php">
+    <form id="bulkEmailForm" method="POST" action="<?php echo BASE_URL; ?>api/bulk_email">
         <div class="row">
             <!-- Recipients Selection -->
             <div class="col-md-4">

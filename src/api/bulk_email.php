@@ -4,13 +4,9 @@
  * Handles bulk email sending for admin users
  */
 
-require_once '../init.php';
-
 // Check if user is logged in and is admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Access denied']);
-    exit;
+    sendError('Access denied', 403);
 }
 
 // Handle POST requests
@@ -23,9 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         handleBulkEmail();
     }
 } else {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Method not allowed']);
-    exit;
+    sendError('Method not allowed', 405);
 }
 
 /**
@@ -38,13 +32,15 @@ function handleTestEmail() {
     $cc = $_POST['cc'] ?? '';
     
     if (empty($testEmail) || empty($subject) || empty($content)) {
-        echo json_encode(['success' => false, 'message' => 'Missing required fields']);
-        return;
+        sendError('Missing required fields');
     }
     
+    // Load required models and services
+    require_once __DIR__ . '/../models/User.php';
+    require_once __DIR__ . '/../utils/EmailService.php';
+    
     if (!EmailService::isValidEmail($testEmail)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid email address']);
-        return;
+        sendError('Invalid email address');
     }
     
     // Process content with test data
@@ -61,9 +57,9 @@ function handleTestEmail() {
     $result = $emailService->sendCustomEmail($testEmail, $subject, $processedContent, $cc);
     
     if ($result) {
-        echo json_encode(['success' => true, 'message' => 'Test email sent successfully']);
+        sendSuccess([], 'Test email sent successfully');
     } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to send test email']);
+        sendError('Failed to send test email');
     }
 }
 
@@ -78,10 +74,14 @@ function handleBulkEmail() {
     $cc = $_POST['cc'] ?? '';
     $template = $_POST['template'] ?? '';
     
+    // Load required models and services
+    require_once __DIR__ . '/../models/User.php';
+    require_once __DIR__ . '/../utils/EmailService.php';
+    require_once __DIR__ . '/../utils/Logger.php';
+    
     // Validate required fields
     if (empty($subject) || empty($content)) {
-        header('Location: ' . BASE_URL . 'admin_bulk_email?error=Missing required fields');
-        exit;
+        sendError('Missing required fields');
     }
     
     // Get recipients
@@ -106,8 +106,7 @@ function handleBulkEmail() {
     }
     
     if (empty($recipients)) {
-        header('Location: ' . BASE_URL . 'admin_bulk_email?error=No valid recipients found');
-        exit;
+        sendError('No valid recipients found');
     }
     
     // Process template variables if needed
@@ -159,14 +158,18 @@ function handleBulkEmail() {
         'template' => $template
     ]);
     
-    // Redirect with results
+    // Return results
     $message = "Bulk email completed. Successfully sent: $successCount, Failed: $errorCount";
     if ($errorCount > 0) {
         $message .= ". Some emails failed to send.";
     }
     
-    header('Location: ' . BASE_URL . 'admin_bulk_email?success=' . urlencode($message));
-    exit;
+    sendSuccess([
+        'success_count' => $successCount,
+        'error_count' => $errorCount,
+        'total_recipients' => count($recipients),
+        'errors' => $errors
+    ], $message);
 }
 
 /**

@@ -181,7 +181,7 @@ class BulkEmailManager {
         try {
             this.setLoadingState(true);
             
-            const response = await fetch(BASE_URL + 'api/bulk_email.php', {
+            const response = await fetch(BASE_URL + 'api/bulk_email', {
                 method: 'POST',
                 body: formData
             });
@@ -205,7 +205,7 @@ class BulkEmailManager {
     /**
      * Handle form submission
      */
-    handleFormSubmission(event) {
+    async handleFormSubmission(event) {
         event.preventDefault();
         
         if (!this.validateForm()) {
@@ -217,7 +217,29 @@ class BulkEmailManager {
         
         if (confirm(confirmMessage)) {
             this.setLoadingState(true);
-            event.target.submit();
+            
+            try {
+                const formData = new FormData(event.target);
+                const response = await fetch(event.target.action, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    this.showAlert(data.message, 'danger');
+                } else {
+                    this.showAlert(data.message, 'success');
+                    // Reset form on success
+                    event.target.reset();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showAlert('Error sending bulk email. Please try again.', 'danger');
+            } finally {
+                this.setLoadingState(false);
+            }
         }
     }
 

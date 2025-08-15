@@ -114,6 +114,11 @@ try {
             include 'reports.php';
             break;
             
+        case 'bulk_email':
+            requireAuth();
+            include 'bulk_email.php';
+            break;
+            
         default:
             sendError('API endpoint not found', 404);
             break;
