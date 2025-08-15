@@ -55,7 +55,7 @@ if (!isset($currentUser)) {
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card dashboard-card card-resolved text-center">
+                            <div class="card dashboard-card card-replied text-center">
                 <div class="card-body">
                     <h3 class="display-6 fw-bold">
                         <?php 

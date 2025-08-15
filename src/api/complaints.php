@@ -319,7 +319,7 @@ function handleReplyToComplaint($complaintId) {
 }
 
 /**
- * Customer submits feedback for resolved complaint
+ * Customer submits feedback for replied complaint
  */
 function handleSubmitFeedback() {
     try {

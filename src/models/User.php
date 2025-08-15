@@ -282,5 +282,27 @@ class User extends BaseModel {
         $stmt->execute([$role]);
         return $stmt->fetchAll();
     }
+    
+    /**
+     * Get all users (for bulk email)
+     */
+    public function getAllUsers() {
+        $stmt = $this->connection->prepare("
+            SELECT * FROM users 
+            WHERE status = 'active' 
+            ORDER BY name ASC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Find user by email
+     */
+    public function findByEmail($email) {
+        $stmt = $this->connection->prepare("SELECT * FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        return $stmt->fetch();
+    }
 }
 ?>

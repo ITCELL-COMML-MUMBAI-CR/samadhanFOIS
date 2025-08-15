@@ -169,7 +169,7 @@
         </div>
         
         <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card dashboard-card card-resolved text-center">
+            <div class="card dashboard-card card-replied text-center">
                 <div class="card-body">
                     <h3 class="display-6 fw-bold">
                         <?php
@@ -181,7 +181,7 @@
                         }
                         ?>
                     </h3>
-                    <p class="mb-0">Resolved</p>
+                    <p class="mb-0">Replied</p>
                 </div>
             </div>
         </div>

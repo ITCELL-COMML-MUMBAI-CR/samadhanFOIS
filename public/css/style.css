@@ -90,7 +90,7 @@ body {
     text-transform: uppercase;
 }
 
-.status-resolved {
+.status-replied {
     background-color: #30D158;
     color: white;
     border-radius: 12px;
@@ -269,7 +269,7 @@ body {
     background: #FF9500;
 }
 
-.dashboard-card.card-resolved::before {
+.dashboard-card.card-replied::before {
     content: '';
     position: absolute;
     top: 0;
@@ -287,6 +287,16 @@ body {
     right: 0;
     height: 4px;
     background: var(--apple-blue);
+}
+
+.dashboard-card.card-awaiting-approval::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #FF9500;
 }
 
 .dashboard-card {

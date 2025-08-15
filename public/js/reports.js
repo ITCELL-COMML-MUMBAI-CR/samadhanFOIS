@@ -69,7 +69,7 @@ function loadReports() {
             loadPerformanceReport(dateFrom, dateTo);
             break;
         case 'pivot':
-            loadPivotTable(dateFrom, dateTo);
+            loadPivotTableData(dateFrom, dateTo);
             break;
     }
 }
@@ -131,7 +131,7 @@ function loadPerformanceReport(dateFrom, dateTo) {
     });
 }
 
-function loadPivotTable(dateFrom, dateTo) {
+function loadPivotTableData(dateFrom, dateTo) {
     const rows = document.getElementById('pivotRows').value;
     const columns = document.getElementById('pivotColumns').value;
     const values = document.getElementById('pivotValues').value;
@@ -349,7 +349,7 @@ function createCategoryChart(data) {
     }
     
     charts.categoryChart = new Chart(ctx, {
-        type: 'horizontalBar',
+        type: 'bar',
         data: {
             labels: data.map(item => item.category),
             datasets: [{
@@ -402,8 +402,8 @@ function createTimelineChart(data) {
                     fill: true
                 },
                 {
-                    label: 'Resolved',
-                    data: data.map(item => item.resolved),
+                    label: 'Replied',
+                    data: data.map(item => item.replied),
                     borderColor: '#28a745',
                     backgroundColor: 'rgba(40, 167, 69, 0.1)',
                     borderWidth: 3,
@@ -459,8 +459,8 @@ function createMonthlyTrendsChart(data) {
                     borderWidth: 1
                 },
                 {
-                    label: 'Resolved',
-                    data: data.map(item => item.resolved),
+                    label: 'Replied',
+                    data: data.map(item => item.replied),
                     backgroundColor: '#28a745',
                     borderColor: '#28a745',
                     borderWidth: 1
@@ -490,13 +490,13 @@ function createMonthlyTrendsChart(data) {
 // Update Functions
 function updateDashboardSummary(stats) {
     document.getElementById('totalComplaints').textContent = stats.summary.total_complaints;
-    document.getElementById('resolvedComplaints').textContent = stats.summary.resolved_complaints;
+    document.getElementById('repliedComplaints').textContent = stats.summary.replied_complaints;
     document.getElementById('pendingComplaints').textContent = stats.summary.pending_complaints;
     
-    const resolutionRate = stats.summary.total_complaints > 0 
-        ? ((stats.summary.resolved_complaints / stats.summary.total_complaints) * 100).toFixed(1)
+    const replyRate = stats.summary.total_complaints > 0 
+        ? ((stats.summary.replied_complaints / stats.summary.total_complaints) * 100).toFixed(1)
         : '0';
-    document.getElementById('resolutionRate').textContent = resolutionRate + '%';
+    document.getElementById('replyRate').textContent = replyRate + '%';
 }
 
 function updateMISSummary(summary) {
@@ -511,8 +511,8 @@ function updateMISSummary(summary) {
             </div>
             <div class="col-md-3">
                 <div class="text-center">
-                    <h4 class="text-success">${summary.resolved}</h4>
-                    <p class="text-muted">Resolved</p>
+                    <h4 class="text-success">${summary.replied}</h4>
+                    <p class="text-muted">Replied</p>
                 </div>
             </div>
             <div class="col-md-3">
@@ -523,15 +523,15 @@ function updateMISSummary(summary) {
             </div>
             <div class="col-md-3">
                 <div class="text-center">
-                    <h4 class="text-info">${summary.resolution_rate}%</h4>
-                    <p class="text-muted">Resolution Rate</p>
+                    <h4 class="text-info">${summary.reply_rate}%</h4>
+                    <p class="text-muted">Reply Rate</p>
                 </div>
             </div>
         </div>
         <div class="row mt-3">
             <div class="col-12">
                 <div class="alert alert-info">
-                    <strong>Average Resolution Time:</strong> ${summary.avg_resolution_days ? summary.avg_resolution_days.toFixed(1) : 'N/A'} days
+                    <strong>Average Reply Time:</strong> ${summary.avg_reply_days ? summary.avg_reply_days.toFixed(1) : 'N/A'} days
                 </div>
             </div>
         </div>
@@ -547,12 +547,12 @@ function updateDepartmentTable(data) {
         row.innerHTML = `
             <td><strong>${dept.department}</strong></td>
             <td>${dept.total}</td>
-            <td>${dept.resolved}</td>
+            <td>${dept.replied}</td>
             <td>
                 <div class="progress">
-                    <div class="progress-bar" style="width: ${dept.resolution_rate}%"></div>
+                    <div class="progress-bar" style="width: ${dept.reply_rate}%"></div>
                 </div>
-                <small>${dept.resolution_rate}%</small>
+                <small>${dept.reply_rate}%</small>
             </td>
             <td>${dept.avg_days ? dept.avg_days.toFixed(1) : 'N/A'}</td>
         `;
@@ -567,7 +567,7 @@ function updatePerformanceMetrics(metrics) {
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-body text-center">
-                        <h5 class="card-title">Resolution Time</h5>
+                        <h5 class="card-title">Reply Time</h5>
                         <h3 class="text-primary">${metrics.resolution_time.avg_resolution_days ? metrics.resolution_time.avg_resolution_days.toFixed(1) : 'N/A'} days</h3>
                         <p class="text-muted">Average</p>
                     </div>
@@ -586,8 +586,8 @@ function updatePerformanceMetrics(metrics) {
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Satisfaction Rate</h5>
-                        <h3 class="text-info">${metrics.satisfaction.resolution_rate}%</h3>
-                        <p class="text-muted">Resolution Rate</p>
+                        <h3 class="text-info">${metrics.satisfaction.reply_rate}%</h3>
+                        <p class="text-muted">Reply Rate</p>
                     </div>
                 </div>
             </div>
@@ -734,5 +734,14 @@ function loadTimelineChart() {
 function loadPivotTable() {
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo = document.getElementById('dateTo').value;
-    loadPivotTable(dateFrom, dateTo);
+    const rows = document.getElementById('pivotRows').value;
+    const columns = document.getElementById('pivotColumns').value;
+    const values = document.getElementById('pivotValues').value;
+    
+    fetchPivotTable(dateFrom, dateTo, rows, columns, values).then(data => {
+        updatePivotTable(data);
+    }).catch(error => {
+        console.error('Error loading pivot table:', error);
+        showError('Failed to load pivot table');
+    });
 }

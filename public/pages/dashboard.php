@@ -58,7 +58,7 @@
         </div>
         
         <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="card dashboard-card card-resolved">
+                            <div class="card dashboard-card card-replied">
                 <div class="card-body text-center">
                     <div class="d-flex justify-content-between">
                         <div>
@@ -78,16 +78,34 @@
                 <div class="card-body text-center">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['pending'] ?? 0; ?></h3>
-                            <p class="mb-0">Awaiting Reply</p>
+                            <h3 class="display-6 fw-bold"><?php echo $statistics['total'] ?? 0; ?></h3>
+                            <p class="mb-0">Total Users</p>
                         </div>
                         <div class="align-self-center">
-                            <i class="fas fa-spinner fa-2x text-info"></i>
+                            <i class="fas fa-users fa-2x text-info"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <?php if ($userRole === 'admin' || ($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
+            <div class="card dashboard-card card-awaiting-approval">
+                <div class="card-body text-center">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['awaiting_approval'] ?? 0; ?></h3>
+                            <p class="mb-0">Awaiting Approval</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clipboard-check fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     
     <!-- Charts Row -->

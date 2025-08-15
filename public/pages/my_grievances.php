@@ -31,7 +31,7 @@
 						<?php if (empty($grievances)): ?>
 						<tr><td colspan="7" class="text-center align-middle py-4 text-muted">You have not submitted any grievances yet.</td></tr>
 						<?php else: foreach ($grievances as $g): ?>
-						<tr class="<?php echo in_array($g['status'], ['resolved', 'reverted']) ? 'table-warning' : ''; ?>">
+						<tr class="<?php echo in_array($g['status'], ['replied', 'reverted']) ? 'table-warning' : ''; ?>">
 							<td class="text-center align-middle"><small class="text-muted"><?php echo htmlspecialchars($g['complaint_id']); ?></small></td>
 							<td class="text-center align-middle">
 								<?php if (!empty($g['category'])): ?>
@@ -49,9 +49,9 @@
 								<span class="badge status-<?php echo str_replace('_','-',$g['status']); ?>">
 									<?php echo $g['status']==='replied'?'Replied':ucfirst(str_replace('_',' ',$g['status'])); ?>
 								</span>
-								<?php if (in_array($g['status'], ['resolved', 'reverted'])): ?>
+								<?php if (in_array($g['status'], ['replied', 'reverted'])): ?>
 									<div class="mt-1">
-										<?php if ($g['status'] === 'resolved'): ?>
+										<?php if ($g['status'] === 'replied'): ?>
 											<span class="badge bg-success bg-opacity-75 animate-pulse">Action Required</span>
 										<?php elseif ($g['status'] === 'reverted'): ?>
 											<span class="badge bg-warning bg-opacity-75 animate-pulse">Response Required</span>
@@ -65,8 +65,8 @@
 									<a class="btn btn-outline-primary btn-sm" href="<?php echo BASE_URL; ?>complaints/view/<?php echo urlencode($g['complaint_id']); ?>">
 										<i class="fas fa-eye"></i> View
 									</a>
-									<?php if (in_array($g['status'], ['resolved', 'reverted'])): ?>
-										<?php if ($g['status'] === 'resolved'): ?>
+									<?php if (in_array($g['status'], ['replied', 'reverted'])): ?>
+										<?php if ($g['status'] === 'replied'): ?>
 											<button class="btn btn-success btn-sm animate-pulse" onclick="openFeedbackModal('<?php echo htmlspecialchars($g['complaint_id']); ?>', '<?php echo htmlspecialchars($g['complaint_type']); ?>')">
 												<i class="fas fa-star"></i> Give Feedback
 											</button>

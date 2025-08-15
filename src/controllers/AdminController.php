@@ -88,6 +88,26 @@ class AdminController extends BaseController {
         $this->loadView('footer');
     }
 
+    public function bulkEmail() {
+        $error = $_GET['error'] ?? '';
+        $success = $_GET['success'] ?? '';
+        
+        // Load the User model and get users
+        $userModel = $this->loadModel('User');
+        $users = $userModel->getAllUsers();
+        
+        $data = [
+            'pageTitle' => 'Bulk Email Management',
+            'error' => $error,
+            'success' => $success,
+            'users' => $users
+        ];
+
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_bulk_email', $data);
+        $this->loadView('footer');
+    }
+
     public function users() {
         $error = '';
         $success = '';

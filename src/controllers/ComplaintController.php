@@ -374,8 +374,8 @@ class ComplaintController extends BaseController {
                     $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
                     $customerLoginId = $customerUser['login_id'] ?? null;
 
-                    // Update status to resolved and assign to customer
-                    $complaintModel->updateStatus($complaintId, 'resolved');
+                    // Update status to replied and assign to customer
+                    $complaintModel->updateStatus($complaintId, 'replied');
                     if ($customerLoginId) {
                         $complaintModel->assignTo($complaintId, $customerLoginId);
                     }
@@ -383,13 +383,13 @@ class ComplaintController extends BaseController {
                     // Log approval
                     $transactionModel->logStatusUpdate($complaintId, 'Commercial approval granted. ' . ($remarks ? ('Remarks: ' . $remarks) : ''), $currentUser['login_id']);
 
-                    // Email customer about resolved status
+                    // Email customer about replied status
                     require_once __DIR__ . '/../utils/EmailService.php';
                     $emailService = new EmailService();
                     $customerEmail = $complaint['customer_email'] ?? '';
                     $customerName = $complaint['customer_name'] ?? 'Valued Customer';
                     if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
-                        $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, 'awaiting_approval', 'resolved', $remarks);
+                        $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, 'awaiting_approval', 'replied', $remarks);
                     }
 
                     $_SESSION['alert_message'] = 'Action taken approved and sent to customer for feedback.';

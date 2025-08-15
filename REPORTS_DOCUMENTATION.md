@@ -7,7 +7,7 @@ The SAMPARK FOIS Reports System provides comprehensive analytics and reporting c
 ## Features
 
 ### 🎯 Dashboard Overview
-- **Summary Cards**: Total complaints, resolved, pending, and resolution rate
+- **Summary Cards**: Total complaints, replied, pending, and reply rate
 - **Status Distribution**: Doughnut chart showing complaint status breakdown
 - **Priority Distribution**: Bar chart showing complaint priority levels
 - **Department Analysis**: Pie chart showing complaints by department
@@ -141,7 +141,7 @@ src/
 - Configurable grouping (daily/weekly/monthly)
 
 ### 6. Bar Chart (Monthly Trends)
-- Compares total vs resolved complaints
+- Compares total vs replied complaints
 - Monthly aggregation
 - Side-by-side comparison
 

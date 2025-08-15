@@ -108,7 +108,7 @@ This document verifies that all complaint flows are working correctly as per the
 **Implementation:**
 - Changed from 1-5 numeric rating to three text options: Excellent, Satisfactory, Unsatisfactory
 - Database column `rating` changed from `int(1)` to `enum('Excellent','Satisfactory','Unsatisfactory')`
-- Customer can select rating when providing feedback on resolved/replied complaints
+- Customer can select rating when providing feedback on replied complaints
 - Rating buttons with color coding: Green for Excellent, Yellow for Satisfactory, Red for Unsatisfactory
 - Rating display shows colored star icon and text
 - Rating and feedback text are both stored in database

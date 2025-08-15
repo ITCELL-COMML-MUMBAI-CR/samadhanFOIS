@@ -286,7 +286,7 @@
 					<h5 class="mb-0"><i class="fas fa-reply"></i> Your Action</h5>
 				</div>
 				<div class="card-body">
-                    <?php if (in_array($complaint['status'], ['replied','resolved'])): ?>
+                    <?php if (in_array($complaint['status'], ['replied'])): ?>
 						<div id="feedback">
 						<form method="POST" class="mb-3">
 							<input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">

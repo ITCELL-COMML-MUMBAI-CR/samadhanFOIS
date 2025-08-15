@@ -108,7 +108,7 @@ samadhanFOIS/
 2. View assigned complaints from dashboard
 3. Update complaint status and add remarks
 4. Forward complaints to other departments
-5. Mark complaints as resolved
+5. Mark complaints as replied
 
 ### For Administrators:
 1. Manage user accounts and roles

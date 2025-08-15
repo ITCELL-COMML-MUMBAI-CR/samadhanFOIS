@@ -37,7 +37,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card dashboard-card card-resolved text-center">
+                            <div class="card dashboard-card card-replied text-center">
                 <div class="card-body">
                     <h3 class="display-6 fw-bold"><?php echo $stats['total_subtypes']; ?></h3>
                     <p class="mb-0">Subtypes</p>

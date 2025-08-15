@@ -154,7 +154,7 @@ class EmailService {
             'replied' => 'Replied',
             'closed' => 'Closed',
             'reverted' => 'More Information Requested',
-            'resolved' => 'Resolved (awaiting your feedback)',
+            'replied' => 'Replied (awaiting your feedback)',
             'awaiting_approval' => 'Awaiting Commercial Approval'
         ];
         
@@ -292,5 +292,69 @@ class EmailService {
      */
     public static function isValidEmail($email) {
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+    
+    /**
+     * Send custom email with HTML content
+     */
+    public function sendCustomEmail($to, $subject, $content, $cc = '') {
+        // Build email with standard template
+        $message = $this->buildCustomEmail($content);
+        
+        // Add CC to headers if provided
+        $headers = $this->headers;
+        if (!empty($cc)) {
+            $headers[] = 'Cc: ' . $cc;
+        }
+        
+        // Temporarily replace headers for this email
+        $originalHeaders = $this->headers;
+        $this->headers = $headers;
+        
+        $result = $this->sendEmail($to, $subject, $message);
+        
+        // Restore original headers
+        $this->headers = $originalHeaders;
+        
+        return $result;
+    }
+    
+    /**
+     * Build custom email HTML content
+     */
+    private function buildCustomEmail($content) {
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #1e40af; color: white; padding: 20px; text-align: center; }
+                .content { background-color: #f8f9fa; padding: 20px; }
+                .footer { background-color: #e5e7eb; padding: 15px; text-align: center; font-size: 12px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h1>🚂 SAMPARK FOIS</h1>
+                    <p>Railway Complaint Management System</p>
+                </div>
+                
+                <div class='content'>
+                    $content
+                </div>
+                
+                <div class='footer'>
+                    <p>This is an automated message from SAMPARK FOIS</p>
+                    <p>Central Railway, Ministry of Railways, Government of India</p>
+                    <p>Please do not reply to this email. For support, contact: sampark-admin@itcellbbcr.in</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        ";
     }
 }

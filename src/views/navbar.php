@@ -110,6 +110,9 @@ $userRole = $_SESSION['user_role'] ?? '';
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/reports">
                                     <i class="fas fa-chart-line"></i> Analytics
                                 </a></li>
+                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/bulk-email">
+                                    <i class="fas fa-envelope"></i> Bulk Email
+                                </a></li>
 
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer/add">

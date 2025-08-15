@@ -127,6 +127,8 @@ switch ($controllerName) {
             $controller->news();
         } elseif ($action === 'quicklinks') {
             $controller->quicklinks();
+        } elseif ($action === 'bulk-email') {
+            $controller->bulkEmail();
         } else {
             $controller->categories();
         }

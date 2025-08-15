@@ -77,7 +77,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
 
     <!-- Loading Indicator -->
     <div id="loadingIndicator" class="text-center py-5" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
+        <div class="spinner-border text-white" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
         <p class="mt-2 text-muted">Generating reports...</p>
@@ -92,7 +92,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
                                     Total Complaints
                                 </div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800" id="totalComplaints">0</div>
@@ -111,9 +111,9 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                    Resolved
+                                    Replied
                                 </div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="resolvedComplaints">0</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="repliedComplaints">0</div>
                             </div>
                             <div class="col-auto">
                                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
@@ -147,9 +147,9 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
                                 <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    Resolution Rate
+                                    Reply Rate
                                 </div>
-                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="resolutionRate">0%</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800" id="replyRate">0%</div>
                             </div>
                             <div class="col-auto">
                                 <i class="fas fa-percentage fa-2x text-gray-300"></i>
@@ -166,7 +166,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Complaints by Status</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Complaints by Status</h6>
                         <div class="dropdown no-arrow">
                             <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
                                 <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
@@ -186,7 +186,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Complaints by Priority</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Complaints by Priority</h6>
                         <div class="dropdown no-arrow">
                             <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
                                 <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
@@ -208,7 +208,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">Complaints Timeline</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Complaints Timeline</h6>
                         <div class="d-flex gap-2">
                             <select id="timelineGroup" class="form-select form-select-sm" style="width: auto;">
                                 <option value="day">Daily</option>
@@ -235,7 +235,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Complaints by Department</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Complaints by Department</h6>
                     </div>
                     <div class="card-body">
                         <canvas id="departmentChart" width="400" height="200"></canvas>
@@ -246,7 +246,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-xl-6 col-lg-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Top Complaint Categories</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Top Complaint Categories</h6>
                     </div>
                     <div class="card-body">
                         <canvas id="categoryChart" width="400" height="200"></canvas>
@@ -262,7 +262,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Executive Summary</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Executive Summary</h6>
                     </div>
                     <div class="card-body" id="misSummary">
                         <!-- MIS summary will be loaded here -->
@@ -275,7 +275,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Department Performance</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Department Performance</h6>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -284,9 +284,9 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
                                     <tr>
                                         <th>Department</th>
                                         <th>Total Complaints</th>
-                                        <th>Resolved</th>
-                                        <th>Resolution Rate</th>
-                                        <th>Avg. Resolution Time (Days)</th>
+                                        <th>Replied</th>
+                                        <th>Reply Rate</th>
+                                        <th>Avg. Reply Time (Days)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -303,7 +303,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Monthly Trends</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Monthly Trends</h6>
                     </div>
                     <div class="card-body">
                         <canvas id="monthlyTrendsChart" width="400" height="200"></canvas>
@@ -319,7 +319,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Performance Metrics</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Performance Metrics</h6>
                     </div>
                     <div class="card-body" id="performanceMetrics">
                         <!-- Performance metrics will be loaded here -->
@@ -332,7 +332,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">User Activity Analysis</h6>
+                        <h6 class="m-0 font-weight-bold text-white">User Activity Analysis</h6>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -364,7 +364,7 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Pivot Table Analysis</h6>
+                        <h6 class="m-0 font-weight-bold text-white">Pivot Table Analysis</h6>
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">

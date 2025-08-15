@@ -310,6 +310,16 @@ class Complaint extends BaseModel {
             $params[] = $filters['assigned_to'];
         }
         
+        if (!empty($filters['date_from'])) {
+            $whereClause .= " AND date >= ?";
+            $params[] = $filters['date_from'];
+        }
+        
+        if (!empty($filters['date_to'])) {
+            $whereClause .= " AND date <= ?";
+            $params[] = $filters['date_to'];
+        }
+        
         // Total complaints
         $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM complaints $whereClause");
         $stmt->execute($params);
