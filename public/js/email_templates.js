@@ -42,7 +42,7 @@ class EmailTemplateManager {
         try {
             this.setLoadingState(true);
             
-            const response = await fetch('/samadhanFOIS/public/api/email_templates', {
+            const response = await fetch(`${BASE_URL}api/email_templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -110,7 +110,7 @@ class EmailTemplateManager {
         try {
             this.setLoadingState(true);
             
-            const response = await fetch('/samadhanFOIS/public/api/email_templates', {
+            const response = await fetch(`${BASE_URL}api/email_templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -191,7 +191,7 @@ class EmailTemplateManager {
         try {
             this.setLoadingState(true);
             
-            const response = await fetch('/samadhanFOIS/public/api/email_templates', {
+            const response = await fetch(`${BASE_URL}api/email_templates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -233,7 +233,7 @@ class EmailTemplateManager {
             this.setLoadingState(true);
             
             const formData = new FormData(event.target);
-            const response = await fetch('/samadhanFOIS/public/api/email_templates', {
+            const response = await fetch(`${BASE_URL}api/email_templates`, {
                 method: 'POST',
                 body: formData
             });

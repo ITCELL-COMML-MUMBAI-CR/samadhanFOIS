@@ -3,6 +3,88 @@
  * Admin News & Announcements Management Page
  * Allows administrators to manage news, announcements and advertisements for the customer home page
  */
+
+require_once '../src/utils/SessionManager.php';
+
+// Require admin access
+SessionManager::requireRole('admin');
+
+// Get current user
+$currentUser = SessionManager::getCurrentUser();
+
+// Load models for data
+require_once '../src/models/BaseModel.php';
+require_once '../src/models/News.php';
+require_once '../src/utils/Helpers.php';
+require_once '../src/utils/Database.php';
+
+$db = Database::getInstance();
+$connection = $db->getConnection();
+
+// Get filters
+$filters = [
+    'search' => sanitizeInput($_GET['search'] ?? ''),
+    'type' => sanitizeInput($_GET['type'] ?? ''),
+    'status' => sanitizeInput($_GET['status'] ?? ''),
+    'featured' => sanitizeInput($_GET['featured'] ?? '')
+];
+
+// Build query
+$whereConditions = [];
+$params = [];
+
+if (!empty($filters['search'])) {
+    $whereConditions[] = "(title LIKE ? OR content LIKE ? OR author_name LIKE ?)";
+    $searchTerm = '%' . $filters['search'] . '%';
+    $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
+}
+
+if (!empty($filters['type'])) {
+    $whereConditions[] = "type = ?";
+    $params[] = $filters['type'];
+}
+
+if (!empty($filters['status'])) {
+    $whereConditions[] = "status = ?";
+    $params[] = $filters['status'];
+}
+
+if ($filters['featured'] !== '') {
+    $whereConditions[] = "featured = ?";
+    $params[] = $filters['featured'];
+}
+
+$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+
+// Get news items
+$sql = "SELECT * FROM news " . $whereClause . " ORDER BY created_at DESC";
+$stmt = $connection->prepare($sql);
+$stmt->execute($params);
+$newsItems = $stmt->fetchAll();
+
+// Get statistics
+$stats = [];
+$stmt = $connection->prepare("SELECT COUNT(*) as count FROM news");
+$stmt->execute();
+$stats['total'] = $stmt->fetch()['count'];
+
+$stmt = $connection->prepare("SELECT COUNT(*) as count FROM news WHERE status = 'active'");
+$stmt->execute();
+$stats['active'] = $stmt->fetch()['count'];
+
+$stmt = $connection->prepare("SELECT COUNT(*) as count FROM news WHERE featured = 1");
+$stmt->execute();
+$stats['featured'] = $stmt->fetch()['count'];
+
+$stmt = $connection->prepare("SELECT type, COUNT(*) as count FROM news GROUP BY type");
+$stmt->execute();
+$stats['by_type'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Set page title for header
+$pageTitle = 'News & Announcements Management';
+
+// Include header
+require_once '../src/views/header.php';
 ?>
 
 <div class="container-fluid">
@@ -507,3 +589,5 @@ function showNewsDetails(news) {
     document.getElementById('newsDetailsContent').innerHTML = content;
 }
 </script>
+
+<?php require_once '../src/views/footer.php'; ?>

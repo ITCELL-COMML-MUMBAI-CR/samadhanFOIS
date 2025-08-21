@@ -125,6 +125,13 @@ class User extends BaseModel {
     }
     
     /**
+     * Update user (alias for updateProfile)
+     */
+    public function updateUser($loginId, $data) {
+        return $this->updateProfile($loginId, $data);
+    }
+    
+    /**
      * Get all users with optional filters
      */
     public function getAllUsers($filters = [], $limit = null) {
@@ -331,6 +338,13 @@ class User extends BaseModel {
     public function deleteUser($loginId) {
         $stmt = $this->connection->prepare("DELETE FROM users WHERE login_id = ?");
         return $stmt->execute([$loginId]);
+    }
+    
+    /**
+     * Delete user by login ID (alias for deleteUser)
+     */
+    public function deleteByLoginId($loginId) {
+        return $this->deleteUser($loginId);
     }
     
     /**

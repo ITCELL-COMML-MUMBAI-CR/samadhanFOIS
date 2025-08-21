@@ -5,11 +5,17 @@
  * that are used across the application.
  */
 
+// Prevent duplicate loading
+if (typeof window.SAMPARKApp !== 'undefined') {
+    // Already loaded, exit gracefully
+    console.warn('SAMPARKApp already loaded, skipping initialization');
+} else {
+
 // Global App Object
 const SAMPARKApp = {
     // Configuration
     config: {
-        apiUrl: window.location.origin + '/api/',
+        apiUrl: (typeof BASE_URL !== 'undefined' ? BASE_URL : window.location.origin + '/') + 'api/',
         maxFileSize: 2 * 1024 * 1024, // 2MB
         allowedFileTypes: ['jpg', 'jpeg', 'png', 'gif'],
         maxFiles: 3
@@ -65,6 +71,24 @@ const SAMPARKApp = {
         // Generate random ID
         generateId: function() {
             return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        },
+        
+        // Safe JSON response handler
+        handleJsonResponse: function(response) {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Handle non-JSON response (likely HTML error page or redirect)
+                throw new Error('Server returned non-JSON response. Please refresh the page and try again.');
+            }
+        },
+        
+        // Enhanced fetch with JSON handling
+        fetchJson: function(url, options = {}) {
+            return fetch(url, options)
+                .then(response => SAMPARKApp.utils.handleJsonResponse(response));
         }
     },
     
@@ -593,3 +617,4 @@ SAMPARKApp.init();
 
 // Make it globally available
 window.SAMPARKApp = SAMPARKApp;
+}

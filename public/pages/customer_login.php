@@ -28,7 +28,7 @@ require_once __DIR__ . '/../../src/utils/SessionManager.php';
 $customerLoginController = new CustomerLoginController();
 $customerLoginController->handleLoginRequest();
 
-$customerId = $_SESSION['form_data']['customer_id'] ?? '';
+$loginIdentifier = $_SESSION['form_data']['login_identifier'] ?? '';
 unset($_SESSION['form_data']);
 
 // Check for timeout message
@@ -152,11 +152,12 @@ if (isset($_GET['timeout'])) {
                 
                 <form method="POST" action="<?php echo BASE_URL; ?>customer-login" id="customerLoginForm" class="login-form">
                     <div class="form-group">
-                        <label for="customer_id" class="form-label">
-                            <i class="fas fa-user"></i> Customer ID
+                        <label for="login_identifier" class="form-label">
+                            <i class="fas fa-user"></i> Email or Mobile Number
                         </label>
-                        <input type="text" class="form-control" id="customer_id" name="customer_id" 
-                               placeholder="Enter your Customer ID" value="<?php echo htmlspecialchars($customerId); ?>" required>
+                        <input type="text" class="form-control" id="login_identifier" name="login_identifier" 
+                               placeholder="Enter your email or mobile number" value="<?php echo htmlspecialchars($loginIdentifier ?? ''); ?>" required>
+                        <div class="form-text">Enter your registered email address or mobile number</div>
                     </div>
                     
                     <div class="form-group">

@@ -1,3 +1,74 @@
+<?php
+/**
+ * Admin User Management Page
+ * Provides comprehensive user management for administrators
+ */
+
+require_once '../src/utils/SessionManager.php';
+
+// Require admin access
+SessionManager::requireRole('admin');
+
+// Get current user
+$currentUser = SessionManager::getCurrentUser();
+
+// Load models for data
+require_once '../src/models/BaseModel.php';
+require_once '../src/models/User.php';
+require_once '../src/utils/Helpers.php';
+require_once '../src/utils/Database.php';
+
+$db = Database::getInstance();
+$connection = $db->getConnection();
+
+// Get filters
+$filters = [
+    'search' => sanitizeInput($_GET['search'] ?? ''),
+    'role' => sanitizeInput($_GET['role'] ?? ''),
+    'department' => sanitizeInput($_GET['department'] ?? ''),
+    'status' => sanitizeInput($_GET['status'] ?? '')
+];
+
+// Build query
+$whereConditions = [];
+$params = [];
+
+if (!empty($filters['search'])) {
+    $whereConditions[] = "(login_id LIKE ? OR name LIKE ? OR email LIKE ? OR mobile LIKE ?)";
+    $searchTerm = '%' . $filters['search'] . '%';
+    $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+}
+
+if (!empty($filters['role'])) {
+    $whereConditions[] = "role = ?";
+    $params[] = $filters['role'];
+}
+
+if (!empty($filters['department'])) {
+    $whereConditions[] = "department = ?";
+    $params[] = $filters['department'];
+}
+
+if (!empty($filters['status'])) {
+    $whereConditions[] = "status = ?";
+    $params[] = $filters['status'];
+}
+
+$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+
+// Get users
+$sql = "SELECT * FROM users " . $whereClause . " ORDER BY login_id ASC";
+$stmt = $connection->prepare($sql);
+$stmt->execute($params);
+$users = $stmt->fetchAll();
+
+// Set page title for header
+$pageTitle = 'User Management';
+
+// Include header
+require_once '../src/views/header.php';
+?>
+
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12 d-flex justify-content-between align-items-center">
@@ -46,7 +117,7 @@
                 <div class="col-md-2">
                     <select name="status" class="form-select">
                         <option value="">All Status</option>
-                        <?php foreach (['active','inactive'] as $s): ?>
+                        <?php foreach (['active','inactive','suspended'] as $s): ?>
                             <option value="<?php echo $s; ?>" <?php echo (($filters['status'] ?? '')===$s)?'selected':''; ?>><?php echo ucfirst($s); ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -71,6 +142,8 @@
                             <th>Mobile</th>
                             <th>Role</th>
                             <th>Department</th>
+                            <th>Division</th>
+                            <th>Zone</th>
                             <th>Status</th>
                             <th>Customer</th>
                             <th width="180">Actions</th>
@@ -87,8 +160,10 @@
                                 <td><?php echo htmlspecialchars($u['mobile']); ?></td>
                                 <td><span class="badge bg-secondary"><?php echo strtoupper($u['role']); ?></span></td>
                                 <td><?php echo htmlspecialchars($u['department']); ?></td>
+                                <td><?php echo htmlspecialchars($u['Division'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($u['Zone'] ?? '-'); ?></td>
                                 <td>
-                                    <span class="badge <?php echo $u['status']==='active'?'bg-success':'bg-danger'; ?>"><?php echo ucfirst($u['status']); ?></span>
+                                    <span class="badge <?php echo $u['status']==='active'?'bg-success':($u['status']==='inactive'?'bg-warning':'bg-danger'); ?>"><?php echo ucfirst($u['status']); ?></span>
                                 </td>
                                 <td><small><?php echo htmlspecialchars($u['customer_id'] ?? '-'); ?></small></td>
                                 <td class="text-end">
@@ -156,11 +231,24 @@
                             <div class="col-md-4">
                                 <div class="form-floating">
                                     <select class="form-select" name="department" id="editDepartment">
+                                        <option value="">Select Department</option>
                                         <?php foreach (['SYSTEM','COMMERCIAL','OPERATING','MECHANICAL','ELECTRICAL','ENGINEERING','SECURITY','MEDICAL','ACCOUNTS','PERSONNEL'] as $d): ?>
                                             <option value="<?php echo $d; ?>"><?php echo $d; ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                     <label>Department</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" name="Division" id="editDivision" placeholder="Division">
+                                    <label>Division</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" name="Zone" id="editZone" placeholder="Zone">
+                                    <label>Zone</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -174,6 +262,7 @@
                                     <select class="form-select" name="status" id="editStatus">
                                         <option value="active">Active</option>
                                         <option value="inactive">Inactive</option>
+                                        <option value="suspended">Suspended</option>
                                     </select>
                                     <label>Status</label>
                                 </div>
@@ -234,8 +323,10 @@ function openEditUser(loginId) {
     document.getElementById('editMobile').value = row.children[3].innerText.trim();
     document.getElementById('editRole').value = row.children[4].innerText.trim().toLowerCase();
     document.getElementById('editDepartment').value = row.children[5].innerText.trim();
-    document.getElementById('editStatus').value = row.children[6].innerText.trim().toLowerCase();
-    document.getElementById('editCustomerId').value = row.children[7].innerText.trim() === '-' ? '' : row.children[7].innerText.trim();
+    document.getElementById('editDivision').value = row.children[6].innerText.trim() === '-' ? '' : row.children[6].innerText.trim();
+    document.getElementById('editZone').value = row.children[7].innerText.trim() === '-' ? '' : row.children[7].innerText.trim();
+    document.getElementById('editStatus').value = row.children[8].innerText.trim().toLowerCase();
+    document.getElementById('editCustomerId').value = row.children[9].innerText.trim() === '-' ? '' : row.children[9].innerText.trim();
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
 function openResetPassword(loginId) {
@@ -277,4 +368,6 @@ document.addEventListener('click', function(e) {
     btn.textContent = isPassword ? 'Hide' : 'Show';
 });
 </script>
+
+<?php require_once '../src/views/footer.php'; ?>
 

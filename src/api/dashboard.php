@@ -8,7 +8,11 @@ require_once dirname(__DIR__) . '/utils/SessionManager.php';
 header('Content-Type: application/json');
 
 // Check if user is logged in
-SessionManager::requireLogin();
+if (!isset($_SESSION['user_logged_in']) || !$_SESSION['user_logged_in']) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Authentication required']);
+    exit;
+}
 $currentUser = SessionManager::getCurrentUser();
 
 // Only allow controller, viewer, and admin roles

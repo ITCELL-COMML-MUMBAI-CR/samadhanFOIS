@@ -3,11 +3,11 @@
 // The logic is handled by CustomerController.php
 
 $formData = [
-    'login_id' => $_POST['login_id'] ?? '',
-    'name' => $_POST['name'] ?? '',
-    'email' => $_POST['email'] ?? '',
-    'mobile' => $_POST['mobile'] ?? '',
-    'company_name' => $_POST['company_name'] ?? ''
+    'Name' => $_POST['Name'] ?? '',
+    'Email' => $_POST['Email'] ?? '',
+    'MobileNumber' => $_POST['MobileNumber'] ?? '',
+    'CompanyName' => $_POST['CompanyName'] ?? '',
+    'Designation' => $_POST['Designation'] ?? ''
 ];
 ?>
 <!-- Include customer-specific styles -->
@@ -23,7 +23,7 @@ $formData = [
                         <h1 class="h3 mb-1 text-primary">
                             <i class="fas fa-building"></i> Create New Customer
                         </h1>
-                        <p class="text-muted mb-0">Add new customers and their user accounts to the grievance system</p>
+                        <p class="text-muted mb-0">Add new customers to the grievance system</p>
                     </div>
                     <div>
                         <?php if (in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
@@ -43,7 +43,7 @@ $formData = [
             <div class="card shadow-sm border-0 rounded-lg customer-form-card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-building"></i> New Customer & Account Information
+                        <i class="fas fa-building"></i> New Customer Information
                     </h5>
                 </div>
                 <div class="card-body p-4">
@@ -67,38 +67,38 @@ $formData = [
                     <?php endif; ?>
                     
                     <form method="POST" action="<?php echo BASE_URL; ?>customer/add" id="customerForm">
+                        <?php echo CSRF::getInput(); ?>
                         <div class="row">
                             <!-- Customer Name -->
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <input type="text" class="form-control" id="name" name="name" 
-                                           placeholder="Full Name" value="<?php echo htmlspecialchars($formData['name']); ?>" required>
-                                    <label for="name">
+                                    <input type="text" class="form-control" id="Name" name="Name" 
+                                           placeholder="Full Name" value="<?php echo htmlspecialchars($formData['Name']); ?>" required>
+                                    <label for="Name">
                                         <i class="fas fa-user"></i> Customer Full Name *
                                     </label>
                                     <div class="form-text">Enter the customer's full name</div>
                                 </div>
                             </div>
                             
-                            <!-- Login ID Field -->
+                            <!-- Designation -->
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <input type="text" class="form-control" id="login_id" name="login_id" 
-                                           placeholder="Login ID" value="<?php echo htmlspecialchars($formData['login_id']); ?>" 
-                                           required autocomplete="off">
-                                    <label for="login_id">
-                                        <i class="fas fa-key"></i> Login ID *
+                                    <input type="text" class="form-control" id="Designation" name="Designation" 
+                                           placeholder="Designation" value="<?php echo htmlspecialchars($formData['Designation']); ?>" required>
+                                    <label for="Designation">
+                                        <i class="fas fa-id-badge"></i> Designation *
                                     </label>
-                                    <div class="form-text">Unique identifier for customer login (min 3 characters)</div>
+                                    
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Company Name -->
                         <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="company_name" name="company_name" 
-                                   placeholder="Company Name" value="<?php echo htmlspecialchars($formData['company_name']); ?>" required>
-                            <label for="company_name">
+                            <input type="text" class="form-control" id="CompanyName" name="CompanyName" 
+                                   placeholder="Company Name" value="<?php echo htmlspecialchars($formData['CompanyName']); ?>" required>
+                            <label for="CompanyName">
                                 <i class="fas fa-building"></i> Company Name *
                             </label>
                             <div class="form-text">Enter the full company/organization name</div>
@@ -108,25 +108,25 @@ $formData = [
                             <!-- Email Field -->
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <input type="email" class="form-control" id="email" name="email" 
-                                           placeholder="Email" value="<?php echo htmlspecialchars($formData['email']); ?>">
-                                    <label for="email">
-                                        <i class="fas fa-envelope"></i> Email Address
+                                    <input type="email" class="form-control" id="Email" name="Email" 
+                                           placeholder="Email" value="<?php echo htmlspecialchars($formData['Email']); ?>" required>
+                                    <label for="Email">
+                                        <i class="fas fa-envelope"></i> Email Address *
                                     </label>
-                                    <div class="form-text">Optional - for password recovery</div>
+                                    <div class="form-text">Required for login and notifications</div>
                                 </div>
                             </div>
                             
                             <!-- Mobile Field -->
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <input type="tel" class="form-control" id="mobile" name="mobile" 
-                                           placeholder="Mobile" value="<?php echo htmlspecialchars($formData['mobile']); ?>" 
-                                           pattern="[0-9]{10}" maxlength="10">
-                                    <label for="mobile">
-                                        <i class="fas fa-phone"></i> Mobile Number
+                                    <input type="tel" class="form-control" id="MobileNumber" name="MobileNumber" 
+                                           placeholder="Mobile" value="<?php echo htmlspecialchars($formData['MobileNumber']); ?>" 
+                                           pattern="[0-9]{10}" maxlength="10" required>
+                                    <label for="MobileNumber">
+                                        <i class="fas fa-phone"></i> Mobile Number *
                                     </label>
-                                    <div class="form-text">Optional - 10 digit mobile number</div>
+                                    <div class="form-text">10 digit mobile number (required for login)</div>
                                 </div>
                             </div>
                         </div>
@@ -135,9 +135,9 @@ $formData = [
                             <!-- Password Field -->
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <input type="password" class="form-control" id="password" name="password" 
+                                    <input type="password" class="form-control" id="Password" name="Password" 
                                            placeholder="Password" required>
-                                    <label for="password">
+                                    <label for="Password">
                                         <i class="fas fa-lock"></i> Password *
                                     </label>
                                     <div class="form-text">Minimum 6 characters</div>
@@ -162,7 +162,7 @@ $formData = [
                         <div class="row mt-4">
                             <div class="col-md-6">
                                 <button type="submit" class="btn btn-railway-primary btn-lg w-100" id="submitBtn">
-                                    <i class="fas fa-building-user"></i> Create Customer & Account
+                                    <i class="fas fa-building-user"></i> Create Customer Account
                                 </button>
                             </div>
                             <div class="col-md-6">

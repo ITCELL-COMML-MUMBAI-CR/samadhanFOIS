@@ -71,8 +71,15 @@ $currentPage = getCurrentPage();
                                 <span>Administration</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-animated">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-dashboard') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/dashboard">
+                                    <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item <?php echo ($currentPage === 'admin-users') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/users">
                                     <i class="fas fa-users"></i> User Management
+                                </a></li>
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-customers') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/customers">
+                                    <i class="fas fa-users-cog"></i> Customer Management
                                 </a></li>
                                 <li><a class="dropdown-item <?php echo ($currentPage === 'admin-categories') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/categories">
                                     <i class="fas fa-tags"></i> Manage Categories
@@ -158,15 +165,17 @@ $currentPage = getCurrentPage();
                             </a></li>
                         </ul>
                     </li>
-                <?php elseif (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']): ?>
-                    <!-- Customer logged in -->
+                <?php elseif ((isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) || 
+                           (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+                            isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))): ?>
+                    <!-- Customer logged in (either method) -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="user-avatar">
                                 <i class="fas fa-user-circle"></i>
                             </div>
                             <div class="user-info">
-                                <span class="user-name"><?php echo htmlspecialchars($_SESSION['customer_name']); ?></span>
+                                <span class="user-name"><?php echo htmlspecialchars(isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : $_SESSION['user_name']); ?></span>
                                 <span class="user-role">CUSTOMER</span>
                             </div>
                         </a>

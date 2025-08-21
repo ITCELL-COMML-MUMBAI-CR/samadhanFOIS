@@ -60,9 +60,15 @@ function handleCreateTemplate() {
     // Load required models and services
     require_once __DIR__ . '/../models/EmailTemplate.php';
     require_once __DIR__ . '/../utils/Logger.php';
+    require_once __DIR__ . '/../utils/SessionManager.php';
     
     try {
         $templateModel = new EmailTemplate();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
         
         // If setting as default, unset other defaults in the same category
         if ($isDefault) {
@@ -77,15 +83,15 @@ function handleCreateTemplate() {
             'content' => $content,
             'description' => $description,
             'is_default' => $isDefault,
-            'created_by' => $_SESSION['user_login_id']
+            'created_by' => $currentUser['login_id']
         ]);
         
         if ($templateId) {
             // Log the action
             $logger = new Logger();
             $logger->log('email_template_created', [
-                'admin_id' => $_SESSION['user_login_id'],
-                'admin_name' => $_SESSION['user_name'] ?? $_SESSION['user_login_id'],
+                'admin_id' => $currentUser['login_id'],
+                'admin_name' => $currentUser['name'] ?? $currentUser['login_id'],
                 'template_id' => $templateId,
                 'template_name' => $name,
                 'category' => $category
@@ -122,9 +128,15 @@ function handleUpdateTemplate() {
     // Load required models and services
     require_once __DIR__ . '/../models/EmailTemplate.php';
     require_once __DIR__ . '/../utils/Logger.php';
+    require_once __DIR__ . '/../utils/SessionManager.php';
     
     try {
         $templateModel = new EmailTemplate();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
         
         // Check if template exists
         $existingTemplate = $templateModel->findById($templateId);
@@ -145,15 +157,15 @@ function handleUpdateTemplate() {
             'content' => $content,
             'description' => $description,
             'is_default' => $isDefault,
-            'updated_by' => $_SESSION['user_login_id']
+            'updated_by' => $currentUser['login_id']
         ]);
         
         if ($result) {
             // Log the action
             $logger = new Logger();
             $logger->log('email_template_updated', [
-                'admin_id' => $_SESSION['user_login_id'],
-                'admin_name' => $_SESSION['user_name'] ?? $_SESSION['user_login_id'],
+                'admin_id' => $currentUser['login_id'],
+                'admin_name' => $currentUser['name'] ?? $currentUser['login_id'],
                 'template_id' => $templateId,
                 'template_name' => $name,
                 'category' => $category
@@ -183,9 +195,15 @@ function handleDeleteTemplate() {
     // Load required models and services
     require_once __DIR__ . '/../models/EmailTemplate.php';
     require_once __DIR__ . '/../utils/Logger.php';
+    require_once __DIR__ . '/../utils/SessionManager.php';
     
     try {
         $templateModel = new EmailTemplate();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
         
         // Check if template exists
         $template = $templateModel->findById($templateId);
@@ -205,8 +223,8 @@ function handleDeleteTemplate() {
             // Log the action
             $logger = new Logger();
             $logger->log('email_template_deleted', [
-                'admin_id' => $_SESSION['user_login_id'],
-                'admin_name' => $_SESSION['user_name'] ?? $_SESSION['user_login_id'],
+                'admin_id' => $currentUser['login_id'],
+                'admin_name' => $currentUser['name'] ?? $currentUser['login_id'],
                 'template_id' => $templateId,
                 'template_name' => $template['name']
             ]);
@@ -234,9 +252,16 @@ function handleGetTemplate() {
     
     // Load required models
     require_once __DIR__ . '/../models/EmailTemplate.php';
+    require_once __DIR__ . '/../utils/SessionManager.php';
     
     try {
         $templateModel = new EmailTemplate();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
         $template = $templateModel->findById($templateId);
         
         if (!$template) {
@@ -257,9 +282,16 @@ function handleGetTemplate() {
 function handleListTemplates() {
     // Load required models
     require_once __DIR__ . '/../models/EmailTemplate.php';
+    require_once __DIR__ . '/../utils/SessionManager.php';
     
     try {
         $templateModel = new EmailTemplate();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
         $templates = $templateModel->getAll();
         
         sendSuccess($templates, 'Templates retrieved successfully');

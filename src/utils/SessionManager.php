@@ -100,6 +100,9 @@ class SessionManager {
         $_SESSION['user_company'] = $customer['CompanyName'];
         $_SESSION['user_designation'] = $customer['Designation'];
         $_SESSION['user_role'] = 'customer';
+        // Set these for compatibility with getCurrentUser method
+        $_SESSION['user_login_id'] = $customer['CustomerID']; // Use CustomerID as login_id for customers
+        $_SESSION['user_department'] = null; // Customers don't have departments
         $_SESSION['login_time'] = time();
         $_SESSION['last_activity'] = time();
         $_SESSION['created_at'] = time();
@@ -117,7 +120,14 @@ class SessionManager {
     public static function logout() {
         self::start();
         
-        $userId = $_SESSION['user_login_id'] ?? $_SESSION['user_customer_id'] ?? 'unknown';
+        // Get user ID safely for logging
+        $userId = null;
+        if (self::isCustomer()) {
+            $userId = $_SESSION['user_customer_id'] ?? 'unknown_customer';
+        } else {
+            $userId = $_SESSION['user_login_id'] ?? 'unknown_user';
+        }
+        
         $isCustomer = self::isCustomer();
         
         // Log the logout action
@@ -158,14 +168,29 @@ class SessionManager {
             return null;
         }
         
-        return [
-            'login_id' => $_SESSION['user_login_id'],
-            'name' => $_SESSION['user_name'],
-            'role' => $_SESSION['user_role'],
-            'department' => $_SESSION['user_department'],
-            'customer_id' => $_SESSION['user_customer_id'],
-            'email' => $_SESSION['user_email']
-        ];
+        // Check if this is a customer
+        if (self::isCustomer()) {
+            return [
+                'login_id' => $_SESSION['user_customer_id'] ?? null,
+                'name' => $_SESSION['user_name'] ?? null,
+                'role' => $_SESSION['user_role'] ?? 'customer',
+                'department' => $_SESSION['user_department'] ?? null,
+                'customer_id' => $_SESSION['user_customer_id'] ?? null,
+                'email' => $_SESSION['user_email'] ?? null,
+                'company' => $_SESSION['user_company'] ?? null,
+                'designation' => $_SESSION['user_designation'] ?? null
+            ];
+        } else {
+            // Regular user (admin, controller, etc.)
+            return [
+                'login_id' => $_SESSION['user_login_id'] ?? null,
+                'name' => $_SESSION['user_name'] ?? null,
+                'role' => $_SESSION['user_role'] ?? null,
+                'department' => $_SESSION['user_department'] ?? null,
+                'customer_id' => $_SESSION['user_customer_id'] ?? null,
+                'email' => $_SESSION['user_email'] ?? null
+            ];
+        }
     }
     
     /**

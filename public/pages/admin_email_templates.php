@@ -1,7 +1,35 @@
 <?php
-// Get templates from controller data
-$templates = $data['templates'] ?? [];
-$editingTemplate = $data['editingTemplate'] ?? null;
+/**
+ * Admin Email Templates Management Page
+ * Provides email template management for administrators
+ */
+
+require_once '../src/utils/SessionManager.php';
+
+// Require admin access
+SessionManager::requireRole('admin');
+
+// Get current user
+$currentUser = SessionManager::getCurrentUser();
+
+// Load models for data
+require_once '../src/models/BaseModel.php';
+require_once '../src/models/EmailTemplate.php';
+require_once '../src/utils/Helpers.php';
+require_once '../src/utils/Database.php';
+
+$db = Database::getInstance();
+$connection = $db->getConnection();
+
+// Get templates
+$emailTemplateModel = new EmailTemplate();
+$templates = $emailTemplateModel->getAllTemplates();
+
+// Set page title for header
+$pageTitle = 'Email Template Management';
+
+// Include header
+require_once '../src/views/header.php';
 ?>
 
 <div class="container-fluid">
@@ -225,3 +253,5 @@ function getCategoryColor($category) {
     return $colors[$category] ?? 'secondary';
 }
 ?>
+
+<?php require_once '../src/views/footer.php'; ?>

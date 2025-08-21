@@ -153,6 +153,8 @@ class AdminController extends BaseController {
                             'mobile' => sanitizeInput($_POST['mobile'] ?? ''),
                             'role' => sanitizeInput($_POST['role'] ?? ''),
                             'department' => sanitizeInput($_POST['department'] ?? ''),
+                            'Division' => sanitizeInput($_POST['Division'] ?? ''),
+                            'Zone' => sanitizeInput($_POST['Zone'] ?? ''),
                             'customer_id' => sanitizeInput($_POST['customer_id'] ?? ''),
                             'status' => sanitizeInput($_POST['status'] ?? 'active'),
                         ];
@@ -215,6 +217,20 @@ class AdminController extends BaseController {
         $data['pageTitle'] = 'Analytics & Reports';
         $this->loadView('header', $data);
         $this->loadView('pages/admin_reports', $data);
+        $this->loadView('footer');
+    }
+
+    public function dashboard() {
+        $data['pageTitle'] = 'Admin Dashboard';
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_dashboard', $data);
+        $this->loadView('footer');
+    }
+
+    public function customers() {
+        $data['pageTitle'] = 'Customer Management';
+        $this->loadView('header', $data);
+        $this->loadView('pages/admin_customers', $data);
         $this->loadView('footer');
     }
 

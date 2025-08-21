@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../utils/CSRF.php';
 
 class BaseController {
     protected function loadView($view, $data = []) {
@@ -38,5 +39,11 @@ class BaseController {
     protected function redirect($url) {
         header('Location: ' . BASE_URL . $url);
         exit;
+    }
+
+    protected function validateCsrfToken() {
+        if (!isset($_POST['csrf_token']) || !CSRF::validateToken($_POST['csrf_token'])) {
+            die('CSRF token validation failed');
+        }
     }
 }

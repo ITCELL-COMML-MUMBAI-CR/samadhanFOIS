@@ -177,9 +177,12 @@ function handleBulkEmail() {
         $templateName = $templateData['name'];
     }
     
+    require_once __DIR__ . '/../utils/SessionManager.php';
+    $currentUser = SessionManager::getCurrentUser();
+    
     $logger->log('bulk_email', [
-        'admin_id' => $_SESSION['user_login_id'],
-        'admin_name' => $_SESSION['user_name'] ?? $_SESSION['user_login_id'],
+        'admin_id' => $currentUser['login_id'] ?? 'unknown',
+        'admin_name' => $currentUser['name'] ?? $currentUser['login_id'] ?? 'unknown',
         'recipient_count' => count($recipients),
         'success_count' => $successCount,
         'error_count' => $errorCount,

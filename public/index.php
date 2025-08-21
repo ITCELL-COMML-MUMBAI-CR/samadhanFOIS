@@ -171,8 +171,12 @@ switch ($controllerName) {
             $controller->bulkEmail();
         } elseif ($action === 'email-templates') {
             $controller->emailTemplates();
+        } elseif ($action === 'dashboard') {
+            $controller->dashboard();
+        } elseif ($action === 'customers') {
+            $controller->customers();
         } else {
-            $controller->categories();
+            $controller->dashboard();
         }
         break;
         

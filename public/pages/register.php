@@ -18,6 +18,8 @@ $formData = [
     'mobile' => '',
     'role' => 'customer',
     'department' => '',
+    'Division' => '',
+    'Zone' => '',
     'customer_id' => ''
 ];
 
@@ -30,6 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $formData['mobile'] = sanitizeInput($_POST['mobile'] ?? '');
         $formData['role'] = sanitizeInput($_POST['role'] ?? '');
         $formData['department'] = sanitizeInput($_POST['department'] ?? '');
+        $formData['Division'] = sanitizeInput($_POST['Division'] ?? '');
+        $formData['Zone'] = sanitizeInput($_POST['Zone'] ?? '');
         $formData['customer_id'] = sanitizeInput($_POST['customer_id'] ?? '');
         $password = $_POST['password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
@@ -97,10 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'login_id' => '',
                         'name' => '',
                         'email' => '',
-                        'mobile' => '',
-                        'role' => 'customer',
-                        'department' => '',
-                        'customer_id' => ''
+                                            'mobile' => '',
+                    'role' => 'customer',
+                    'department' => '',
+                    'Division' => '',
+                    'Zone' => '',
+                    'customer_id' => ''
                     ];
                 } else {
                     $error = 'Failed to register user. Please try again.';
@@ -231,6 +237,27 @@ try {
                                     </select>
                                     <label for="department">
                                         <i class="fas fa-building"></i> Department
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="Division" name="Division" 
+                                           placeholder="Division" value="<?php echo htmlspecialchars($formData['Division']); ?>">
+                                    <label for="Division">
+                                        <i class="fas fa-map-marker-alt"></i> Division
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="Zone" name="Zone" 
+                                           placeholder="Zone" value="<?php echo htmlspecialchars($formData['Zone']); ?>">
+                                    <label for="Zone">
+                                        <i class="fas fa-globe"></i> Zone
                                     </label>
                                 </div>
                             </div>

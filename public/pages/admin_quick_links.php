@@ -3,6 +3,78 @@
  * Admin Quick Links Management Page
  * Allows administrators to manage customer home page quick links with icon upload functionality
  */
+
+require_once '../src/utils/SessionManager.php';
+
+// Require admin access
+SessionManager::requireRole('admin');
+
+// Get current user
+$currentUser = SessionManager::getCurrentUser();
+
+// Load models for data
+require_once '../src/models/BaseModel.php';
+require_once '../src/models/QuickLink.php';
+require_once '../src/utils/Helpers.php';
+require_once '../src/utils/Database.php';
+
+$db = Database::getInstance();
+$connection = $db->getConnection();
+
+// Get filters
+$filters = [
+    'search' => sanitizeInput($_GET['search'] ?? ''),
+    'category' => sanitizeInput($_GET['category'] ?? ''),
+    'status' => sanitizeInput($_GET['status'] ?? '')
+];
+
+// Build query
+$whereConditions = [];
+$params = [];
+
+if (!empty($filters['search'])) {
+    $whereConditions[] = "(title LIKE ? OR description LIKE ? OR url LIKE ?)";
+    $searchTerm = '%' . $filters['search'] . '%';
+    $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
+}
+
+if (!empty($filters['category'])) {
+    $whereConditions[] = "category = ?";
+    $params[] = $filters['category'];
+}
+
+if (!empty($filters['status'])) {
+    $whereConditions[] = "status = ?";
+    $params[] = $filters['status'];
+}
+
+$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+
+// Get quick links
+$sql = "SELECT * FROM quick_links " . $whereClause . " ORDER BY sort_order ASC, title ASC";
+$stmt = $connection->prepare($sql);
+$stmt->execute($params);
+$quickLinks = $stmt->fetchAll();
+
+// Get statistics
+$stats = [];
+$stmt = $connection->prepare("SELECT COUNT(*) as count FROM quick_links");
+$stmt->execute();
+$stats['total'] = $stmt->fetch()['count'];
+
+$stmt = $connection->prepare("SELECT COUNT(*) as count FROM quick_links WHERE status = 'active'");
+$stmt->execute();
+$stats['active'] = $stmt->fetch()['count'];
+
+$stmt = $connection->prepare("SELECT category, COUNT(*) as count FROM quick_links GROUP BY category");
+$stmt->execute();
+$stats['by_category'] = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Set page title for header
+$pageTitle = 'Quick Links Management';
+
+// Include header
+require_once '../src/views/header.php';
 ?>
 
 <div class="container-fluid">
@@ -692,3 +764,5 @@ function showQuickLinkDetails(quickLink) {
     document.getElementById('quickLinkDetailsContent').innerHTML = content;
 }
 </script>
+
+<?php require_once '../src/views/footer.php'; ?>

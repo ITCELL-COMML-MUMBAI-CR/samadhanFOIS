@@ -224,35 +224,35 @@ function loadPivotTableData(dateFrom, dateTo) {
 
 // API Functions
 async function fetchDashboardStats(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=dashboard_stats&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=dashboard_stats&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchComplaintsByStatus(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=complaints_by_status&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=complaints_by_status&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchComplaintsByPriority(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=complaints_by_priority&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=complaints_by_priority&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchComplaintsByDepartment(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=complaints_by_department&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=complaints_by_department&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchComplaintsByCategory(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=complaints_by_category&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=complaints_by_category&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
@@ -260,35 +260,35 @@ async function fetchComplaintsByCategory(dateFrom, dateTo) {
 
 async function fetchComplaintsTimeline(dateFrom, dateTo) {
     const groupBy = document.getElementById('timelineGroup').value;
-    const response = await fetch(`../src/api/reports.php?action=complaints_timeline&date_from=${dateFrom}&date_to=${dateTo}&group_by=${groupBy}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=complaints_timeline&date_from=${dateFrom}&date_to=${dateTo}&group_by=${groupBy}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchMISReport(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=mis_report&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=mis_report&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchPerformanceMetrics(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=performance_metrics&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=performance_metrics&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchUserActivity(dateFrom, dateTo) {
-    const response = await fetch(`../src/api/reports.php?action=user_activity&date_from=${dateFrom}&date_to=${dateTo}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=user_activity&date_from=${dateFrom}&date_to=${dateTo}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;
 }
 
 async function fetchPivotTable(dateFrom, dateTo, rows, columns, values) {
-    const response = await fetch(`../src/api/reports.php?action=pivot_table&date_from=${dateFrom}&date_to=${dateTo}&rows=${rows}&columns=${columns}&values=${values}`);
+            const response = await fetch(`${BASE_URL}api/reports?action=pivot_table&date_from=${dateFrom}&date_to=${dateTo}&rows=${rows}&columns=${columns}&values=${values}`);
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
     return data.data;

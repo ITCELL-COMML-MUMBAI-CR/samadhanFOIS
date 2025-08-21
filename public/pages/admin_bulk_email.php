@@ -1,10 +1,40 @@
 <?php
-// Get users from controller data
-$users = $data['users'] ?? [];
+/**
+ * Admin Bulk Email Management Page
+ * Provides bulk email functionality for administrators
+ */
 
-// Get email templates from database
-$emailTemplates = $data['emailTemplates'] ?? [];
-?>
+require_once '../src/utils/SessionManager.php';
+
+// Require admin access
+SessionManager::requireRole('admin');
+
+// Get current user
+$currentUser = SessionManager::getCurrentUser();
+
+// Load models for data
+require_once '../src/models/BaseModel.php';
+require_once '../src/models/User.php';
+require_once '../src/models/EmailTemplate.php';
+require_once '../src/utils/Helpers.php';
+require_once '../src/utils/Database.php';
+
+$db = Database::getInstance();
+$connection = $db->getConnection();
+
+// Get users
+$userModel = new User();
+$users = $userModel->getAllUsers();
+
+// Get email templates
+$emailTemplateModel = new EmailTemplate();
+$emailTemplates = $emailTemplateModel->getAllTemplates();
+
+// Set page title for header
+$pageTitle = 'Bulk Email Management';
+
+// Include header
+require_once '../src/views/header.php';
 ?>
 
 <div class="container-fluid">
@@ -280,3 +310,5 @@ $emailTemplates = $data['emailTemplates'] ?? [];
 <!-- Include CSS and JS files -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/bulk_email.css">
 <script src="<?php echo BASE_URL; ?>js/bulk_email.js"></script>
+
+<?php require_once '../src/views/footer.php'; ?>

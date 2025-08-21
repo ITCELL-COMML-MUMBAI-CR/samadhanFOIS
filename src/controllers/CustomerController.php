@@ -23,6 +23,7 @@ class CustomerController extends BaseController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->validateCsrfToken();
             list($error, $success) = $this->handleAddCustomerRequest();
         }
 
@@ -39,73 +40,56 @@ class CustomerController extends BaseController {
 
     private function handleAddCustomerRequest() {
         $formData = [
-            'login_id' => sanitizeInput($_POST['login_id'] ?? ''),
-            'name' => sanitizeInput($_POST['name'] ?? ''),
-            'email' => sanitizeInput($_POST['email'] ?? ''),
-            'mobile' => sanitizeInput($_POST['mobile'] ?? ''),
-            'company_name' => sanitizeInput($_POST['company_name'] ?? '')
+            'Name' => sanitizeInput($_POST['Name'] ?? ''),
+            'Email' => sanitizeInput($_POST['Email'] ?? ''),
+            'MobileNumber' => sanitizeInput($_POST['MobileNumber'] ?? ''),
+            'CompanyName' => sanitizeInput($_POST['CompanyName'] ?? ''),
+            'Designation' => sanitizeInput($_POST['Designation'] ?? '')
         ];
-        $password = $_POST['password'] ?? '';
+        $password = $_POST['Password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
         
         $errors = $this->validateCustomerData($formData, $password, $confirmPassword);
 
         if (empty($errors)) {
             $customerModel = $this->loadModel('Customer');
-            $userModel = $this->loadModel('User');
 
-            if ($userModel->loginIdExists($formData['login_id'])) {
-                return ['Login ID already exists. Please choose a different one.', ''];
+            // Check for duplicate email or mobile
+            if ($customerModel->findByEmail($formData['Email'])) {
+                return ['A customer with this email address already exists.', ''];
             }
-            if ($customerModel->isDuplicateCustomer($formData['name'], $formData['company_name'])) {
+            
+            if ($customerModel->findByMobile($formData['MobileNumber'])) {
+                return ['A customer with this mobile number already exists.', ''];
+            }
+            
+            if ($customerModel->isDuplicateCustomer($formData['Name'], $formData['CompanyName'])) {
                 return ['A customer with the same name and company already exists in the system.', ''];
             }
 
-            $db = Database::getInstance();
-            $connection = $db->getConnection();
-            $connection->beginTransaction();
-
             try {
-                $customerData = [
-                    'Name' => $formData['name'],
-                    'Email' => $formData['email'],
-                    'MobileNumber' => $formData['mobile'],
-                    'CompanyName' => $formData['company_name']
-                ];
+                // Add password to customer data
+                $customerData = $formData;
+                $customerData['Password'] = $password;
+                
                 $generatedCustomerId = $customerModel->createCustomer($customerData);
 
-                if (!$generatedCustomerId) throw new Exception('Failed to create customer record');
-
-                $userData = [
-                    'login_id' => $formData['login_id'],
-                    'name' => $formData['name'],
-                    'email' => $formData['email'],
-                    'mobile' => $formData['mobile'],
-                    'password' => $password,
-                    'role' => 'customer',
-                    'department' => 'COMMERCIAL',
-                    'customer_id' => $generatedCustomerId,
-                    'status' => 'active'
-                ];
-                $userResult = $userModel->createUser($userData);
-
-                if (!$userResult) throw new Exception('Failed to create user account');
-
-                $connection->commit();
+                if (!$generatedCustomerId) {
+                    throw new Exception('Failed to create customer record');
+                }
 
                 $currentUser = SessionManager::getCurrentUser();
                 Logger::logUserAction('NEW_CUSTOMER_CREATED', $currentUser['login_id'], [
                     'customer_id' => $generatedCustomerId,
-                    'customer_name' => $formData['name']
+                    'customer_name' => $formData['Name']
                 ]);
 
                 // Set success message in session and redirect to prevent resubmission
-                $_SESSION['alert_message'] = "Customer created successfully!";
+                $_SESSION['alert_message'] = "Customer created successfully! Customer ID: " . $generatedCustomerId;
                 $_SESSION['alert_type'] = 'success';
                 $this->redirect('customer/add');
 
             } catch (Exception $e) {
-                $connection->rollBack();
                 error_log('Add customer error: ' . $e->getMessage());
                 return ['Customer creation failed: ' . $e->getMessage(), ''];
             }
@@ -115,13 +99,35 @@ class CustomerController extends BaseController {
 
     private function validateCustomerData($formData, $password, $confirmPassword) {
         $errors = [];
-        if (empty($formData['login_id']) || strlen($formData['login_id']) < 3) $errors[] = 'Login ID must be at least 3 characters long';
-        if (empty($formData['name'])) $errors[] = 'Customer name is required';
-        if (empty($formData['company_name'])) $errors[] = 'Company name is required';
-        if (empty($password) || strlen($password) < 6) $errors[] = 'Password must be at least 6 characters long';
-        if ($password !== $confirmPassword) $errors[] = 'Passwords do not match';
-        if (!empty($formData['email']) && !filter_var($formData['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Invalid email format';
-        if (!empty($formData['mobile']) && !preg_match('/^[0-9]{10}$/', $formData['mobile'])) $errors[] = 'Mobile number must be 10 digits';
+        
+        if (empty($formData['Name'])) {
+            $errors[] = 'Customer name is required';
+        }
+        
+        if (empty($formData['CompanyName'])) {
+            $errors[] = 'Company name is required';
+        }
+        
+        if (empty($formData['Email'])) {
+            $errors[] = 'Email address is required';
+        } elseif (!filter_var($formData['Email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = 'Invalid email format';
+        }
+        
+        if (empty($formData['MobileNumber'])) {
+            $errors[] = 'Mobile number is required';
+        } elseif (!preg_match('/^[0-9]{10}$/', $formData['MobileNumber'])) {
+            $errors[] = 'Mobile number must be exactly 10 digits';
+        }
+        
+        if (empty($password) || strlen($password) < 6) {
+            $errors[] = 'Password must be at least 6 characters long';
+        }
+        
+        if ($password !== $confirmPassword) {
+            $errors[] = 'Passwords do not match';
+        }
+        
         return $errors;
     }
 }

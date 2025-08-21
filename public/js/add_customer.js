@@ -6,12 +6,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Form elements
     const customerForm = document.getElementById('customerForm');
-    const loginIdField = document.getElementById('login_id');
-    const nameField = document.getElementById('name');
-    const companyNameField = document.getElementById('company_name');
-    const emailField = document.getElementById('email');
-    const mobileField = document.getElementById('mobile');
-    const passwordField = document.getElementById('password');
+    const nameField = document.getElementById('Name');
+    const companyNameField = document.getElementById('CompanyName');
+    const emailField = document.getElementById('Email');
+    const mobileField = document.getElementById('MobileNumber');
+    const designationField = document.getElementById('Designation');
+    const passwordField = document.getElementById('Password');
     const confirmPasswordField = document.getElementById('confirm_password');
     const submitBtn = document.getElementById('submitBtn');
     const resetBtn = document.getElementById('resetBtn');
@@ -33,53 +33,11 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function initializeFormValidation() {
         // Real-time validation
-        loginIdField.addEventListener('input', validateLoginId);
         nameField.addEventListener('input', validateName);
         companyNameField.addEventListener('input', validateCompanyName);
         emailField.addEventListener('input', validateEmail);
         mobileField.addEventListener('input', validateMobile);
-        
-        // Auto-generate login ID from company name
-        companyNameField.addEventListener('input', function() {
-            if (this.value && !loginIdField.value) {
-                const suggested = generateLoginIdFromCompany(this.value);
-                loginIdField.value = suggested;
-                validateLoginId();
-            }
-        });
-    }
-    
-    /**
-     * Generate login ID from company name
-     */
-    function generateLoginIdFromCompany(companyName) {
-        // Extract meaningful parts from company name
-        const words = companyName.toLowerCase()
-            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-            .replace(/\b(ltd|limited|corp|corporation|inc|incorporated|pvt|private|m\/s|company|co)\b/g, '') // Remove common business terms
-            .trim()
-            .split(/\s+/)
-            .filter(word => word.length > 2) // Keep only meaningful words
-            .slice(0, 3); // Take first 3 words max
-        
-        if (words.length === 0) {
-            return 'customer_' + Date.now().toString().slice(-4);
-        }
-        
-        // Create login ID
-        let loginId = words.join('_');
-        
-        // Add random number if too short
-        if (loginId.length < 5) {
-            loginId += '_' + Math.floor(Math.random() * 999 + 1);
-        }
-        
-        // Ensure it's not too long
-        if (loginId.length > 20) {
-            loginId = loginId.substring(0, 17) + Math.floor(Math.random() * 999 + 1);
-        }
-        
-        return loginId;
+        designationField.addEventListener('input', validateDesignation);
     }
     
     /**
@@ -195,14 +153,6 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * Individual field validations
      */
-    function validateLoginId() {
-        const value = loginIdField.value.trim();
-        const isValid = value.length >= 3 && /^[a-zA-Z0-9_]+$/.test(value);
-        
-        updateFieldValidation(loginIdField, isValid);
-        return isValid;
-    }
-    
     function validateName() {
         const value = nameField.value.trim();
         const isValid = value.length >= 2;
@@ -232,6 +182,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const isValid = value === '' || /^[0-9]{10}$/.test(value);
         
         updateFieldValidation(mobileField, isValid);
+        return isValid;
+    }
+
+    function validateDesignation() {
+        const value = designationField.value.trim();
+        const isValid = value.length >= 2;
+        updateFieldValidation(designationField, isValid);
         return isValid;
     }
     
@@ -327,11 +284,11 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function autoSaveForm() {
         const formData = {
-            login_id: loginIdField.value,
-            name: nameField.value,
-            company_name: companyNameField.value,
-            email: emailField.value,
-            mobile: mobileField.value
+            Name: nameField.value,
+            CompanyName: companyNameField.value,
+            Email: emailField.value,
+            MobileNumber: mobileField.value,
+            Designation: designationField.value
         };
         
         localStorage.setItem('add_customer_form_draft', JSON.stringify(formData));
@@ -345,18 +302,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (draft) {
             try {
                 const formData = JSON.parse(draft);
-                loginIdField.value = formData.login_id || '';
-                nameField.value = formData.name || '';
-                companyNameField.value = formData.company_name || '';
-                emailField.value = formData.email || '';
-                mobileField.value = formData.mobile || '';
+                nameField.value = formData.Name || '';
+                companyNameField.value = formData.CompanyName || '';
+                emailField.value = formData.Email || '';
+                mobileField.value = formData.MobileNumber || '';
+                designationField.value = formData.Designation || '';
                 
                 // Trigger validation
-                validateLoginId();
                 validateName();
                 validateCompanyName();
                 validateEmail();
                 validateMobile();
+                validateDesignation();
             } catch (e) {
                 console.error('Error restoring form draft:', e);
             }

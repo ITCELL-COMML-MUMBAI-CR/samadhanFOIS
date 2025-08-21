@@ -829,11 +829,23 @@ class ComplaintController extends BaseController {
     }
 
     /**
+     * Get current customer ID from session (handles both authentication methods)
+     */
+    private function getCurrentCustomerId() {
+        return isset($_SESSION['customer_id']) ? $_SESSION['customer_id'] : $_SESSION['user_customer_id'];
+    }
+    
+    /**
      * Support & Assistance page for customers
      */
     public function supportAssistance() {
         // Check if customer is authenticated
-        $customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in'];
+        // Customers can be authenticated either through regular login or customer-specific login
+        $customerAuthenticated = (
+            (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) ||
+            (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+             isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
+        );
         
         if (!$customerAuthenticated) {
             // Redirect to new support ticket page for authentication
@@ -875,8 +887,9 @@ class ComplaintController extends BaseController {
         if (!empty($priority)) $filters['priority'] = $priority;
         
         // Get customer's complaints - SECURE: Only shows complaints for this specific customer
-        $supportTickets = $complaintModel->findByCustomerWithFilters($_SESSION['customer_id'], $filters, $search, $limit, $offset);
-        $totalCount = $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], $filters, $search);
+        $customerId = $this->getCurrentCustomerId();
+        $supportTickets = $complaintModel->findByCustomerWithFilters($customerId, $filters, $search, $limit, $offset);
+        $totalCount = $complaintModel->countByCustomerWithFilters($customerId, $filters, $search);
         
         // Calculate auto-priority for each ticket and ensure status is available
         foreach ($supportTickets as &$ticket) {
@@ -897,11 +910,11 @@ class ComplaintController extends BaseController {
         
         // Get statistics for customer's tickets
         $statistics = [
-            'total' => $complaintModel->countByCustomer($_SESSION['customer_id']),
-            'pending' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'pending'], ''),
-            'replied' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'replied'], ''),
-            'closed' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'closed'], ''),
-            'reverted' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'reverted'], '')
+            'total' => $complaintModel->countByCustomer($customerId),
+            'pending' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'pending'], ''),
+            'replied' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'replied'], ''),
+            'closed' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'closed'], ''),
+            'reverted' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'reverted'], '')
         ];
         
         $data = compact(
@@ -919,7 +932,12 @@ class ComplaintController extends BaseController {
      */
     public function newSupportTicket() {
         // Check if customer is authenticated
-        $customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in'];
+        // Customers can be authenticated either through regular login or customer-specific login
+        $customerAuthenticated = (
+            (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) ||
+            (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+             isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
+        );
         
         if (!$customerAuthenticated) {
             // Show authentication form first
@@ -947,11 +965,12 @@ class ComplaintController extends BaseController {
         }
         
         // Get customer details from session
+        // Handle both authentication methods
         $customerDetails = [
-            'CustomerID' => $_SESSION['customer_id'],
-            'Name' => $_SESSION['customer_name'],
-            'Email' => $_SESSION['customer_email'],
-            'CompanyName' => $_SESSION['customer_company']
+            'CustomerID' => isset($_SESSION['customer_id']) ? $_SESSION['customer_id'] : $_SESSION['user_customer_id'],
+            'Name' => isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : $_SESSION['user_name'],
+            'Email' => isset($_SESSION['customer_email']) ? $_SESSION['customer_email'] : $_SESSION['user_email'],
+            'CompanyName' => isset($_SESSION['customer_company']) ? $_SESSION['customer_company'] : $_SESSION['user_company']
         ];
         
         $complaintTypes = [];
@@ -1017,7 +1036,14 @@ class ComplaintController extends BaseController {
             }
             
             // Check if customer is authenticated
-            if (!isset($_SESSION['customer_logged_in']) || !$_SESSION['customer_logged_in']) {
+            // Customers can be authenticated either through regular login or customer-specific login
+            $customerAuthenticated = (
+                (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) ||
+                (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+                 isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
+            );
+            
+            if (!$customerAuthenticated) {
                 throw new Exception('Customer authentication required');
             }
             
@@ -1069,7 +1095,7 @@ class ComplaintController extends BaseController {
                     'wagon_id' => $formData['wagon_id'],
                     'FNR_Number' => $formData['fnr_no'],
                     'description' => $formData['description'],
-                    'customer_id' => $_SESSION['customer_id'],
+                    'customer_id' => $this->getCurrentCustomerId(),
                     'department' => 'COMMERCIAL'
                     // Assigned_To_Department will be set to 'COMMERCIAL' by default in createComplaint()
                     // priority will be set to 'normal' by default in createComplaint()

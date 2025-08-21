@@ -242,7 +242,7 @@ class BulkEmailManager {
         try {
             this.setLoadingState(true);
             
-            const response = await fetch(BASE_URL + 'api/bulk_email', {
+            const response = await fetch(`${BASE_URL}api/bulk_email`, {
                 method: 'POST',
                 body: formData
             });

@@ -2,14 +2,30 @@
 /**
  * New Support Ticket Form with Customer Authentication
  * First authenticates customer, then shows the support ticket form
+ * 
+ * Authentication Logic:
+ * - Customers can be authenticated through regular user login (user_logged_in + user_customer_id)
+ * - Or through customer-specific authentication (customer_logged_in)
+ * - If either method is active, customer is considered authenticated
  */
 
 // Check if customer is already authenticated
-$customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in'];
+// Customers can be authenticated either through regular login or customer-specific login
+$customerAuthenticated = (
+    (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) ||
+    (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+     isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
+);
 ?>
 
 <!-- Load necessary CSS and JS files -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/new_support_ticket_with_auth.css">
+
+<!-- Define BASE_URL for JavaScript -->
+<script>
+    const BASE_URL = '<?php echo BASE_URL; ?>';
+</script>
+
 <script src="<?php echo BASE_URL; ?>js/new_support_ticket_with_auth.js"></script>
 
 <div class="container">
@@ -88,12 +104,12 @@ $customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['cu
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <p class="mb-1"><strong>Customer ID:</strong> <?php echo htmlspecialchars($_SESSION['customer_id']); ?></p>
-                                <p class="mb-1"><strong>Name:</strong> <?php echo htmlspecialchars($_SESSION['customer_name']); ?></p>
+                                <p class="mb-1"><strong>Customer ID:</strong> <?php echo htmlspecialchars(isset($_SESSION['customer_id']) ? $_SESSION['customer_id'] : $_SESSION['user_customer_id']); ?></p>
+                                <p class="mb-1"><strong>Name:</strong> <?php echo htmlspecialchars(isset($_SESSION['customer_name']) ? $_SESSION['customer_name'] : $_SESSION['user_name']); ?></p>
                             </div>
                             <div class="col-md-6">
-                                <p class="mb-1"><strong>Company:</strong> <?php echo htmlspecialchars($_SESSION['customer_company']); ?></p>
-                                <p class="mb-1"><strong>Email:</strong> <?php echo htmlspecialchars($_SESSION['customer_email']); ?></p>
+                                <p class="mb-1"><strong>Company:</strong> <?php echo htmlspecialchars(isset($_SESSION['customer_company']) ? $_SESSION['customer_company'] : $_SESSION['user_company']); ?></p>
+                                <p class="mb-1"><strong>Email:</strong> <?php echo htmlspecialchars(isset($_SESSION['customer_email']) ? $_SESSION['customer_email'] : $_SESSION['user_email']); ?></p>
                             </div>
                         </div>
                     </div>
@@ -302,6 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     <?php if (!$customerAuthenticated): ?>
     // Customer Authentication Form Handler
+    // This section only runs if customer is not authenticated through either method
     const authForm = document.getElementById('customerAuthForm');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     

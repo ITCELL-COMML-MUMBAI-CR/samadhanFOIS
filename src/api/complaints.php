@@ -80,16 +80,23 @@ switch ($action) {
 function handleComplaintList() {
     try {
         require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
         $complaintModel = new Complaint();
         
-        $userRole = $_SESSION['user_role'];
-        $userId = $_SESSION['user_login_id'];
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
+        $userRole = $currentUser['role'];
+        $userId = $currentUser['login_id'];
         
         $complaints = [];
         
         if ($userRole === 'customer') {
             // Customers see only their own complaints
-            $customerId = $_SESSION['user_customer_id'] ?? null;
+            $customerId = $currentUser['customer_id'] ?? null;
             if (!$customerId) {
                 sendError('Customer ID not found in session', 403);
             }
@@ -156,11 +163,18 @@ function handleViewComplaint($complaintId) {
         }
         
         require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
         $complaintModel = new Complaint();
+        $currentUser = SessionManager::getCurrentUser();
+        
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
         
         // For customers, we need to get complaint with wagon details
-        if ($_SESSION['user_role'] === 'customer') {
-            $customerId = $_SESSION['user_customer_id'] ?? null;
+        if ($currentUser['role'] === 'customer') {
+            $customerId = $currentUser['customer_id'] ?? null;
             if (!$customerId) {
                 sendError('Customer ID not found in session', 403);
             }
@@ -183,8 +197,8 @@ function handleViewComplaint($complaintId) {
             sendError('Complaint not found', 404);
         }
         
-        $userRole = $_SESSION['user_role'];
-        $customerId = $_SESSION['user_customer_id'] ?? null;
+        $userRole = $currentUser['role'];
+        $customerId = $currentUser['customer_id'] ?? null;
         
         // Access control: customers can only view their own complaints
         if ($userRole === 'customer') {
@@ -321,10 +335,16 @@ function handleReplyToComplaint($complaintId) {
         require_once __DIR__ . '/../models/Complaint.php';
         require_once __DIR__ . '/../models/Transaction.php';
         require_once __DIR__ . '/../utils/EmailService.php';
+        require_once __DIR__ . '/../utils/SessionManager.php';
 
         $complaintModel = new Complaint();
         $transactionModel = new Transaction();
         $emailService = new EmailService();
+        
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
 
         $complaint = $complaintModel->findByComplaintId($complaintId);
         if (!$complaint) {
@@ -333,7 +353,7 @@ function handleReplyToComplaint($complaintId) {
 
         // Update status to replied
         $complaintModel->updateStatus($complaintId, 'replied', $actionTaken);
-        $transactionModel->logStatusUpdate($complaintId, ($remarks ?: 'Replied to customer'), $_SESSION['user_login_id']);
+        $transactionModel->logStatusUpdate($complaintId, ($remarks ?: 'Replied to customer'), $currentUser['login_id']);
 
         // Email customer
         $customerEmail = $complaint['customer_email'] ?? '';
@@ -353,8 +373,15 @@ function handleReplyToComplaint($complaintId) {
  */
 function handleSubmitFeedback() {
     try {
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
         // Validate user is customer
-        if ($_SESSION['user_role'] !== 'customer') {
+        if ($currentUser['role'] !== 'customer') {
             sendError('Only customers can submit feedback', 403);
         }
         
@@ -362,7 +389,6 @@ function handleSubmitFeedback() {
         $input = $_SERVER['CONTENT_TYPE'] === 'application/json' ? getJsonInput() : $_POST;
         
         // Validate CSRF token
-        require_once __DIR__ . '/../utils/SessionManager.php';
         if (!SessionManager::validateCSRFToken($input['csrf_token'] ?? '')) {
             sendError('Invalid CSRF token', 403);
         }
@@ -395,7 +421,7 @@ function handleSubmitFeedback() {
             sendError('Complaint not found', 404);
         }
         
-        if ($complaint['customer_id'] !== $_SESSION['user_customer_id']) {
+        if ($complaint['customer_id'] !== $currentUser['customer_id']) {
             sendError('Access denied', 403);
         }
         
@@ -406,7 +432,7 @@ function handleSubmitFeedback() {
             'status' => 'closed'
         ]);
         
-        $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback . ' (Rating: ' . $rating . ')', $_SESSION['user_login_id']);
+        $transactionModel->logStatusUpdate($complaintId, 'Customer feedback: ' . $feedback . ' (Rating: ' . $rating . ')', $currentUser['login_id']);
         
         sendSuccess([], 'Feedback submitted successfully');
         
@@ -420,8 +446,15 @@ function handleSubmitFeedback() {
  */
 function handleSubmitMoreInfo() {
     try {
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
         // Validate user is customer
-        if ($_SESSION['user_role'] !== 'customer') {
+        if ($currentUser['role'] !== 'customer') {
             sendError('Only customers can submit additional information', 403);
         }
         
@@ -429,7 +462,6 @@ function handleSubmitMoreInfo() {
         $input = $_SERVER['CONTENT_TYPE'] === 'application/json' ? getJsonInput() : $_POST;
         
         // Validate CSRF token
-        require_once __DIR__ . '/../utils/SessionManager.php';
         if (!SessionManager::validateCSRFToken($input['csrf_token'] ?? '')) {
             sendError('Invalid CSRF token', 403);
         }
@@ -459,7 +491,7 @@ function handleSubmitMoreInfo() {
             sendError('Complaint not found', 404);
         }
         
-        if ($complaint['customer_id'] !== $_SESSION['user_customer_id']) {
+        if ($complaint['customer_id'] !== $currentUser['customer_id']) {
             sendError('Access denied', 403);
         }
         
@@ -493,7 +525,7 @@ function handleSubmitMoreInfo() {
         // Move back to pending and assign to commercial controller for review
         $complaintModel->updateStatus($complaintId, 'pending');
         $complaintModel->assignTo($complaintId, 'commercial_controller');
-        $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $_SESSION['user_login_id']);
+        $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
         
         sendSuccess([], 'Additional information submitted successfully');
         

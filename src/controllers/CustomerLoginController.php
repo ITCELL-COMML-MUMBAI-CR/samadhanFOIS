@@ -19,34 +19,34 @@ class CustomerLoginController
             return;
         }
 
-        $customerId = sanitizeInput($_POST['customer_id'] ?? '');
+        $loginIdentifier = sanitizeInput($_POST['login_identifier'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        if (empty($customerId) || empty($password)) {
-            SessionManager::setAlert('Please enter both Customer ID and password.', 'danger');
+        if (empty($loginIdentifier) || empty($password)) {
+            SessionManager::setAlert('Please enter both email/mobile and password.', 'danger');
             header('Location: ' . BASE_URL . 'customer-login');
             exit;
         }
 
         try {
-            $customer = $this->customerModel->authenticateCustomer($customerId, $password);
+            $customer = $this->customerModel->authenticateCustomerByEmailOrMobile($loginIdentifier, $password);
 
             if ($customer) {
-                Logger::logAuth('CUSTOMER_LOGIN', $customerId, true, ['customer_name' => $customer['Name']]);
+                Logger::logAuth('CUSTOMER_LOGIN', $customer['CustomerID'], true, ['customer_name' => $customer['Name']]);
                 SessionManager::loginCustomer($customer);
                 header('Location: ' . BASE_URL . 'customer-home');
                 exit;
             } else {
-                Logger::logAuth('CUSTOMER_LOGIN', $customerId, false, ['error' => 'Invalid credentials']);
-                SessionManager::setAlert('Invalid Customer ID or password. Please try again.', 'danger');
+                Logger::logAuth('CUSTOMER_LOGIN', $loginIdentifier, false, ['error' => 'Invalid credentials']);
+                SessionManager::setAlert('Invalid email/mobile or password. Please try again.', 'danger');
             }
         } catch (Exception $e) {
-            Logger::logAuth('CUSTOMER_LOGIN', $customerId, false, ['error' => $e->getMessage()]);
+            Logger::logAuth('CUSTOMER_LOGIN', $loginIdentifier, false, ['error' => $e->getMessage()]);
             SessionManager::setAlert('Login failed. Please try again later.', 'danger');
         }
 
-        // Store customerId in session to repopulate the form
-        $_SESSION['form_data'] = ['customer_id' => $customerId];
+        // Store loginIdentifier in session to repopulate the form
+        $_SESSION['form_data'] = ['login_identifier' => $loginIdentifier];
 
         header('Location: ' . BASE_URL . 'customer-login');
         exit;

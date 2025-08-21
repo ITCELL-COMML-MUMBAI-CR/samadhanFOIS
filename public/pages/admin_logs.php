@@ -38,6 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $recentLogs = Logger::getRecentLogs(200);
 $logFile = Logger::getLogFile();
 $logSize = file_exists($logFile) ? number_format(filesize($logFile) / 1024, 2) : 0;
+
+// Set page title for header
+$pageTitle = 'System Logs';
+
+// Include header
+require_once '../src/views/header.php';
 ?>
 
 <div class="container-fluid">
@@ -192,3 +198,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<?php require_once '../src/views/footer.php'; ?>

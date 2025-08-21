@@ -64,13 +64,29 @@ class Customer extends BaseModel {
             throw new Exception('Company name is required');
         }
         
+        if (empty($data['Email'])) {
+            throw new Exception('Email is required');
+        }
+        
+        if (empty($data['MobileNumber'])) {
+            throw new Exception('Mobile number is required');
+        }
+        
+        // Hash password if provided
+        if (!empty($data['Password'])) {
+            $data['Password'] = password_hash($data['Password'], PASSWORD_DEFAULT);
+        }
+        
         // Prepare data for insertion
         $customerData = [
             'CustomerID' => $data['CustomerID'],
             'Name' => $data['Name'],
-            'Email' => $data['Email'] ?? null,
-            'MobileNumber' => $data['MobileNumber'] ?? null,
-            'CompanyName' => $data['CompanyName']
+            'Email' => $data['Email'],
+            'MobileNumber' => $data['MobileNumber'],
+            'CompanyName' => $data['CompanyName'],
+            'Designation' => $data['Designation'] ?? null,
+            'Password' => $data['Password'] ?? null,
+            'Role' => $data['Role'] ?? 'Customer'
         ];
         
         // Insert customer
@@ -145,7 +161,7 @@ class Customer extends BaseModel {
      * Update customer information
      */
     public function updateCustomer($customerId, $data) {
-        $allowedFields = ['Name', 'Email', 'MobileNumber', 'CompanyName'];
+        $allowedFields = ['Name', 'Email', 'MobileNumber', 'CompanyName', 'Designation', 'Password'];
         $updateFields = [];
         $values = [];
         
@@ -299,7 +315,38 @@ class Customer extends BaseModel {
     }
 
     /**
-     * Authenticate customer using CustomerID and password
+     * Authenticate customer using Email or Mobile and password
+     */
+    public function authenticateCustomerByEmailOrMobile($identifier, $password) {
+        if (empty($identifier) || empty($password)) {
+            return false;
+        }
+        
+        // Check if identifier is email or mobile
+        $isEmail = filter_var($identifier, FILTER_VALIDATE_EMAIL);
+        
+        if ($isEmail) {
+            // Search by email
+            $stmt = $this->connection->prepare("SELECT * FROM customers WHERE Email = ?");
+        } else {
+            // Search by mobile number (clean the mobile number)
+            $cleanMobile = preg_replace('/[^0-9]/', '', $identifier);
+            $stmt = $this->connection->prepare("SELECT * FROM customers WHERE MobileNumber = ?");
+            $identifier = $cleanMobile;
+        }
+        
+        $stmt->execute([$identifier]);
+        $customer = $stmt->fetch();
+        
+        if ($customer && password_verify($password, $customer['Password'])) {
+            return $customer;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Authenticate customer using CustomerID and password (legacy method)
      */
     public function authenticateCustomer($customerId, $password) {
         if (empty($customerId) || empty($password)) {
@@ -323,6 +370,25 @@ class Customer extends BaseModel {
     public function findByEmail($email) {
         $stmt = $this->connection->prepare("SELECT * FROM customers WHERE Email = ?");
         $stmt->execute([$email]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Find customer by mobile number
+     */
+    public function findByMobile($mobileNumber) {
+        $cleanMobile = preg_replace('/[^0-9]/', '', $mobileNumber);
+        $stmt = $this->connection->prepare("SELECT * FROM customers WHERE MobileNumber = ?");
+        $stmt->execute([$cleanMobile]);
+        return $stmt->fetch();
+    }
+
+    /**
+     * Get customer by ID
+     */
+    public function getCustomerById($customerId) {
+        $stmt = $this->connection->prepare("SELECT * FROM customers WHERE CustomerID = ?");
+        $stmt->execute([$customerId]);
         return $stmt->fetch();
     }
 }
