@@ -97,8 +97,7 @@ const SAMPARKApp = {
                 setTimeout(() => {
                     const alertElement = document.getElementById(alertId);
                     if (alertElement) {
-                        const bsAlert = new bootstrap.Alert(alertElement);
-                        bsAlert.close();
+                        SAMPARKApp.alerts.dismissAlert(alertElement);
                     }
                 }, duration);
             }
@@ -108,16 +107,207 @@ const SAMPARKApp = {
             this.show(message, 'success', duration);
         },
         
-        error: function(message, duration = 7000) {
+        error: function(message, duration = 5000) {
             this.show(message, 'danger', duration);
         },
         
-        warning: function(message, duration = 6000) {
+        warning: function(message, duration = 5000) {
             this.show(message, 'warning', duration);
         },
         
         info: function(message, duration = 5000) {
             this.show(message, 'info', duration);
+        },
+        
+        // Dismiss alert with animation
+        dismissAlert: function(alertElement) {
+            if (!alertElement) return;
+            
+            // Add slide-out animation
+            alertElement.classList.add('alert-slide-out');
+            
+            // Remove alert after animation
+            setTimeout(() => {
+                if (alertElement && alertElement.parentNode) {
+                    try {
+                        const bsAlert = new bootstrap.Alert(alertElement);
+                        bsAlert.close();
+                    } catch (e) {
+                        // Fallback: remove manually if Bootstrap Alert fails
+                        alertElement.remove();
+                    }
+                }
+            }, 300); // Wait for slide-out animation
+        },
+        
+        // Initialize auto-dismiss for all alerts
+        initAutoDismiss: function() {
+            // Handle existing alerts
+            this.autoDismissExistingAlerts();
+            
+            // Set up observer for dynamically created alerts
+            this.setupAlertObserver();
+        },
+        
+        // Auto-dismiss existing alerts
+        autoDismissExistingAlerts: function() {
+            const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+            alerts.forEach(alert => {
+                // Add slide-in animation
+                alert.classList.add('alert-slide-in');
+                
+                // Set timeout to auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    if (alert && alert.parentNode) {
+                        SAMPARKApp.alerts.dismissAlert(alert);
+                    }
+                }, 5000);
+                
+                // Add close button if not present
+                if (!alert.querySelector('.btn-close')) {
+                    const closeButton = document.createElement('button');
+                    closeButton.type = 'button';
+                    closeButton.className = 'btn-close';
+                    closeButton.setAttribute('data-bs-dismiss', 'alert');
+                    closeButton.setAttribute('aria-label', 'Close');
+                    closeButton.innerHTML = '&times;';
+                    alert.appendChild(closeButton);
+                }
+                
+                // Add click handler for manual close
+                const closeBtn = alert.querySelector('.btn-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        SAMPARKApp.alerts.dismissAlert(alert);
+                    });
+                }
+            });
+        },
+        
+        // Set up observer for dynamically created alerts
+        setupAlertObserver: function() {
+            // Create global functions for other scripts to use
+            window.showAlert = function(message, type = 'info', duration = 5000) {
+                const alertContainer = document.createElement('div');
+                alertContainer.className = `alert alert-${type} alert-dismissible fade show`;
+                alertContainer.innerHTML = `
+                    <i class="fas fa-${SAMPARKApp.alerts.getAlertIcon(type)}"></i> ${SAMPARKApp.utils.sanitizeHtml(message)}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                // Find the best container to insert the alert
+                let container = document.querySelector('.alert-container');
+                if (!container) {
+                    container = document.querySelector('.container-fluid');
+                }
+                if (!container) {
+                    container = document.querySelector('.container');
+                }
+                if (!container) {
+                    container = document.body;
+                }
+                
+                container.insertBefore(alertContainer, container.firstChild);
+                
+                // Add slide-in animation
+                alertContainer.classList.add('alert-slide-in');
+                
+                // Auto-dismiss after specified duration
+                setTimeout(() => {
+                    if (alertContainer.parentNode) {
+                        SAMPARKApp.alerts.dismissAlert(alertContainer);
+                    }
+                }, duration);
+                
+                // Add click handler for manual close
+                const closeBtn = alertContainer.querySelector('.btn-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        SAMPARKApp.alerts.dismissAlert(alertContainer);
+                    });
+                }
+            };
+            
+            // Global showToast function for compatibility
+            window.showToast = function(type, message, duration = 5000) {
+                const iconMap = {
+                    'success': 'success',
+                    'danger': 'error',
+                    'error': 'error',
+                    'warning': 'warning',
+                    'info': 'info'
+                };
+                
+                Swal.fire({
+                    icon: iconMap[type] || 'info',
+                    html: message,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: duration,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+            };
+            
+            // Set up MutationObserver to watch for new alerts
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 && node.classList && node.classList.contains('alert')) {
+                            // New alert added
+                            if (!node.classList.contains('alert-permanent')) {
+                                node.classList.add('alert-slide-in');
+                                
+                                setTimeout(() => {
+                                    if (node.parentNode) {
+                                        SAMPARKApp.alerts.dismissAlert(node);
+                                    }
+                                }, 5000);
+                                
+                                // Add close button if not present
+                                if (!node.querySelector('.btn-close')) {
+                                    const closeButton = document.createElement('button');
+                                    closeButton.type = 'button';
+                                    closeButton.className = 'btn-close';
+                                    closeButton.setAttribute('data-bs-dismiss', 'alert');
+                                    closeButton.setAttribute('aria-label', 'Close');
+                                    closeButton.innerHTML = '&times;';
+                                    node.appendChild(closeButton);
+                                }
+                                
+                                // Add click handler for manual close
+                                const closeBtn = node.querySelector('.btn-close');
+                                if (closeBtn) {
+                                    closeBtn.addEventListener('click', function() {
+                                        SAMPARKApp.alerts.dismissAlert(node);
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+            });
+            
+            // Start observing
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        },
+        
+        // Get alert icon based on type
+        getAlertIcon: function(type) {
+            const icons = {
+                'success': 'check-circle',
+                'danger': 'exclamation-triangle',
+                'warning': 'exclamation-triangle',
+                'info': 'info-circle'
+            };
+            return icons[type] || 'info-circle';
         }
     },
     
@@ -346,7 +536,10 @@ const SAMPARKApp = {
                 SAMPARKApp.rating.init(container);
             });
             
-            console.log('SAMPARK App initialized successfully');
+            // Initialize alert auto-dismiss
+            SAMPARKApp.alerts.initAutoDismiss();
+            
+            //console.log('SAMPARK App initialized successfully');
         });
     },
     

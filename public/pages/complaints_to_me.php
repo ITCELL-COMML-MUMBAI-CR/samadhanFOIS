@@ -185,9 +185,9 @@ if (!isset($currentUser)) {
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-center align-middle">
-                                        <strong><?php echo htmlspecialchars($grievance['complaint_type']); ?></strong>
+                                        <strong><?php echo htmlspecialchars($grievance['Type']); ?></strong>
                                         <br>
-                                        <small class="text-muted"><?php echo htmlspecialchars($grievance['complaint_subtype']); ?></small>
+                                        <small class="text-muted"><?php echo htmlspecialchars($grievance['Subtype']); ?></small>
                                     </td>
                                     <td class="text-center align-middle">
                                         <strong><?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?></strong>

@@ -42,9 +42,13 @@
                         <a href="<?php echo BASE_URL; ?>home" class="btn btn-primary">
                             <i class="fas fa-home"></i> Home Page
                         </a>
-                        <?php if (class_exists('SessionManager') && SessionManager::isLoggedIn()): ?>
+                        <?php if (class_exists('SessionManager') && SessionManager::isLoggedIn() && in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
                             <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-outline-success">
                                 <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                        <?php elseif (class_exists('SessionManager') && SessionManager::isLoggedIn()): ?>
+                            <a href="<?php echo BASE_URL; ?>support/assistance" class="btn btn-outline-success">
+                                <i class="fas fa-headset"></i> Support & Assistance
                             </a>
                         <?php else: ?>
                             <a href="<?php echo BASE_URL; ?>login" class="btn btn-outline-success">
@@ -82,8 +86,10 @@
                         <div class="col-md-6">
                             <h6 class="text-primary">For Members:</h6>
                             <ul class="list-unstyled">
-                                <li><a href="<?php echo BASE_URL; ?>dashboard" class="text-decoration-none"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                                <li><a href="<?php echo BASE_URL; ?>grievances/new" class="text-decoration-none"><i class="fas fa-plus"></i> New Grievance</a></li>
+                                <?php if (class_exists('SessionManager') && SessionManager::isLoggedIn() && in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
+                                    <li><a href="<?php echo BASE_URL; ?>dashboard" class="text-decoration-none"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                                <?php endif; ?>
+                                <li><a href="<?php echo BASE_URL; ?>support/assistance" class="text-decoration-none"><i class="fas fa-headset"></i> Support & Assistance</a></li>
                                 <li><a href="<?php echo BASE_URL; ?>grievances/my" class="text-decoration-none"><i class="fas fa-list"></i> My Grievances</a></li>
                             </ul>
                         </div>
@@ -162,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (currentPath.includes('dashboard')) {
         suggestedLinks.push('<a href="<?php echo BASE_URL; ?>dashboard" class="alert-link">Dashboard</a>');
     } else if (currentPath.includes('grievance') || currentPath.includes('complaint')) {
-        suggestedLinks.push('<a href="<?php echo BASE_URL; ?>grievances/new" class="alert-link">New Grievance</a>');
+                                suggestedLinks.push('<a href="<?php echo BASE_URL; ?>support/assistance" class="alert-link">Support & Assistance</a>');
         suggestedLinks.push('<a href="<?php echo BASE_URL; ?>grievances/my" class="alert-link">My Grievances</a>');
     }
     

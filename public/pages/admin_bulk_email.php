@@ -15,9 +15,15 @@ $emailTemplates = $data['emailTemplates'] ?? [];
                     <a href="<?php echo BASE_URL; ?>admin/email-templates" class="btn btn-outline-primary btn-sm me-2">
                         <i class="fas fa-envelope-open-text"></i> Manage Templates
                     </a>
-                    <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
+                    <?php if (in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
+                        <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo BASE_URL; ?>home" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
     </div>

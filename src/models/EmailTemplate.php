@@ -1,198 +1,165 @@
 <?php
 /**
- * Email Template Model
- * Handles database operations for email templates
+ * EmailTemplate Model
+ * Handles email template management
  */
 
-require_once __DIR__ . '/BaseModel.php';
+require_once 'BaseModel.php';
 
 class EmailTemplate extends BaseModel {
-    
-    public function __construct() {
-        parent::__construct();
-        $this->table = 'email_templates';
-    }
+    protected $table = 'email_templates';
     
     /**
-     * Create a new email template
+     * Create new email template
      */
-    public function create($data) {
-        $stmt = $this->connection->prepare("
-            INSERT INTO email_templates 
-            (name, category, subject, content, description, is_default, created_by, created_at, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-        ");
+    public function createTemplate($data) {
+        $data['created_at'] = getCurrentDateTime();
+        $data['updated_at'] = getCurrentDateTime();
         
-        $result = $stmt->execute([
-            $data['name'],
-            $data['category'],
-            $data['subject'],
-            $data['content'],
-            $data['description'],
-            $data['is_default'],
-            $data['created_by']
-        ]);
-        
-        if ($result) {
-            return $this->connection->lastInsertId();
-        }
-        
-        return false;
+        return $this->create($data);
     }
     
     /**
-     * Update an email template
+     * Update email template
      */
-    public function update($id, $data) {
-        $stmt = $this->connection->prepare("
-            UPDATE email_templates 
-            SET name = ?, category = ?, subject = ?, content = ?, description = ?, 
-                is_default = ?, updated_by = ?, updated_at = NOW()
-            WHERE id = ?
-        ");
-        
-        return $stmt->execute([
-            $data['name'],
-            $data['category'],
-            $data['subject'],
-            $data['content'],
-            $data['description'],
-            $data['is_default'],
-            $data['updated_by'],
-            $id
-        ]);
+    public function updateTemplate($id, $data) {
+        $data['updated_at'] = getCurrentDateTime();
+        return $this->update($id, $data);
     }
     
     /**
-     * Delete an email template
-     */
-    public function delete($id) {
-        $stmt = $this->connection->prepare("DELETE FROM email_templates WHERE id = ?");
-        return $stmt->execute([$id]);
-    }
-    
-    /**
-     * Find template by ID
+     * Get template by ID
      */
     public function findById($id) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            WHERE id = ?
-        ");
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
-    
-    /**
-     * Get all templates
-     */
-    public function getAll() {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            ORDER BY category ASC, name ASC
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll();
+        return $this->find($id);
     }
     
     /**
      * Get templates by category
      */
-    public function getByCategory($category) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            WHERE category = ? 
-            ORDER BY is_default DESC, name ASC
-        ");
+    public function findByCategory($category, $limit = null) {
+        $sql = "SELECT * FROM email_templates WHERE category = ? ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute([$category]);
         return $stmt->fetchAll();
     }
     
     /**
-     * Get default template for a category
+     * Get default templates
      */
-    public function getDefaultByCategory($category) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            WHERE category = ? AND is_default = 1 
-            LIMIT 1
-        ");
-        $stmt->execute([$category]);
-        return $stmt->fetch();
-    }
-    
-    /**
-     * Unset default for a category (except specified template)
-     */
-    public function unsetDefaultForCategory($category, $excludeId = null) {
-        $sql = "UPDATE email_templates SET is_default = 0 WHERE category = ?";
-        $params = [$category];
+    public function getDefaultTemplates($limit = null) {
+        $sql = "SELECT * FROM email_templates WHERE is_default = 1 ORDER BY created_at DESC";
         
-        if ($excludeId) {
-            $sql .= " AND id != ?";
-            $params[] = $excludeId;
+        if ($limit) {
+            $sql .= " LIMIT $limit";
         }
         
         $stmt = $this->connection->prepare($sql);
-        return $stmt->execute($params);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get custom templates
+     */
+    public function getCustomTemplates($limit = null) {
+        $sql = "SELECT * FROM email_templates WHERE is_default = 0 ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
     
     /**
      * Search templates
      */
-    public function search($query) {
-        $searchTerm = "%{$query}%";
-        $stmt = $this->connection->prepare("
+    public function search($searchTerm, $limit = null) {
+        $sql = "
             SELECT * FROM email_templates 
-            WHERE name LIKE ? OR subject LIKE ? OR content LIKE ? OR description LIKE ?
-            ORDER BY category ASC, name ASC
-        ");
-        $stmt->execute([$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+            WHERE name LIKE ? 
+               OR subject LIKE ? 
+               OR description LIKE ?
+            ORDER BY created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $searchPattern = "%$searchTerm%";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$searchPattern, $searchPattern, $searchPattern]);
         return $stmt->fetchAll();
     }
     
     /**
      * Get template statistics
      */
-    public function getStats() {
+    public function getStatistics() {
+        $stats = [];
+        
+        // Total templates
+        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM email_templates");
+        $stmt->execute();
+        $stats['total'] = $stmt->fetch()['count'];
+        
+        // Templates by category
         $stmt = $this->connection->prepare("
-            SELECT 
-                COUNT(*) as total_templates,
-                COUNT(CASE WHEN is_default = 1 THEN 1 END) as default_templates,
-                COUNT(DISTINCT category) as categories
-            FROM email_templates
+            SELECT category, COUNT(*) as count 
+            FROM email_templates 
+            GROUP BY category
         ");
         $stmt->execute();
-        return $stmt->fetch();
+        $stats['by_category'] = $stmt->fetchAll();
+        
+        // Default vs custom templates
+        $stmt = $this->connection->prepare("
+            SELECT is_default, COUNT(*) as count 
+            FROM email_templates 
+            GROUP BY is_default
+        ");
+        $stmt->execute();
+        $stats['by_type'] = $stmt->fetchAll();
+        
+        // Recent templates (last 30 days)
+        $stmt = $this->connection->prepare("
+            SELECT COUNT(*) as count 
+            FROM email_templates 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        ");
+        $stmt->execute();
+        $stats['recent_30_days'] = $stmt->fetch()['count'];
+        
+        return $stats;
     }
     
     /**
-     * Get templates with usage count
+     * Get all categories
      */
-    public function getWithUsageCount() {
+    public function getCategories() {
         $stmt = $this->connection->prepare("
-            SELECT 
-                et.*,
-                COALESCE(usage_count.count, 0) as usage_count
-            FROM email_templates et
-            LEFT JOIN (
-                SELECT 
-                    template_id,
-                    COUNT(*) as count
-                FROM bulk_email_logs
-                GROUP BY template_id
-            ) usage_count ON et.id = usage_count.template_id
-            ORDER BY et.category ASC, et.name ASC
+            SELECT DISTINCT category 
+            FROM email_templates 
+            ORDER BY category ASC
         ");
         $stmt->execute();
-        return $stmt->fetchAll();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
     
     /**
      * Check if template name exists
      */
     public function nameExists($name, $excludeId = null) {
-        $sql = "SELECT COUNT(*) FROM email_templates WHERE name = ?";
+        $sql = "SELECT COUNT(*) as count FROM email_templates WHERE name = ?";
         $params = [$name];
         
         if ($excludeId) {
@@ -202,54 +169,13 @@ class EmailTemplate extends BaseModel {
         
         $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchColumn() > 0;
+        return $stmt->fetch()['count'] > 0;
     }
     
     /**
-     * Get recent templates
+     * Delete template
      */
-    public function getRecent($limit = 5) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            ORDER BY updated_at DESC 
-            LIMIT ?
-        ");
-        $stmt->execute([$limit]);
-        return $stmt->fetchAll();
-    }
-    
-    /**
-     * Get templates by creator
-     */
-    public function getByCreator($creatorId) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM email_templates 
-            WHERE created_by = ? 
-            ORDER BY created_at DESC
-        ");
-        $stmt->execute([$creatorId]);
-        return $stmt->fetchAll();
-    }
-    
-    /**
-     * Duplicate a template
-     */
-    public function duplicate($id, $newName, $creatorId) {
-        $original = $this->findById($id);
-        if (!$original) {
-            return false;
-        }
-        
-        $data = [
-            'name' => $newName,
-            'category' => $original['category'],
-            'subject' => $original['subject'],
-            'content' => $original['content'],
-            'description' => $original['description'] . ' (Copy)',
-            'is_default' => 0, // Duplicates are never default
-            'created_by' => $creatorId
-        ];
-        
-        return $this->create($data);
+    public function deleteTemplate($id) {
+        return $this->delete($id);
     }
 }

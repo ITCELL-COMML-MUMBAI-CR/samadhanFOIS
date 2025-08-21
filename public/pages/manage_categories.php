@@ -10,9 +10,15 @@
                     <i class="fas fa-tags"></i> Manage Grievance Categories
                 </h1>
                 <div>
-                    <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-railway-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
+                    <?php if (in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
+                        <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-railway-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    <?php else: ?>
+                        <a href="<?php echo BASE_URL; ?>home" class="btn btn-railway-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Home
+                        </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

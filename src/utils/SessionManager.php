@@ -87,12 +87,38 @@ class SessionManager {
     }
     
     /**
+     * Login customer
+     */
+    public static function loginCustomer($customer) {
+        self::start();
+        
+        $_SESSION['user_logged_in'] = true;
+        $_SESSION['user_type'] = 'customer';
+        $_SESSION['user_customer_id'] = $customer['CustomerID'];
+        $_SESSION['user_name'] = $customer['Name'];
+        $_SESSION['user_email'] = $customer['Email'];
+        $_SESSION['user_company'] = $customer['CompanyName'];
+        $_SESSION['user_designation'] = $customer['Designation'];
+        $_SESSION['user_role'] = 'customer';
+        $_SESSION['login_time'] = time();
+        $_SESSION['last_activity'] = time();
+        $_SESSION['created_at'] = time();
+        
+        // Generate CSRF token
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
+        // Set alert message
+        self::setAlert('Welcome, ' . $customer['Name'] . '!', 'success');
+    }
+    
+    /**
      * Logout user
      */
     public static function logout() {
         self::start();
         
-        $userId = $_SESSION['user_login_id'] ?? 'unknown';
+        $userId = $_SESSION['user_login_id'] ?? $_SESSION['user_customer_id'] ?? 'unknown';
+        $isCustomer = self::isCustomer();
         
         // Log the logout action
         if (class_exists('Logger')) {
@@ -106,6 +132,14 @@ class SessionManager {
         // Start new session for guest
         session_start();
         self::setAlert('You have been logged out successfully.', 'info');
+        
+        // Redirect based on user type
+        if ($isCustomer) {
+            header('Location: ' . BASE_URL . 'customer-login');
+        } else {
+            header('Location: ' . BASE_URL . 'login');
+        }
+        exit;
     }
     
     /**
@@ -165,6 +199,35 @@ class SessionManager {
         }
         
         return $_SESSION['user_department'] === $department;
+    }
+    
+    /**
+     * Check if current user is a customer
+     */
+    public static function isCustomer() {
+        if (!self::isLoggedIn()) {
+            return false;
+        }
+        
+        return isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'customer';
+    }
+    
+    /**
+     * Get current customer data
+     */
+    public static function getCurrentCustomer() {
+        if (!self::isCustomer()) {
+            return null;
+        }
+        
+        return [
+            'customer_id' => $_SESSION['user_customer_id'],
+            'name' => $_SESSION['user_name'],
+            'email' => $_SESSION['user_email'],
+            'company' => $_SESSION['user_company'],
+            'designation' => $_SESSION['user_designation'],
+            'role' => $_SESSION['user_role']
+        ];
     }
     
     /**

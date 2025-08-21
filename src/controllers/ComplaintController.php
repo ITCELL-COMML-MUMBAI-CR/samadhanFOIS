@@ -5,6 +5,27 @@ require_once __DIR__ . '/../utils/SessionManager.php';
 class ComplaintController extends BaseController {
 
     public function __construct() {
+        // Don't require login for support methods as they handle customer authentication
+        $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        $uri = trim($uri, '/');
+        
+        // Remove base path if exists
+        $basePath = trim(BASE_URL, '/');
+        if (!empty($basePath) && strpos($uri, $basePath) === 0) {
+            $uri = substr($uri, strlen($basePath));
+            $uri = trim($uri, '/');
+        }
+        
+        // Extract controller and action
+        $segments = explode('/', $uri);
+        $controllerName = $segments[0] ?? '';
+        $action = $segments[1] ?? '';
+        
+        // Skip login requirement for support methods (newSupportTicket and supportAssistance)
+        if ($controllerName === 'support' && in_array($action, ['new', 'assistance'])) {
+            return;
+        }
+        
         SessionManager::requireLogin();
     }
 
@@ -46,21 +67,7 @@ class ComplaintController extends BaseController {
         $this->loadView('footer');
     }
 
-    /**
-     * List grievances for the logged-in customer
-     */
-    public function my() {
-        SessionManager::requireRole('customer');
-        $currentUser = SessionManager::getCurrentUser();
 
-        $complaintModel = $this->loadModel('Complaint');
-        $grievances = $complaintModel->findByCustomer($currentUser['customer_id']);
-
-        $data = compact('grievances', 'currentUser');
-        $this->loadView('header', ['pageTitle' => 'My Grievances']);
-        $this->loadView('pages/my_grievances', $data);
-        $this->loadView('footer');
-    }
 
     /**
      * Grievances assigned to me (controller)
@@ -119,6 +126,11 @@ class ComplaintController extends BaseController {
                         return;
                         
                     case 'forward':
+                        // Only Commercial can forward complaints to other departments
+                        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                            throw new Exception('Only Commercial Controller can forward complaints to other departments');
+                        }
+                        
                         $toDepartment = $_POST['to_department'] ?? '';
                         $toUser = $_POST['to_user'] ?? '';
                         $forwardRemarks = sanitizeInput($_POST['forward_remarks'] ?? '');
@@ -379,6 +391,9 @@ class ComplaintController extends BaseController {
                     if ($customerLoginId) {
                         $complaintModel->assignTo($complaintId, $customerLoginId);
                     }
+                    
+                    // Clear awaiting approval flag
+                    $complaintModel->setAwaitingApproval($complaintId, 'N');
 
                     // Log approval
                     $transactionModel->logStatusUpdate($complaintId, 'Commercial approval granted. ' . ($remarks ? ('Remarks: ' . $remarks) : ''), $currentUser['login_id']);
@@ -543,150 +558,9 @@ class ComplaintController extends BaseController {
         $this->loadView('pages/complaint_details', $data);
         $this->loadView('footer');
     }
-    public function create() {
-        SessionManager::requireRole('customer');
 
-        $error = '';
-        $success = '';
-        $currentUser = SessionManager::getCurrentUser();
-        $customerDetails = null;
-        $complaintTypes = [];
-        $typeSubtypeMapping = [];
-        $sheds = [];
 
-        try {
-            $db = Database::getInstance();
-            $connection = $db->getConnection();
 
-            // Get customer details
-            $stmt = $connection->prepare("SELECT * FROM customers WHERE CustomerID = ?");
-            $stmt->execute([$currentUser['customer_id']]);
-            $customerDetails = $stmt->fetch();
-
-            // Get complaint types and their related subtypes
-            $stmt = $connection->prepare("SELECT DISTINCT Type FROM complaint_categories WHERE Type IS NOT NULL AND Type != '' ORDER BY Type ASC");
-            $stmt->execute();
-            $complaintTypes = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-            $stmt = $connection->prepare("SELECT Type, SubType FROM complaint_categories WHERE Type IS NOT NULL AND Type != '' AND SubType IS NOT NULL AND SubType != '' ORDER BY Type ASC, SubType ASC");
-            $stmt->execute();
-            $mappings = $stmt->fetchAll();
-            
-            foreach ($mappings as $mapping) {
-                if (!isset($typeSubtypeMapping[$mapping['Type']])) {
-                    $typeSubtypeMapping[$mapping['Type']] = [];
-                }
-                if (!in_array($mapping['SubType'], $typeSubtypeMapping[$mapping['Type']])) {
-                    $typeSubtypeMapping[$mapping['Type']][] = $mapping['SubType'];
-                }
-            }
-
-            // Get shed locations
-            $stmt = $connection->prepare("SELECT ShedID, Terminal, Type FROM shed ORDER BY Terminal ASC");
-            $stmt->execute();
-            $sheds = $stmt->fetchAll();
-
-        } catch (Exception $e) {
-            $error = 'Unable to load page data.';
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Handle form submission
-            list($error, $success) = $this->handleComplaintSubmission();
-        }
-
-        $data = compact('error', 'success', 'currentUser', 'customerDetails', 'complaintTypes', 'typeSubtypeMapping', 'sheds');
-        $this->loadView('header', ['pageTitle' => 'New Grievance']);
-        $this->loadView('pages/complaint_form', $data);
-        $this->loadView('footer');
-    }
-
-    private function handleComplaintSubmission() {
-        try {
-            if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
-                throw new Exception('Invalid security token');
-            }
-            
-            $formData = [
-                'complaint_type' => sanitizeInput($_POST['complaint_type'] ?? ''),
-                'complaint_subtype' => sanitizeInput($_POST['complaint_subtype'] ?? ''),
-                'shed_id' => (int)($_POST['shed_id'] ?? 0),
-                'fnr_no' => sanitizeInput($_POST['fnr_no'] ?? ''),
-                'description' => sanitizeInput($_POST['description'] ?? '')
-            ];
-            
-            // Validation
-            $errors = [];
-            if (empty($formData['complaint_type'])) $errors[] = 'Grievance type is required';
-            if (empty($formData['complaint_subtype'])) $errors[] = 'Grievance subtype is required';
-            if (empty($formData['fnr_no'])) $errors[] = 'FNR Number is required';
-            if (empty($formData['shed_id'])) $errors[] = 'Location (Shed) is required';
-            if (empty($formData['description'])) {
-                $errors[] = 'Description is required';
-            } elseif (strlen($formData['description']) < 20) {
-                $errors[] = 'Description must be at least 20 characters long';
-            }
-            
-            $db = Database::getInstance();
-            $connection = $db->getConnection();
-            $categoryMapping = $this->determineCategoryFromTypeAndSubtype($formData['complaint_type'], $formData['complaint_subtype'], $connection);
-            if (!$categoryMapping) {
-                $errors[] = 'Invalid complaint type and subtype combination selected';
-            }
-            
-            if (empty($errors)) {
-                $complaintModel = $this->loadModel('Complaint');
-                $evidenceModel = $this->loadModel('Evidence');
-                $transactionModel = $this->loadModel('Transaction');
-                
-                $shedStmt = $connection->prepare("SELECT Terminal, Type FROM shed WHERE ShedID = ?");
-                $shedStmt->execute([$formData['shed_id']]);
-                $shedDetails = $shedStmt->fetch();
-                $location = $shedDetails ? $shedDetails['Terminal'] . ' (' . $shedDetails['Type'] . ')' : '';
-                
-                $currentUser = SessionManager::getCurrentUser();
-                $complaintData = [
-                    'complaint_type' => $categoryMapping['Type'],
-                    'complaint_subtype' => $categoryMapping['SubType'],
-                    'category' => $categoryMapping['Category'],
-                    'location' => $location,
-                    'shed_id' => $formData['shed_id'],
-                    'fnr_no' => $formData['fnr_no'],
-                    'description' => $formData['description'],
-                    'customer_id' => $currentUser['customer_id'],
-                    'department' => 'COMMERCIAL'
-                    // priority will be set to 'normal' by default in createComplaint()
-                ];
-                
-                $complaintId = $complaintModel->createComplaint($complaintData);
-                
-                if ($complaintId) {
-                    if (!empty($_FILES['evidence']['tmp_name'][0])) {
-                        $uploadResult = $evidenceModel->handleFileUpload($_FILES['evidence'], $complaintId);
-                        if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
-                             return ['Grievance submitted but some files failed to upload: ' . implode(', ', $uploadResult['errors']), ''];
-                        }
-                    }
-                    
-                    $transactionModel->logStatusUpdate($complaintId, 'Grievance submitted by customer. Assigned to Commercial Controller for review.', $currentUser['login_id']);
-                    
-                    $this->sendConfirmationEmail($currentUser, $complaintId, $complaintData);
-                    
-                    $_SESSION['alert_message'] = "Grievance submitted successfully! Your grievance ID is: $complaintId";
-                    $_SESSION['alert_type'] = 'success';
-                    $this->redirect('complaints/new');
-                } else {
-                    return ['Failed to submit grievance. Please try again.', ''];
-                }
-            } else {
-                return [implode('<br>', $errors), ''];
-            }
-        } catch (Exception $e) {
-            error_log('Grievance submission error: ' . $e->getMessage());
-            return ['An error occurred while submitting your grievance. Please try again or contact support if the issue persists.', ''];
-        }
-        return ['', ''];
-    }
 
     private function determineCategoryFromTypeAndSubtype($complaintType, $complaintSubtype, $connection) {
         try {
@@ -708,12 +582,14 @@ class ComplaintController extends BaseController {
         }
     }
 
-    private function sendConfirmationEmail($currentUser, $complaintId, $complaintData) {
+    private function sendConfirmationEmail($customerSession, $complaintId, $complaintData) {
         try {
             require_once __DIR__ . '/../utils/EmailService.php';
             $emailService = new EmailService();
-            $customerEmail = $currentUser['email'] ?? '';
-            $customerName = $currentUser['name'] ?? 'Valued Customer';
+            
+            // Use customer session data
+            $customerEmail = $customerSession['customer_email'] ?? '';
+            $customerName = $customerSession['customer_name'] ?? 'Valued Customer';
             
             if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
                 $emailSent = $emailService->sendComplaintConfirmation($customerEmail, $customerName, $complaintId, $complaintData);
@@ -726,6 +602,568 @@ class ComplaintController extends BaseController {
         } catch (Exception $e) {
             error_log('Email sending error: ' . $e->getMessage());
             // Don't fail the entire process if email fails
+        }
+    }
+
+    /**
+     * Modern complaints view (combines all grievances and assigned to me)
+     */
+    public function complaintsHub() {
+        SessionManager::requireAnyRole(['admin', 'controller']);
+        
+        $currentUser = SessionManager::getCurrentUser();
+        $complaintModel = $this->loadModel('Complaint');
+        $userModel = $this->loadModel('User');
+        
+        // Get filters
+        $status = $_GET['status'] ?? '';
+        $priority = $_GET['priority'] ?? '';
+        $department = $_GET['department'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $view = $_GET['view'] ?? 'all'; // 'all' or 'assigned'
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 50;
+        $offset = ($page - 1) * $limit;
+        
+        // Handle actions
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            try {
+                $action = $_POST['action'] ?? '';
+                $complaintId = $_POST['complaint_id'] ?? '';
+                
+                // Validate CSRF token
+                if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                    throw new Exception('Invalid security token');
+                }
+                
+                $transactionModel = $this->loadModel('Transaction');
+                $rejectionModel = $this->loadModel('ComplaintRejection');
+                
+                switch ($action) {
+                    case 'close':
+                        $actionTaken = sanitizeInput($_POST['action_taken'] ?? '');
+                        $remarks = sanitizeInput($_POST['remarks'] ?? '');
+                        if (empty($actionTaken) || empty($remarks)) {
+                            throw new Exception('Action taken and internal remarks are required');
+                        }
+                        $result = $complaintModel->updateStatus($complaintId, 'awaiting_approval', $actionTaken);
+                        $assignResult = $complaintModel->assignTo($complaintId, 'commercial_controller');
+                        // Set awaiting approval flag to Y
+                        $approvalResult = $complaintModel->setAwaitingApproval($complaintId, 'Y');
+                        if ($result) {
+                            $transactionModel->logStatusUpdate($complaintId, 'Closed by controller. Awaiting Commercial approval. Remarks: ' . $remarks, $currentUser['login_id']);
+                            $_SESSION['alert_message'] = "Grievance sent for Commercial approval.";
+                            $_SESSION['alert_type'] = 'success';
+                        } else {
+                            $_SESSION['alert_message'] = 'Failed to process close request.';
+                            $_SESSION['alert_type'] = 'error';
+                        }
+                        $this->redirect('grievances/hub');
+                        return;
+                        
+                    case 'forward':
+                        $toDepartment = $_POST['to_department'] ?? '';
+                        $toUser = $_POST['to_user'] ?? '';
+                        $forwardRemarks = sanitizeInput($_POST['forward_remarks'] ?? '');
+                        
+                        if (empty($toDepartment) || empty($forwardRemarks)) {
+                            throw new Exception('Department and remarks are required for forwarding');
+                        }
+                        
+                        if (!empty($toUser)) {
+                            $complaintModel->assignTo($complaintId, $toUser);
+                        }
+                        
+                        $transactionModel->logForward(
+                            $complaintId,
+                            $currentUser['login_id'],
+                            $toUser,
+                            $currentUser['department'],
+                            $toDepartment,
+                            $forwardRemarks,
+                            $currentUser['login_id']
+                        );
+                        
+                        $_SESSION['alert_message'] = 'Grievance forwarded successfully!';
+                        $_SESSION['alert_type'] = 'success';
+                        $this->redirect('grievances/hub');
+                        return;
+                        
+                    case 'revert':
+                        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                            throw new Exception('Only Commercial Controller can revert to customer');
+                        }
+                        $rejectionReason = sanitizeInput($_POST['rejection_reason'] ?? '');
+                        if (empty($rejectionReason)) {
+                            throw new Exception('Remarks are required for revert');
+                        }
+                        
+                        $complaint = $complaintModel->findByComplaintId($complaintId);
+                        $customerId = $complaint['customer_id'] ?? null;
+                        $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
+                        $customerLoginId = $customerUser['login_id'] ?? null;
+                        
+                        $rejectionModel->logCommercialToCustomer($complaintId, $currentUser['login_id'], null, $rejectionReason);
+                        $complaintModel->updateStatus($complaintId, 'reverted');
+                        if ($customerLoginId) {
+                            $complaintModel->assignTo($complaintId, $customerLoginId);
+                        }
+                        
+                        $transactionModel->logStatusUpdate($complaintId, 'Reverted to customer for more information: ' . $rejectionReason, $currentUser['login_id']);
+                        
+                        require_once __DIR__ . '/../utils/EmailService.php';
+                        $emailService = new EmailService();
+                        $customerEmail = $complaint['customer_email'] ?? '';
+                        $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+                        if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+                            $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, ($complaint['status'] ?? 'pending'), 'reverted', $rejectionReason);
+                        }
+                        
+                        $_SESSION['alert_message'] = 'Grievance reverted to customer with remarks.';
+                        $_SESSION['alert_type'] = 'success';
+                        $this->redirect('grievances/hub');
+                        return;
+                        
+                    case 'assign_priority':
+                        $newPriority = $_POST['new_priority'] ?? '';
+                        if (empty($newPriority)) {
+                            throw new Exception('Priority is required');
+                        }
+                        $result = $complaintModel->updatePriority($complaintId, $newPriority);
+                        if ($result) {
+                            $transactionModel->logStatusUpdate($complaintId, 'Priority updated to: ' . $newPriority, $currentUser['login_id']);
+                            $_SESSION['alert_message'] = 'Priority updated successfully!';
+                            $_SESSION['alert_type'] = 'success';
+                        } else {
+                            $_SESSION['alert_message'] = 'Failed to update priority.';
+                            $_SESSION['alert_type'] = 'error';
+                        }
+                        $this->redirect('grievances/hub');
+                        return;
+                }
+            } catch (Exception $e) {
+                $_SESSION['alert_message'] = $e->getMessage();
+                $_SESSION['alert_type'] = 'error';
+                $this->redirect('grievances/hub');
+                return;
+            }
+        }
+        
+        // Get grievances based on view type
+        $filters = [];
+        if (!empty($status)) $filters['status'] = $status;
+        if (!empty($priority)) $filters['priority'] = $priority;
+        if (!empty($department)) $filters['department'] = $department;
+        
+        // Initialize error and success variables
+        $error = '';
+        $success = '';
+        
+        // Get session messages
+        if (isset($_SESSION['alert_message'])) {
+            if (isset($_SESSION['alert_type']) && $_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            
+            // Clear session messages after retrieving them
+            unset($_SESSION['alert_message']);
+            unset($_SESSION['alert_type']);
+        }
+        
+        if ($view === 'assigned') {
+            // Get assigned grievances
+            $grievances = $complaintModel->findAssignedToWithFilters($currentUser['login_id'], $filters, $search, $limit, $offset);
+            $totalCount = $complaintModel->countAssignedToWithFilters($currentUser['login_id'], $filters, $search);
+        } else {
+            // Get all grievances
+            $complaintModel->updateAutoPriorities();
+            $grievances = $complaintModel->searchWithFilters($search, $filters, $limit, $offset);
+            $totalCount = $complaintModel->countWithFilters($filters, $search);
+        }
+        
+        // Calculate auto-priority for each grievance and ensure status is available
+        foreach ($grievances as &$grievance) {
+            $grievance['display_priority'] = $complaintModel->calculateAutoPriority($grievance['created_at'] ?? '');
+            // Ensure status is properly set
+            if (!isset($grievance['status']) || empty($grievance['status'])) {
+                $grievance['status'] = 'pending';
+            }
+            // Ensure other fields have default values to prevent null issues
+            $grievance['complaint_id'] = $grievance['complaint_id'] ?? '';
+            $grievance['Type'] = $grievance['Type'] ?? 'Not specified';
+            $grievance['Subtype'] = $grievance['Subtype'] ?? '';
+            $grievance['customer_name'] = $grievance['customer_name'] ?? 'Unknown';
+            $grievance['description'] = $grievance['description'] ?? '';
+            $grievance['priority'] = $grievance['priority'] ?? 'medium';
+        }
+        
+        $totalPages = ceil($totalCount / $limit);
+        
+        // Get department users for forwarding
+        $departmentUsers = $userModel->getUsersByDepartment();
+        $departments = array_keys($departmentUsers);
+        
+        // Get statistics - always calculate for ALL complaints regardless of current filter
+        $statistics = [
+            'total' => $complaintModel->countWithFilters([], ''), // All complaints
+            'assigned' => $complaintModel->countAssignedTo($currentUser['login_id']),
+            'pending' => $complaintModel->countWithFilters(['status' => 'pending'], ''),
+            'replied' => $complaintModel->countWithFilters(['status' => 'replied'], ''),
+            'closed' => $complaintModel->countWithFilters(['status' => 'closed'], ''),
+            'forwarded' => $complaintModel->countWithFilters(['status' => 'forwarded'], ''),
+            'reverted' => $complaintModel->countWithFilters(['status' => 'reverted'], ''),
+            'awaiting_approval' => $complaintModel->countWithFilters(['status' => 'awaiting_approval'], '')
+        ];
+        
+        $data = compact(
+            'grievances', 'totalCount', 'currentUser', 'error', 'success', 
+            'status', 'priority', 'department', 'search', 'view', 'page', 
+            'totalPages', 'departmentUsers', 'departments', 'statistics'
+        );
+        
+        $this->loadView('header', ['pageTitle' => 'Complaints Hub']);
+        $this->loadView('pages/complaints_hub', $data);
+        $this->loadView('footer');
+    }
+
+    /**
+     * Support & Assistance page for customers
+     */
+    public function supportAssistance() {
+        // Check if customer is authenticated
+        $customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in'];
+        
+        if (!$customerAuthenticated) {
+            // Redirect to new support ticket page for authentication
+            header('Location: ' . BASE_URL . 'support/new');
+            exit;
+        }
+        
+        $complaintModel = $this->loadModel('Complaint');
+        
+        // Get filters
+        $status = $_GET['status'] ?? '';
+        $priority = $_GET['priority'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $view = $_GET['view'] ?? 'all';
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = 50;
+        $offset = ($page - 1) * $limit;
+        
+        // Initialize error and success variables
+        $error = '';
+        $success = '';
+        
+        // Get session messages
+        if (isset($_SESSION['alert_message'])) {
+            if (isset($_SESSION['alert_type']) && $_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            
+            // Clear session messages after retrieving them
+            unset($_SESSION['alert_message']);
+            unset($_SESSION['alert_type']);
+        }
+        
+        // Get customer's support tickets (complaints)
+        $filters = [];
+        if (!empty($status)) $filters['status'] = $status;
+        if (!empty($priority)) $filters['priority'] = $priority;
+        
+        // Get customer's complaints - SECURE: Only shows complaints for this specific customer
+        $supportTickets = $complaintModel->findByCustomerWithFilters($_SESSION['customer_id'], $filters, $search, $limit, $offset);
+        $totalCount = $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], $filters, $search);
+        
+        // Calculate auto-priority for each ticket and ensure status is available
+        foreach ($supportTickets as &$ticket) {
+            $ticket['display_priority'] = $complaintModel->calculateAutoPriority($ticket['created_at'] ?? '');
+            // Ensure status is properly set
+            if (!isset($ticket['status']) || empty($ticket['status'])) {
+                $ticket['status'] = 'pending';
+            }
+            // Ensure other fields have default values to prevent null issues
+            $ticket['complaint_id'] = $ticket['complaint_id'] ?? '';
+            $ticket['Type'] = $ticket['Type'] ?? 'Not specified';
+            $ticket['Subtype'] = $ticket['Subtype'] ?? '';
+            $ticket['description'] = $ticket['description'] ?? '';
+            $ticket['priority'] = $ticket['priority'] ?? 'medium';
+        }
+        
+        $totalPages = ceil($totalCount / $limit);
+        
+        // Get statistics for customer's tickets
+        $statistics = [
+            'total' => $complaintModel->countByCustomer($_SESSION['customer_id']),
+            'pending' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'pending'], ''),
+            'replied' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'replied'], ''),
+            'closed' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'closed'], ''),
+            'reverted' => $complaintModel->countByCustomerWithFilters($_SESSION['customer_id'], ['status' => 'reverted'], '')
+        ];
+        
+        $data = compact(
+            'supportTickets', 'totalCount', 'error', 'success', 
+            'status', 'priority', 'search', 'view', 'page', 'totalPages', 'statistics'
+        );
+        
+        $this->loadView('header', ['pageTitle' => 'Support & Assistance']);
+        $this->loadView('pages/support_assistance', $data);
+        $this->loadView('footer');
+    }
+
+    /**
+     * New Support Ticket Form with Customer Authentication
+     */
+    public function newSupportTicket() {
+        // Check if customer is authenticated
+        $customerAuthenticated = isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in'];
+        
+        if (!$customerAuthenticated) {
+            // Show authentication form first
+            $this->loadView('header', ['pageTitle' => 'New Support Ticket - Authentication Required']);
+            $this->loadView('pages/new_support_ticket_with_auth', []);
+            $this->loadView('footer');
+            return;
+        }
+        
+        // Customer is authenticated, proceed with form
+        $error = '';
+        $success = '';
+        
+        // Get session messages
+        if (isset($_SESSION['alert_message'])) {
+            if (isset($_SESSION['alert_type']) && $_SESSION['alert_type'] === 'success') {
+                $success = $_SESSION['alert_message'];
+            } else {
+                $error = $_SESSION['alert_message'];
+            }
+            
+            // Clear session messages after retrieving them
+            unset($_SESSION['alert_message']);
+            unset($_SESSION['alert_type']);
+        }
+        
+        // Get customer details from session
+        $customerDetails = [
+            'CustomerID' => $_SESSION['customer_id'],
+            'Name' => $_SESSION['customer_name'],
+            'Email' => $_SESSION['customer_email'],
+            'CompanyName' => $_SESSION['customer_company']
+        ];
+        
+        $complaintTypes = [];
+        $typeSubtypeMapping = [];
+        $sheds = [];
+        $wagons = [];
+        
+        try {
+            $db = Database::getInstance();
+            $connection = $db->getConnection();
+            
+            // Get complaint types
+            $stmt = $connection->prepare("SELECT DISTINCT Type FROM complaint_categories ORDER BY Type ASC");
+            $stmt->execute();
+            $complaintTypes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            // Get type-subtype mapping
+            $stmt = $connection->prepare("SELECT Type, SubType FROM complaint_categories ORDER BY Type, SubType");
+            $stmt->execute();
+            $mappings = $stmt->fetchAll();
+            
+            foreach ($mappings as $mapping) {
+                if (!isset($typeSubtypeMapping[$mapping['Type']])) {
+                    $typeSubtypeMapping[$mapping['Type']] = [];
+                }
+                if (!in_array($mapping['SubType'], $typeSubtypeMapping[$mapping['Type']])) {
+                    $typeSubtypeMapping[$mapping['Type']][] = $mapping['SubType'];
+                }
+            }
+            
+            // Get shed locations
+            $stmt = $connection->prepare("SELECT ShedID, Terminal, Type FROM shed ORDER BY Terminal ASC");
+            $stmt->execute();
+            $sheds = $stmt->fetchAll();
+            
+            // Get wagon types
+            $stmt = $connection->prepare("SELECT WagonID, WagonCode, Type FROM wagon_details ORDER BY Type ASC");
+            $stmt->execute();
+            $wagons = $stmt->fetchAll();
+            
+        } catch (Exception $e) {
+            $error = 'Unable to load page data.';
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Handle form submission
+            list($error, $success) = $this->handleSupportTicketSubmission();
+        }
+        
+        $data = compact('error', 'success', 'customerDetails', 'complaintTypes', 'typeSubtypeMapping', 'sheds', 'wagons');
+        $this->loadView('header', ['pageTitle' => 'New Support Ticket']);
+        $this->loadView('pages/new_support_ticket_with_auth', $data);
+        $this->loadView('footer');
+    }
+    
+    /**
+     * Handle support ticket form submission
+     */
+    private function handleSupportTicketSubmission() {
+        try {
+            if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                throw new Exception('Invalid security token');
+            }
+            
+            // Check if customer is authenticated
+            if (!isset($_SESSION['customer_logged_in']) || !$_SESSION['customer_logged_in']) {
+                throw new Exception('Customer authentication required');
+            }
+            
+            $formData = [
+                'complaint_type' => sanitizeInput($_POST['complaint_type'] ?? ''),
+                'complaint_subtype' => sanitizeInput($_POST['complaint_subtype'] ?? ''),
+                'shed_id' => (int)($_POST['shed_id'] ?? 0),
+                'wagon_id' => !empty($_POST['wagon_id']) ? (int)($_POST['wagon_id']) : null,
+                'fnr_no' => sanitizeInput($_POST['fnr_no'] ?? ''),
+                'description' => sanitizeInput($_POST['description'] ?? '')
+            ];
+            
+            // Validation
+            $errors = [];
+            if (empty($formData['complaint_type'])) $errors[] = 'Issue type is required';
+            if (empty($formData['complaint_subtype'])) $errors[] = 'Issue subtype is required';
+            if (empty($formData['fnr_no'])) $errors[] = 'FNR Number is required';
+            if (empty($formData['shed_id'])) $errors[] = 'Location (Shed) is required';
+            if (empty($formData['description'])) {
+                $errors[] = 'Description is required';
+            } elseif (strlen($formData['description']) < 20) {
+                $errors[] = 'Description must be at least 20 characters long';
+            }
+            
+            $db = Database::getInstance();
+            $connection = $db->getConnection();
+            $categoryMapping = $this->determineCategoryFromTypeAndSubtype($formData['complaint_type'], $formData['complaint_subtype'], $connection);
+            if (!$categoryMapping) {
+                $errors[] = 'Invalid issue type and subtype combination selected';
+            }
+            
+            if (empty($errors)) {
+                $complaintModel = $this->loadModel('Complaint');
+                $evidenceModel = $this->loadModel('Evidence');
+                $transactionModel = $this->loadModel('Transaction');
+                
+                $shedStmt = $connection->prepare("SELECT Terminal, Type FROM shed WHERE ShedID = ?");
+                $shedStmt->execute([$formData['shed_id']]);
+                $shedDetails = $shedStmt->fetch();
+                $location = $shedDetails ? $shedDetails['Terminal'] . ' (' . $shedDetails['Type'] . ')' : '';
+                
+                // Use customer session data instead of user data
+                $complaintData = [
+                    'Type' => $categoryMapping['Type'],
+                    'Subtype' => $categoryMapping['SubType'],
+                    'category' => $categoryMapping['Category'],
+                    'Location' => $location,
+                    'shed_id' => $formData['shed_id'],
+                    'wagon_id' => $formData['wagon_id'],
+                    'FNR_Number' => $formData['fnr_no'],
+                    'description' => $formData['description'],
+                    'customer_id' => $_SESSION['customer_id'],
+                    'department' => 'COMMERCIAL'
+                    // Assigned_To_Department will be set to 'COMMERCIAL' by default in createComplaint()
+                    // priority will be set to 'normal' by default in createComplaint()
+                ];
+                
+                $complaintId = $complaintModel->createComplaint($complaintData);
+                
+                if ($complaintId) {
+                    if (!empty($_FILES['evidence']['tmp_name'][0])) {
+                        $uploadResult = $evidenceModel->handleFileUpload($_FILES['evidence'], $complaintId);
+                        if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                            $errorMessage = 'Support ticket submitted but some files failed to upload: ' . implode(', ', $uploadResult['errors']);
+                            
+                            // Check if this is an AJAX request
+                            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                                // Return JSON response for AJAX requests
+                                header('Content-Type: application/json');
+                                echo json_encode([
+                                    'success' => false,
+                                    'message' => $errorMessage
+                                ]);
+                                exit;
+                            } else {
+                                return [$errorMessage, ''];
+                            }
+                        }
+                    }
+                    
+                    $transactionModel->logStatusUpdate($complaintId, 'Support ticket submitted by customer. Assigned to Commercial Controller for review.', $_SESSION['customer_email']);
+                
+                    $this->sendConfirmationEmail($_SESSION, $complaintId, $complaintData);
+                    
+                    $_SESSION['alert_message'] = "Support ticket submitted successfully! Your ticket ID is: $complaintId";
+                    $_SESSION['alert_type'] = 'success';
+                    
+                    // Check if this is an AJAX request
+                    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                        // Return JSON response for AJAX requests
+                        header('Content-Type: application/json');
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Support ticket submitted successfully! Your ticket ID is: $complaintId",
+                            'ticket_id' => $complaintId
+                        ]);
+                        exit;
+                    } else {
+                        // Redirect to support assistance page for regular form submissions
+                        $this->redirect('support/assistance');
+                    }
+                    return ['', 'Support ticket submitted successfully!'];
+                } else {
+                    $errorMessage = 'Failed to submit support ticket. Please try again.';
+                    
+                    // Check if this is an AJAX request
+                    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                        header('Content-Type: application/json');
+                        echo json_encode([
+                            'success' => false,
+                            'message' => $errorMessage
+                        ]);
+                        exit;
+                    } else {
+                        return [$errorMessage, ''];
+                    }
+                }
+            } else {
+                $errorMessage = 'Please correct the following errors: ' . implode(', ', $errors);
+                
+                // Check if this is an AJAX request
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => $errorMessage
+                    ]);
+                    exit;
+                } else {
+                    return [$errorMessage, ''];
+                }
+            }
+        } catch (Exception $e) {
+            $errorMessage = 'Error: ' . $e->getMessage();
+            
+            // Check if this is an AJAX request
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => false,
+                    'message' => $errorMessage
+                ]);
+                exit;
+            } else {
+                return [$errorMessage, ''];
+            }
         }
     }
 }

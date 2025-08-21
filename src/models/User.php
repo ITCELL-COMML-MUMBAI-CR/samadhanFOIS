@@ -105,14 +105,69 @@ class User extends BaseModel {
     }
     
     /**
+     * Update user profile
+     */
+    public function updateProfile($loginId, $data) {
+        $data['updated_at'] = getCurrentDateTime();
+        
+        $columns = array_keys($data);
+        $setClause = array_map(function($column) {
+            return "$column = ?";
+        }, $columns);
+        
+        $sql = "UPDATE users SET " . implode(', ', $setClause) . " WHERE login_id = ?";
+        
+        $params = array_values($data);
+        $params[] = $loginId;
+        
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
+     * Get all users with optional filters
+     */
+    public function getAllUsers($filters = [], $limit = null) {
+        $sql = "SELECT * FROM users WHERE 1=1";
+        $params = [];
+        
+        if (!empty($filters['role'])) {
+            $sql .= " AND role = ?";
+            $params[] = $filters['role'];
+        }
+        
+        if (!empty($filters['department'])) {
+            $sql .= " AND department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        if (!empty($filters['status'])) {
+            $sql .= " AND status = ?";
+            $params[] = $filters['status'];
+        }
+        
+        $sql .= " ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
      * Get users by role
      */
-    public function findByRole($role) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM users 
-            WHERE role = ? AND status = 'active'
-            ORDER BY name ASC
-        ");
+    public function getByRole($role, $limit = null) {
+        $sql = "SELECT * FROM users WHERE role = ? ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute([$role]);
         return $stmt->fetchAll();
     }
@@ -120,94 +175,50 @@ class User extends BaseModel {
     /**
      * Get users by department
      */
-    public function findByDepartment($department) {
-        $stmt = $this->connection->prepare("
-            SELECT * FROM users 
-            WHERE department = ? AND status = 'active'
-            ORDER BY name ASC
-        ");
+    public function getByDepartment($department, $limit = null) {
+        $sql = "SELECT * FROM users WHERE department = ? ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute([$department]);
         return $stmt->fetchAll();
     }
     
     /**
-     * Check if login ID exists
+     * Search users
      */
-    public function loginIdExists($loginId) {
-        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM users WHERE login_id = ?");
-        $stmt->execute([$loginId]);
-        $result = $stmt->fetch();
-        return $result['count'] > 0;
-    }
-    
-    /**
-     * Update user status
-     */
-    public function updateStatus($loginId, $status) {
-        $stmt = $this->connection->prepare("
-            UPDATE users 
-            SET status = ?, updated_at = ? 
-            WHERE login_id = ?
-        ");
-        return $stmt->execute([$status, getCurrentDateTime(), $loginId]);
-    }
-    
-    /**
-     * Update user fields (except password). Allows changing login_id.
-     */
-    public function updateUser($originalLoginId, $data) {
-        $allowed = ['login_id','name','email','mobile','role','department','customer_id','status'];
-        $setParts = [];
-        $params = [];
-        foreach ($allowed as $field) {
-            if (array_key_exists($field, $data)) {
-                $setParts[] = "$field = ?";
-                $params[] = $data[$field];
-            }
-        }
-        $setParts[] = 'updated_at = ?';
-        $params[] = getCurrentDateTime();
-        if (empty($setParts)) {
-            return false;
-        }
-        $sql = 'UPDATE users SET ' . implode(', ', $setParts) . ' WHERE login_id = ?';
-        $params[] = $originalLoginId;
-        $stmt = $this->connection->prepare($sql);
-        return $stmt->execute($params);
-    }
-    
-    /**
-     * Delete user by login id
-     */
-    public function deleteByLoginId($loginId) {
-        $stmt = $this->connection->prepare('DELETE FROM users WHERE login_id = ?');
-        return $stmt->execute([$loginId]);
-    }
-    
-    /**
-     * Search users with optional filters
-     */
-    public function search($searchTerm = '', $filters = []) {
+    public function search($searchTerm, $filters = [], $limit = null) {
         $sql = "SELECT * FROM users WHERE 1=1";
         $params = [];
-        if ($searchTerm !== '') {
-            $sql .= " AND (login_id LIKE ? OR name LIKE ? OR email LIKE ? OR mobile LIKE ?)";
-            $like = "%$searchTerm%";
-            array_push($params, $like, $like, $like, $like);
+        
+        // Add search conditions
+        if (!empty($searchTerm)) {
+            $sql .= " AND (login_id LIKE ? OR name LIKE ? OR email LIKE ?)";
+            $searchPattern = "%$searchTerm%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
         }
-        if (!empty($filters['role'])) {
-            $sql .= " AND role = ?";
-            $params[] = $filters['role'];
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    $sql .= " AND $key = ?";
+                    $params[] = $value;
+                }
+            }
         }
-        if (!empty($filters['department'])) {
-            $sql .= " AND department = ?";
-            $params[] = $filters['department'];
+        
+        $sql .= " ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
         }
-        if (!empty($filters['status'])) {
-            $sql .= " AND status = ?";
-            $params[] = $filters['status'];
-        }
-        $sql .= " ORDER BY updated_at DESC";
+        
         $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
@@ -224,85 +235,127 @@ class User extends BaseModel {
         $stmt->execute();
         $stats['total'] = $stmt->fetch()['count'];
         
-        // Active users
-        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM users WHERE status = 'active'");
-        $stmt->execute();
-        $stats['active'] = $stmt->fetch()['count'];
-        
         // Users by role
         $stmt = $this->connection->prepare("
             SELECT role, COUNT(*) as count 
             FROM users 
-            WHERE status = 'active' 
             GROUP BY role
         ");
         $stmt->execute();
-        $roleStats = $stmt->fetchAll();
+        $stats['by_role'] = $stmt->fetchAll();
         
-        foreach ($roleStats as $roleStat) {
-            $stats['by_role'][$roleStat['role']] = $roleStat['count'];
-        }
+        // Users by department
+        $stmt = $this->connection->prepare("
+            SELECT department, COUNT(*) as count 
+            FROM users 
+            WHERE department IS NOT NULL
+            GROUP BY department
+        ");
+        $stmt->execute();
+        $stats['by_department'] = $stmt->fetchAll();
+        
+        // Users by status
+        $stmt = $this->connection->prepare("
+            SELECT status, COUNT(*) as count 
+            FROM users 
+            GROUP BY status
+        ");
+        $stmt->execute();
+        $stats['by_status'] = $stmt->fetchAll();
+        
+        // Recent users (last 30 days)
+        $stmt = $this->connection->prepare("
+            SELECT COUNT(*) as count 
+            FROM users 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        ");
+        $stmt->execute();
+        $stats['recent_30_days'] = $stmt->fetch()['count'];
         
         return $stats;
     }
     
     /**
-     * Find all active users with optional conditions
+     * Check if login ID exists
      */
-    public function findAll($conditions = [], $orderBy = 'created_at DESC', $limit = null) {
-        $sql = "SELECT * FROM users WHERE status = 'active'";
-        $params = [];
+    public function loginIdExists($loginId) {
+        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM users WHERE login_id = ?");
+        $stmt->execute([$loginId]);
+        return $stmt->fetch()['count'] > 0;
+    }
+    
+    /**
+     * Check if email exists
+     */
+    public function emailExists($email, $excludeLoginId = null) {
+        $sql = "SELECT COUNT(*) as count FROM users WHERE email = ?";
+        $params = [$email];
         
-        // Add additional conditions if provided
-        foreach ($conditions as $field => $value) {
-            $sql .= " AND $field = ?";
-            $params[] = $value;
-        }
-        
-        $sql .= " ORDER BY $orderBy";
-        
-        if ($limit) {
-            $sql .= " LIMIT $limit";
+        if ($excludeLoginId) {
+            $sql .= " AND login_id != ?";
+            $params[] = $excludeLoginId;
         }
         
         $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        return $stmt->fetch()['count'] > 0;
     }
     
     /**
-     * Find users by specific role
+     * Deactivate user
      */
-    public function getUsersByRole($role) {
+    public function deactivateUser($loginId) {
         $stmt = $this->connection->prepare("
-            SELECT * FROM users 
-            WHERE role = ? AND status = 'active' 
-            ORDER BY name ASC
+            UPDATE users 
+            SET status = 'inactive', updated_at = ? 
+            WHERE login_id = ?
         ");
-        $stmt->execute([$role]);
-        return $stmt->fetchAll();
+        return $stmt->execute([getCurrentDateTime(), $loginId]);
     }
     
     /**
-     * Get all users (for bulk email)
+     * Activate user
      */
-    public function getAllUsers() {
+    public function activateUser($loginId) {
         $stmt = $this->connection->prepare("
-            SELECT * FROM users 
-            WHERE status = 'active' 
-            ORDER BY name ASC
+            UPDATE users 
+            SET status = 'active', updated_at = ? 
+            WHERE login_id = ?
+        ");
+        return $stmt->execute([getCurrentDateTime(), $loginId]);
+    }
+    
+    /**
+     * Delete user
+     */
+    public function deleteUser($loginId) {
+        $stmt = $this->connection->prepare("DELETE FROM users WHERE login_id = ?");
+        return $stmt->execute([$loginId]);
+    }
+    
+    /**
+     * Get users grouped by department
+     */
+    public function getUsersByDepartment() {
+        $stmt = $this->connection->prepare("
+            SELECT department, login_id, name, email, role, status
+            FROM users 
+            WHERE department IS NOT NULL AND status = 'active'
+            ORDER BY department ASC, name ASC
         ");
         $stmt->execute();
-        return $stmt->fetchAll();
-    }
-    
-    /**
-     * Find user by email
-     */
-    public function findByEmail($email) {
-        $stmt = $this->connection->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        return $stmt->fetch();
+        $users = $stmt->fetchAll();
+        
+        $grouped = [];
+        foreach ($users as $user) {
+            $department = $user['department'];
+            if (!isset($grouped[$department])) {
+                $grouped[$department] = [];
+            }
+            $grouped[$department][] = $user;
+        }
+        
+        return $grouped;
     }
 }
 ?>

@@ -2,18 +2,21 @@
 
 class BaseController {
     protected function loadView($view, $data = []) {
-        extract($data);
+        // Store the view name in a local variable to avoid conflicts
+        $viewName = $view;
         
         // First try to load from src/views
-        $filePath = __DIR__ . '/../views/' . $view . '.php';
+        $filePath = __DIR__ . '/../views/' . $viewName . '.php';
         
         // If the view is a page and doesn't exist in src/views, try public/pages
-        if (!file_exists($filePath) && strpos($view, 'pages/') === 0) {
-            $pageView = substr($view, 6); // Remove 'pages/' prefix
+        if (!file_exists($filePath) && strpos($viewName, 'pages/') === 0) {
+            $pageView = substr($viewName, 6); // Remove 'pages/' prefix
             $filePath = __DIR__ . '/../../public/pages/' . $pageView . '.php';
         }
         
         if (file_exists($filePath)) {
+            // Extract data into a local scope to avoid variable conflicts
+            extract($data);
             require_once $filePath;
         } else {
             // Handle view not found error

@@ -280,9 +280,15 @@ try {
                                 </button>
                             </div>
                             <div class="col-md-6">
-                                <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-railway-secondary btn-lg w-100">
-                                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                                </a>
+                                <?php if (in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
+                                    <a href="<?php echo BASE_URL; ?>dashboard" class="btn btn-railway-secondary btn-lg w-100">
+                                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                                    </a>
+                                <?php else: ?>
+                                    <a href="<?php echo BASE_URL; ?>home" class="btn btn-railway-secondary btn-lg w-100">
+                                        <i class="fas fa-arrow-left"></i> Back to Home
+                                    </a>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </form>

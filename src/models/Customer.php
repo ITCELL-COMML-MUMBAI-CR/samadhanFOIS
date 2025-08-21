@@ -221,6 +221,32 @@ class Customer extends BaseModel {
     }
     
     /**
+     * Get customers added in a specific date range
+     */
+    public function getCustomersAdded($dateRange, $filters = []) {
+        $whereConditions = [];
+        $params = [];
+        
+        // Date range filter - using CustomerID pattern for date filtering
+        if (!empty($dateRange['start']) && !empty($dateRange['end'])) {
+            $startDate = date('Ymd', strtotime($dateRange['start']));
+            $endDate = date('Ymd', strtotime($dateRange['end']));
+            $whereConditions[] = "CustomerID LIKE 'ED%' AND CAST(SUBSTRING(CustomerID, 3, 8) AS UNSIGNED) BETWEEN ? AND ?";
+            $params[] = $startDate;
+            $params[] = $endDate;
+        }
+        
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        
+        $sql = "SELECT COUNT(*) as count FROM customers " . $whereClause;
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
+        
+        return $result['count'] ?? 0;
+    }
+    
+    /**
      * Validate customer data
      */
     public function validateCustomerData($data) {
@@ -270,6 +296,34 @@ class Customer extends BaseModel {
         $result = $stmt->fetch();
         
         return $result['count'] > 0;
+    }
+
+    /**
+     * Authenticate customer using CustomerID and password
+     */
+    public function authenticateCustomer($customerId, $password) {
+        if (empty($customerId) || empty($password)) {
+            return false;
+        }
+        
+        $stmt = $this->connection->prepare("SELECT * FROM customers WHERE CustomerID = ?");
+        $stmt->execute([$customerId]);
+        $customer = $stmt->fetch();
+        
+        if ($customer && password_verify($password, $customer['Password'])) {
+            return $customer;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Find customer by email
+     */
+    public function findByEmail($email) {
+        $stmt = $this->connection->prepare("SELECT * FROM customers WHERE Email = ?");
+        $stmt->execute([$email]);
+        return $stmt->fetch();
     }
 }
 ?>

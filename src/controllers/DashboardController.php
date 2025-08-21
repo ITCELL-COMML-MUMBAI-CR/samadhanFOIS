@@ -8,6 +8,13 @@ class DashboardController extends BaseController {
         $currentUser = SessionManager::getCurrentUser();
         $userRole = $currentUser['role'];
 
+        // Only allow controller, viewer, and admin roles
+        $allowedRoles = ['controller', 'viewer', 'admin'];
+        if (!in_array($userRole, $allowedRoles)) {
+            header('Location: ' . BASE_URL . 'home');
+            exit;
+        }
+
         $complaintModel = $this->loadModel('Complaint');
         $userModel = $this->loadModel('User');
         $transactionModel = $this->loadModel('Transaction');
@@ -19,19 +26,18 @@ class DashboardController extends BaseController {
         // Update auto-priorities before loading dashboard data
         $complaintModel->updateAutoPriorities();
 
+        // Build filters based on user role and permissions
+        $filters = $this->buildUserFilters($currentUser);
+
         switch ($userRole) {
-            case 'customer':
-                $filters = ['customer_id' => $currentUser['customer_id']];
-                $statistics = $complaintModel->getStatistics($filters);
-                $recentGrievances = $complaintModel->findByCustomer($currentUser['customer_id'], 5);
-                break;
             case 'controller':
-                $filters = ['assigned_to' => $currentUser['login_id']];
+                $filters['assigned_to'] = $currentUser['login_id'];
                 $statistics = $complaintModel->getStatistics($filters);
                 $recentGrievances = $complaintModel->findAssignedTo($currentUser['login_id'], 5);
                 break;
-            default: // admin, viewer
-                $statistics = $complaintModel->getStatistics();
+            case 'admin':
+            case 'viewer':
+                $statistics = $complaintModel->getStatistics($filters);
                 $recentGrievances = $complaintModel->getRecent(5);
                 break;
         }
@@ -54,9 +60,7 @@ class DashboardController extends BaseController {
             'statistics' => $statistics,
             'recentGrievances' => $recentGrievances,
             'recentTransactions' => $recentTransactions,
-            'dashboardData' => $dashboardData,
-            'statusChartData' => $this->prepareStatusChartData($statistics),
-            'priorityChartData' => $this->preparePriorityChartData($statistics)
+            'dashboardData' => $dashboardData
         ];
         
         $this->loadView('header', $data);
@@ -64,39 +68,23 @@ class DashboardController extends BaseController {
         $this->loadView('footer');
     }
 
-    private function prepareStatusChartData($statistics) {
-        $chartData = [];
-        if (!empty($statistics['by_status'])) {
-            foreach ($statistics['by_status'] as $status => $count) {
-                $chartData[] = ['label' => ucfirst(str_replace('_', ' ', $status)), 'value' => $count, 'color' => $this->getStatusColor($status)];
+
+    
+    /**
+     * Build user-specific filters based on role and permissions
+     */
+    private function buildUserFilters($currentUser) {
+        $filters = [];
+        
+        // Department filtering
+        if (!empty($currentUser['department'])) {
+            // Commercial department can see all departments
+            if ($currentUser['department'] !== 'COMMERCIAL') {
+                $filters['department'] = $currentUser['department'];
             }
         }
-        return $chartData;
-    }
-
-    private function preparePriorityChartData($statistics) {
-        $chartData = [];
-        if (!empty($statistics['by_priority'])) {
-            foreach ($statistics['by_priority'] as $priority => $count) {
-                $chartData[] = ['label' => ucfirst($priority), 'value' => $count, 'color' => $this->getPriorityColor($priority)];
-            }
-        }
-        return $chartData;
-    }
-
-    private function getStatusColor($status) {
-        $colors = [
-            'pending' => '#fbbf24', 
-            'replied' => '#3b82f6', 
-            'closed' => '#6b7280', 
-            'reverted' => '#dc2626',
-            'awaiting_approval' => '#FF9500'
-        ];
-        return $colors[$status] ?? '#6b7280';
-    }
-
-    private function getPriorityColor($priority) {
-        $colors = ['normal' => '#22c55e', 'medium' => '#fbbf24', 'high' => '#ea580c', 'critical' => '#dc2626', 'low' => '#22c55e']; // Added 'normal' and legacy 'low' support
-        return $colors[$priority] ?? '#6b7280';
+        
+        return $filters;
     }
 }
+

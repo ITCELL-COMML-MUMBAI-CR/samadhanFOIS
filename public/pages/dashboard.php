@@ -2,6 +2,7 @@
 // This file is now a view and should not contain business logic.
 // The logic is handled by DashboardController.php
 ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>css/dashboard.css">
 <div class="container-fluid">
     <!-- Welcome Header -->
     <div class="row">
@@ -23,15 +24,44 @@
         </div>
     </div>
     
-    <!-- Statistics Cards -->
+    <!-- Timeline Toggle -->
     <div class="row mb-4">
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="card dashboard-card card-complaints">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-center">
+                        <div class="btn-group" role="group" aria-label="Timeline Toggle">
+                            <input type="radio" class="btn-check" name="timeline" id="current" value="current" checked>
+                            <label class="btn btn-outline-primary" for="current">
+                                <i class="fas fa-calendar-day"></i> Current
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="timeline" id="yesterday" value="yesterday">
+                            <label class="btn btn-outline-primary" for="yesterday">
+                                <i class="fas fa-calendar-minus"></i> Yesterday
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="timeline" id="month" value="month">
+                            <label class="btn btn-outline-primary" for="month">
+                                <i class="fas fa-calendar-alt"></i> This Month
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- First Row: Key Metrics -->
+    <div class="row mb-4" id="firstRow">
+        <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+            <div class="card dashboard-card card-total-complaints">
                 <div class="card-body text-center">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['total'] ?? 0; ?></h3>
-                            <p class="mb-0">Total Grievances</p>
+                            <h3 class="display-6 fw-bold" id="totalComplaints">-</h3>
+                            <p class="mb-0">Total Complaints</p>
+                            <small class="text-muted variance-indicator" id="totalComplaintsVariance"></small>
                         </div>
                         <div class="align-self-center">
                             <i class="fas fa-file-alt fa-2x text-primary"></i>
@@ -41,13 +71,33 @@
             </div>
         </div>
         
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="card dashboard-card card-pending">
+        <div class="col-xl-4 col-lg-6 col-md-12 mb-3">
+            <div class="card dashboard-card card-status-bifurcation">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie text-info"></i> Status Bifurcation
+                        </h5>
+                        <i class="fas fa-chart-pie fa-2x text-info"></i>
+                    </div>
+                    <div id="statusBifurcationDetails" class="status-breakdown">
+                        <!-- Status breakdown will be loaded here -->
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+            <div class="card dashboard-card card-avg-pendency">
                 <div class="card-body text-center">
-                    <div class="d-flex justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['pending'] ?? 0; ?></h3>
-                            <p class="mb-0">Pending</p>
+                            <h3 class="display-6 fw-bold" id="averagePendency">-</h3>
+                            <p class="mb-0">Avg Pendency (Days)</p>
+                            <small class="text-muted variance-indicator" id="averagePendencyVariance"></small>
                         </div>
                         <div class="align-self-center">
                             <i class="fas fa-clock fa-2x text-warning"></i>
@@ -57,463 +107,120 @@
             </div>
         </div>
         
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-                            <div class="card dashboard-card card-replied">
+        <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+            <div class="card dashboard-card card-avg-reply-time">
                 <div class="card-body text-center">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h3 class="display-6 fw-bold"><?php echo ($statistics['by_status']['replied'] ?? 0) + ($statistics['by_status']['closed'] ?? 0); ?></h3>
-                            <p class="mb-0">Replied/Closed</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check-circle fa-2x text-success"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="card dashboard-card card-users">
-                <div class="card-body text-center">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['total'] ?? 0; ?></h3>
-                            <p class="mb-0">Total Users</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x text-info"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <?php if ($userRole === 'admin' || ($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="card dashboard-card card-awaiting-approval">
-                <div class="card-body text-center">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h3 class="display-6 fw-bold"><?php echo $statistics['by_status']['awaiting_approval'] ?? 0; ?></h3>
-                            <p class="mb-0">Awaiting Approval</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-clipboard-check fa-2x text-warning"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
-    
-    <!-- Charts Row -->
-    <div class="row mb-4">
-        <!-- Status Distribution Chart -->
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-pie"></i> Status Distribution
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="statusChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Priority Distribution Chart -->
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-bar"></i> Priority Distribution
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <canvas id="priorityChart" width="400" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Recent Activity Row -->
-    <div class="row">
-        <!-- Recent Grievances -->
-        <div class="col-lg-8 mb-4">
-            <div class="card">
-                <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-list"></i> Recent Grievances
-                        </h5>
-                        <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-outline-primary btn-sm">
-                            View All
-                        </a>
+                        <div>
+                            <h3 class="display-6 fw-bold" id="averageReplyTime">-</h3>
+                            <p class="mb-0">Avg Reply Time (Days)</p>
+                            <small class="text-muted variance-indicator" id="averageReplyTimeVariance"></small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-reply fa-2x text-success"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <?php if (empty($recentGrievances)): ?>
-                        <div class="text-center py-4">
-                            <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
-                            <p class="text-muted">No recent grievances found.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr class="text-center">
-                                        <th class="text-center align-middle">ID</th>
-                                        <th class="text-center align-middle">Category</th>
-                                        <th class="text-center align-middle">Type</th>
-                                        <?php if ($userRole !== 'customer'): ?>
-                                            <th class="text-center align-middle">Customer</th>
-                                        <?php endif; ?>
-                                        <th class="text-center align-middle">Status</th>
-                                        <?php if ($userRole !== 'customer'): ?>
-                                            <th class="text-center align-middle">Priority</th>
-                                        <?php else: ?>
-                                            <th class="text-center align-middle">Location</th>
-                                        <?php endif; ?>
-                                        <th class="text-center align-middle">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($recentGrievances as $grievance): ?>
-                                        <tr onclick="viewGrievance('<?php echo $grievance['complaint_id']; ?>')" style="cursor: pointer;">
-                                            <td class="text-center align-middle"><small><?php echo htmlspecialchars($grievance['complaint_id']); ?></small></td>
-                                            <td class="text-center align-middle">
-                                                <?php if (!empty($grievance['category'])): ?>
-                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($grievance['category']); ?></span>
-                                                <?php else: ?>
-                                                    <small class="text-muted">N/A</small>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td class="text-center align-middle">
-                                                <strong><?php echo htmlspecialchars($grievance['complaint_type']); ?></strong>
-                                                <br><small class="text-muted"><?php echo htmlspecialchars($grievance['complaint_subtype']); ?></small>
-                                            </td>
-                                            <?php if ($userRole !== 'customer'): ?>
-                                                <td class="text-center align-middle"><?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?></td>
-                                            <?php endif; ?>
-                                            <td class="text-center align-middle">
-                                                <span class="badge status-<?php echo str_replace('_', '-', $grievance['status']); ?>">
-                                                    <?php echo ucfirst(str_replace('_', ' ', $grievance['status'])); ?>
-                                                </span>
-                                            </td>
-                                            <?php if ($userRole !== 'customer'): ?>
-                                            <td class="text-center align-middle">
-                                                <span class="badge priority-<?php echo $grievance['display_priority'] ?? $grievance['priority']; ?>">
-                                                    <?php echo ucfirst($grievance['display_priority'] ?? $grievance['priority']); ?>
-                                                </span>
-                                            </td>
-                                            <?php else: ?>
-                                            <td class="text-center align-middle">
-                                                <small class="text-muted"><?php echo htmlspecialchars($grievance['location'] ?? 'N/A'); ?></small>
-                                            </td>
-                                            <?php endif; ?>
-                                            <td class="text-center align-middle"><small><?php echo date('d-M-Y', strtotime($grievance['date'])); ?></small></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
         
-        <!-- Quick Actions & Recent Transactions -->
-        <div class="col-lg-4">
-            <!-- Quick Actions -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-bolt"></i> Quick Actions
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <?php if ($userRole === 'customer'): ?>
-                            <a href="<?php echo BASE_URL; ?>complaints/new" class="btn btn-railway-primary btn-sm">
-                                <i class="fas fa-plus-circle"></i> Submit New Grievance
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>complaints/my" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-list"></i> View My Grievances
-                            </a>
-                        <?php elseif ($userRole === 'controller'): ?>
-                            <a href="<?php echo BASE_URL; ?>complaints/tome" class="btn btn-railway-primary btn-sm">
-                                <i class="fas fa-tasks"></i> Grievances to Me
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-list"></i> All Grievances
-                            </a>
-                        <?php elseif ($userRole === 'admin'): ?>
-                            <a href="<?php echo BASE_URL; ?>admin/categories" class="btn btn-railway-primary btn-sm">
-                                <i class="fas fa-tags"></i> Manage Categories
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>customer/add" class="btn btn-success btn-sm">
-                                <i class="fas fa-user-plus"></i> Add Customer
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>register" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-users"></i> Add User
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>admin/reports" class="btn btn-outline-info btn-sm">
-                                <i class="fas fa-chart-bar"></i> View Reports
-                            </a>
-                        <?php else: ?>
-                            <a href="<?php echo BASE_URL; ?>complaints" class="btn btn-railway-primary btn-sm">
-                                <i class="fas fa-list"></i> View Grievances
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>admin/reports" class="btn btn-outline-info btn-sm">
-                                <i class="fas fa-chart-bar"></i> View Reports
-                            </a>
-                        <?php endif; ?>
+        <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+            <div class="card dashboard-card card-forwards">
+                <div class="card-body text-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="display-6 fw-bold" id="numberOfForwards">-</h3>
+                            <p class="mb-0">Number of Forwards</p>
+                            <small class="text-muted variance-indicator" id="numberOfForwardsVariance"></small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-share fa-2x text-secondary"></i>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Recent Activity -->
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-history"></i> Recent Activity
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <?php if (empty($recentTransactions)): ?>
-                        <div class="text-center py-3">
-                            <i class="fas fa-clock text-muted"></i>
-                            <p class="text-muted mb-0">No recent activity</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="timeline">
-                            <?php foreach ($recentTransactions as $transaction): ?>
-                                <div class="timeline-item">
-                                    <div class="d-flex justify-content-between">
-                                        <small class="text-muted">
-                                            <?php echo ucfirst(str_replace('_', ' ', $transaction['transaction_type'])); ?>
-                                        </small>
-                                        <small class="text-muted">
-                                            <?php echo date('d-M H:i', strtotime($transaction['created_at'])); ?>
-                                        </small>
-                                    </div>
-                                    <p class="mb-1 small">
-                                        <?php echo htmlspecialchars(substr($transaction['remarks'], 0, 100)); ?>
-                                        <?php if (strlen($transaction['remarks']) > 100): ?>...<?php endif; ?>
-                                    </p>
-                                    <?php if (!empty($transaction['complaint_type'])): ?>
-                                        <small class="text-muted">
-                                            <i class="fas fa-tag"></i> <?php echo htmlspecialchars($transaction['complaint_type']); ?>
-                                        </small>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- System Information (Admin Only) -->
-    <?php if ($userRole === 'admin' && !empty($dashboardData['user_stats'])): ?>
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-info-circle"></i> System Information
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <h4 class="text-primary"><?php echo $dashboardData['user_stats']['total']; ?></h4>
-                                    <p class="mb-0">Total Users</p>
-                                </div>
+    <!-- Second Row: Category and Type Analysis -->
+    <div class="row mb-4" id="secondRow">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tags"></i> Category Wise Count
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Type Wise Count
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="typeChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Third Row: Customer Analytics -->
+    <div class="row mb-4" id="thirdRow">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users"></i> Customer Analytics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <div class="customer-metric">
+                                <h3 class="display-6 fw-bold text-primary" id="customersAdded">-</h3>
+                                <p class="mb-0">Customers Added</p>
+                                <small class="text-muted variance-indicator" id="customersAddedVariance"></small>
                             </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <h4 class="text-success"><?php echo $dashboardData['user_stats']['active']; ?></h4>
-                                    <p class="mb-0">Active Users</p>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <h4 class="text-info"><?php echo $dashboardData['user_stats']['by_role']['controller'] ?? 0; ?></h4>
-                                    <p class="mb-0">Controllers</p>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="text-center">
-                                    <h4 class="text-warning"><?php echo $dashboardData['user_stats']['by_role']['customer'] ?? 0; ?></h4>
-                                    <p class="mb-0">Customers</p>
-                                </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="customer-details">
+                                <h6>Customer Growth Trends</h6>
+                                <p class="text-muted">Track customer acquisition and engagement patterns over time.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    <?php endif; ?>
+    </div>
+    
+    <!-- Status Bifurcation Modal -->
+    <div class="modal fade" id="statusBifurcationModal" tabindex="-1" aria-labelledby="statusBifurcationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="statusBifurcationModalLabel">Status Bifurcation Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="statusBifurcationDetails">
+                        <!-- Content will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="<?php echo BASE_URL; ?>js/dashboard.js"></script>
 
-<script>
-// Chart data
-const statusData = <?php echo json_encode($statusChartData); ?>;
-const priorityData = <?php echo json_encode($priorityChartData); ?>;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Status Distribution Chart
-    if (statusData.length > 0) {
-        const statusCtx = document.getElementById('statusChart').getContext('2d');
-        new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: statusData.map(item => item.label),
-                datasets: [{
-                    data: statusData.map(item => item.value),
-                    backgroundColor: statusData.map(item => item.color),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-    
-    // Priority Distribution Chart
-    if (priorityData.length > 0) {
-        const priorityCtx = document.getElementById('priorityChart').getContext('2d');
-        new Chart(priorityCtx, {
-            type: 'bar',
-            data: {
-                labels: priorityData.map(item => item.label),
-                datasets: [{
-                    label: 'Count',
-                    data: priorityData.map(item => item.value),
-                    backgroundColor: priorityData.map(item => item.color),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                }
-            }
-        });
-    }
-});
-
-function viewGrievance(complaintId) {
-    window.open('<?php echo BASE_URL; ?>complaints/view/' + complaintId, '_blank');
-}
-
-// Auto-refresh dashboard every 5 minutes
-setInterval(function() {
-    if (!document.hidden) {
-        window.location.reload();
-    }
-}, 300000);
-</script>
-
-<style>
-.timeline {
-    position: relative;
-}
-
-.timeline-item {
-    border-left: 2px solid #e2e8f0;
-    padding-left: 1rem;
-    margin-bottom: 1rem;
-    position: relative;
-}
-
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    left: -5px;
-    top: 5px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--railway-blue);
-}
-
-.timeline-item:last-child {
-    border-left: none;
-}
-
-@media (max-width: 768px) {
-    .display-6 {
-        font-size: 1.5rem;
-    }
-    
-    .card-body {
-        padding: 1rem;
-    }
-    
-    .table-responsive {
-        font-size: 0.875rem;
-    }
-    
-    .timeline-item {
-        padding-left: 0.75rem;
-        margin-bottom: 0.75rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .col-xl-3, .col-lg-6, .col-md-6 {
-        margin-bottom: 1rem;
-    }
-    
-    .btn-sm {
-        font-size: 0.8rem;
-        padding: 0.375rem 0.75rem;
-    }
-    
-    .table td, .table th {
-        padding: 0.5rem 0.25rem;
-        font-size: 0.8rem;
-    }
-}
-
-/* Chart container responsive height */
-#statusChart, #priorityChart {
-    max-height: 300px;
-}
-
-@media (max-width: 768px) {
-    #statusChart, #priorityChart {
-        max-height: 250px;
-    }
-}
-</style>

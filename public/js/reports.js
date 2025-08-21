@@ -15,20 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeReports() {
-    // Set default dates - use current month
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    // If we're in the future (like 2025), use a reasonable past date range
-    if (today.getFullYear() > 2024) {
-        const pastDate = new Date(2024, 11, 1); // December 1, 2024
-        const endDate = new Date(2024, 11, 31); // December 31, 2024
-        document.getElementById('dateFrom').value = formatDate(pastDate);
-        document.getElementById('dateTo').value = formatDate(endDate);
-    } else {
-        document.getElementById('dateFrom').value = formatDate(firstDayOfMonth);
-        document.getElementById('dateTo').value = formatDate(today);
-    }
+    // Setup date filter functionality
+    setupDateFilter();
     
     // Load initial dashboard report
     loadReports();
@@ -44,11 +32,98 @@ function initializeReports() {
     });
 }
 
+function setupDateFilter() {
+    const dateFilter = document.getElementById('dateFilter');
+    const customDateGroup = document.getElementById('customDateGroup');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    
+    if (!dateFilter) return;
+    
+    dateFilter.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customDateGroup.style.display = 'block';
+        } else {
+            customDateGroup.style.display = 'none';
+            loadReports();
+        }
+    });
+    
+    // Custom date inputs
+    if (startDate && endDate) {
+        startDate.addEventListener('change', loadReports);
+        endDate.addEventListener('change', loadReports);
+    }
+}
+
+function getDateRange() {
+    const dateFilter = document.getElementById('dateFilter')?.value || 'month';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let dateFrom, dateTo;
+    
+    switch (dateFilter) {
+        case 'today':
+            dateFrom = formatDate(today);
+            dateTo = formatDate(today);
+            break;
+        case 'yesterday':
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            dateFrom = formatDate(yesterday);
+            dateTo = formatDate(yesterday);
+            break;
+        case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            dateFrom = formatDate(weekAgo);
+            dateTo = formatDate(today);
+            break;
+        case 'month':
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            dateFrom = formatDate(firstDayOfMonth);
+            dateTo = formatDate(today);
+            break;
+        case 'quarter':
+            const currentQuarter = Math.floor(today.getMonth() / 3);
+            const firstDayOfQuarter = new Date(today.getFullYear(), currentQuarter * 3, 1);
+            dateFrom = formatDate(firstDayOfQuarter);
+            dateTo = formatDate(today);
+            break;
+        case 'year':
+            const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
+            dateFrom = formatDate(firstDayOfYear);
+            dateTo = formatDate(today);
+            break;
+        case 'custom':
+            const startDate = document.getElementById('startDate')?.value;
+            const endDate = document.getElementById('endDate')?.value;
+            if (startDate && endDate) {
+                dateFrom = startDate;
+                dateTo = endDate;
+            } else {
+                // Fallback to current month if custom dates not set
+                const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                dateFrom = formatDate(firstDayOfMonth);
+                dateTo = formatDate(today);
+            }
+            break;
+        default:
+            // All dates - use a reasonable range (last 2 years)
+            const twoYearsAgo = new Date(today.getFullYear() - 2, 0, 1);
+            dateFrom = formatDate(twoYearsAgo);
+            dateTo = formatDate(today);
+            break;
+    }
+    
+    return { dateFrom, dateTo };
+}
+
 function loadReports() {
     showLoading(true);
     
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const { dateFrom, dateTo } = getDateRange();
     const reportType = document.getElementById('reportType').value;
     
     currentDateFrom = dateFrom;
@@ -658,23 +733,28 @@ function hideAllReportSections() {
 }
 
 function showError(message) {
-    // Create and show error alert
-    const alertDiv = document.createElement('div');
-    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    const container = document.querySelector('.container-fluid');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
+    // Use centralized alert system if available
+    if (typeof window.showAlert === 'function') {
+        window.showAlert(message, 'danger', 5000);
+    } else {
+        // Fallback to local implementation
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
 }
 
 function formatDate(date) {
@@ -696,8 +776,7 @@ function generateColors(count) {
 
 // Export and Print Functions
 function exportReport() {
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const { dateFrom, dateTo } = getDateRange();
     const format = 'csv';
     
     window.open(`../src/api/reports.php?action=export_data&date_from=${dateFrom}&date_to=${dateTo}&format=${format}`, '_blank');
@@ -720,8 +799,7 @@ function exportChart(chartId) {
 // Timeline chart reload function
 function loadTimelineChart() {
     if (currentReportType === 'dashboard') {
-        const dateFrom = document.getElementById('dateFrom').value;
-        const dateTo = document.getElementById('dateTo').value;
+        const { dateFrom, dateTo } = getDateRange();
         fetchComplaintsTimeline(dateFrom, dateTo).then(data => {
             createTimelineChart(data);
         }).catch(error => {
@@ -732,8 +810,7 @@ function loadTimelineChart() {
 
 // Pivot table reload function
 function loadPivotTable() {
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
+    const { dateFrom, dateTo } = getDateRange();
     const rows = document.getElementById('pivotRows').value;
     const columns = document.getElementById('pivotColumns').value;
     const values = document.getElementById('pivotValues').value;

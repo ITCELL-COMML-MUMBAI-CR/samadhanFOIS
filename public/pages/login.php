@@ -182,6 +182,11 @@ if (isset($_GET['timeout'])) {
                         <i class="fas fa-info-circle"></i>
                         For new user registration, contact your administrator
                     </p>
+                    <div class="login-links">
+                        <a href="<?php echo BASE_URL; ?>" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-home"></i> Home
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

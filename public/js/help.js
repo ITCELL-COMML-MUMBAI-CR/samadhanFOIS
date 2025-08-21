@@ -271,9 +271,12 @@ class HelpSearch {
     }
 
     setupSearch() {
-        // Add search input to table of contents
+        // Only add search input on help pages (pages with help-specific content)
         const toc = document.querySelector('.card-body');
-        if (toc) {
+        const helpContent = document.querySelector('.help-content, .help-section, .help-page');
+        
+        // Only proceed if this is actually a help page
+        if (toc && helpContent) {
             const searchContainer = document.createElement('div');
             searchContainer.className = 'mb-3';
             searchContainer.innerHTML = `

@@ -69,6 +69,50 @@
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
+/* Date Filter Styles */
+#customDateGroup {
+    transition: all 0.3s ease;
+}
+
+#customDateGroup .form-control {
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+}
+
+.date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-weight: 500;
+    margin: 0 10px;
+}
+
+/* Filter Row Styles */
+.filter-row {
+    display: flex;
+    align-items: end;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.date-filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.custom-date-group {
+    flex: 2;
+    min-width: 300px;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 /* Summary Cards */
 .summary-card {
     background: rgba(255, 255, 255, 0.95);

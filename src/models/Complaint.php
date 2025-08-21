@@ -18,12 +18,30 @@ class Complaint extends BaseModel {
         $data['date'] = getCurrentDate();
         $data['time'] = getCurrentTime();
         $data['created_at'] = getCurrentDateTime();
-        $data['status'] = 'pending';
-        $data['priority'] = 'normal'; // Default priority is now 'normal'
+        $data['updated_at'] = getCurrentDateTime();
+        $data['status'] = 'Pending';
+        $data['priority'] = 'Low'; // Default priority is now 'Low' as per requirements
         $data['department'] = $data['department'] ?? 'COMMERCIAL';
-        // Default assignment to Commercial Controller if not explicitly provided
-        if (empty($data['assigned_to'])) {
-            $data['assigned_to'] = 'commercial_controller';
+        $data['Forwarded_Flag'] = 'N';
+        $data['Awaiting_Approval_Flag'] = 'N';
+        
+        // Map assigned_to to Assigned_To_Department for backward compatibility
+        if (!empty($data['assigned_to'])) {
+            $data['Assigned_To_Department'] = $data['assigned_to'];
+            unset($data['assigned_to']);
+        }
+        
+        // Set default assignment to Commercial department if not explicitly provided
+        if (empty($data['Assigned_To_Department'])) {
+            $data['Assigned_To_Department'] = 'COMMERCIAL';
+        }
+        
+        // If shed_id is provided, assign to appropriate commercial controller based on division/zone
+        if (!empty($data['shed_id'])) {
+            $commercialController = $this->getCommercialControllerForShed($data['shed_id']);
+            if ($commercialController) {
+                $data['Assigned_To_Department'] = $commercialController;
+            }
         }
         
         return $this->createWithId($data);
@@ -49,11 +67,13 @@ class Complaint extends BaseModel {
      */
     public function findByComplaintId($complaintId) {
         $stmt = $this->connection->prepare("
-            SELECT c.*, u.name as customer_name, u.email as customer_email,
-                   a.name as assigned_to_name
+            SELECT c.*, cu.Name as customer_name, cu.Email as customer_email,
+                   u.name as assigned_to_name, w.Type as wagon_type, w.WagonCode as wagon_code,
+                   c.Assigned_To_Department as assigned_to
             FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
-            LEFT JOIN users a ON c.assigned_to = a.login_id
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN users u ON c.Assigned_To_Department = u.login_id
+            LEFT JOIN wagon_details w ON c.wagon_id = w.WagonID
             WHERE c.complaint_id = ?
         ");
         $stmt->execute([$complaintId]);
@@ -65,9 +85,9 @@ class Complaint extends BaseModel {
      */
     public function findByCustomer($customerId, $limit = null) {
         $sql = "
-            SELECT c.*, u.name as customer_name 
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
             FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             WHERE c.customer_id = ?
             ORDER BY c.created_at DESC
         ";
@@ -86,9 +106,9 @@ class Complaint extends BaseModel {
      */
     public function findByStatus($status, $limit = null) {
         $sql = "
-            SELECT c.*, u.name as customer_name 
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
             FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             WHERE c.status = ?
             ORDER BY c.created_at DESC
         ";
@@ -107,10 +127,10 @@ class Complaint extends BaseModel {
      */
     public function findAssignedTo($loginId, $limit = null) {
         $sql = "
-            SELECT c.*, u.name as customer_name 
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
             FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
-            WHERE c.assigned_to = ?
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.Assigned_To_Department = ?
             ORDER BY c.created_at DESC
         ";
         
@@ -148,7 +168,7 @@ class Complaint extends BaseModel {
     public function assignTo($complaintId, $loginId) {
         $stmt = $this->connection->prepare("
             UPDATE complaints 
-            SET assigned_to = ?, updated_at = ? 
+            SET Assigned_To_Department = ?, updated_at = ? 
             WHERE complaint_id = ?
         ");
         return $stmt->execute([$loginId, getCurrentDateTime(), $complaintId]);
@@ -168,21 +188,32 @@ class Complaint extends BaseModel {
     
     /**
      * Calculate automatic priority based on complaint age
-     * Rules: normal -> 1 hour -> medium -> 3 hours -> high -> 1 day -> critical
+     * Rules: Low -> 1 hour -> Medium -> 3 hours -> High -> 1 day -> Critical
      */
     public function calculateAutoPriority($createdAt) {
+        // Handle null or empty createdAt
+        if (empty($createdAt)) {
+            return 'Low';
+        }
+        
         $now = time();
         $created = strtotime($createdAt);
+        
+        // Handle invalid date
+        if ($created === false) {
+            return 'Low';
+        }
+        
         $ageInHours = ($now - $created) / 3600; // Convert to hours
         
         if ($ageInHours >= 24) { // 1 day or more
-            return 'critical';
+            return 'Critical';
         } elseif ($ageInHours >= 3) { // 3 hours or more
-            return 'high';
+            return 'High';
         } elseif ($ageInHours >= 1) { // 1 hour or more
-            return 'medium';
+            return 'Medium';
         } else {
-            return 'normal'; // Less than 1 hour
+            return 'Low'; // Less than 1 hour
         }
     }
     
@@ -196,97 +227,116 @@ class Complaint extends BaseModel {
             $stmt = $this->connection->prepare("
                 SELECT complaint_id, created_at, priority 
                 FROM complaints 
-                WHERE status IN ('pending', 'assigned', 'replied') 
+                WHERE status IN ('Pending', 'Replied') 
                 ORDER BY created_at ASC
             ");
             $stmt->execute();
             $complaints = $stmt->fetchAll();
             
-            $updatedCount = 0;
+            $updated = 0;
             foreach ($complaints as $complaint) {
-                $currentPriority = $complaint['priority'];
-                $autoPriority = $this->calculateAutoPriority($complaint['created_at']);
+                $newPriority = $this->calculateAutoPriority($complaint['created_at']);
                 
-                // Only update if auto-calculated priority is higher than current
-                $priorityLevels = ['normal' => 1, 'medium' => 2, 'high' => 3, 'critical' => 4];
-                $currentLevel = $priorityLevels[$currentPriority] ?? 1;
-                $autoLevel = $priorityLevels[$autoPriority] ?? 1;
-                
-                if ($autoLevel > $currentLevel) {
-                    $this->updatePriority($complaint['complaint_id'], $autoPriority);
-                    $updatedCount++;
+                // Only update if priority has changed
+                if ($newPriority !== $complaint['priority']) {
+                    $this->updatePriority($complaint['complaint_id'], $newPriority);
+                    $updated++;
                 }
             }
             
-            return $updatedCount;
+            return $updated;
+            
         } catch (Exception $e) {
-            error_log('Auto priority update error: ' . $e->getMessage());
-            return 0;
+            error_log("Error updating auto priorities: " . $e->getMessage());
+            return false;
         }
     }
     
     /**
-     * Get complaint with calculated auto priority
+     * Get complaints by department
      */
-    public function findByComplaintIdWithAutoPriority($complaintId) {
-        $complaint = $this->findByComplaintId($complaintId);
-        if ($complaint) {
-            $complaint['auto_priority'] = $this->calculateAutoPriority($complaint['created_at']);
-            $complaint['display_priority'] = $complaint['auto_priority']; // Use auto-calculated priority for display
+    public function findByDepartment($department, $limit = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.department = ?
+            ORDER BY c.created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
         }
-        return $complaint;
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$department]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get complaints by priority
+     */
+    public function findByPriority($priority, $limit = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.priority = ?
+            ORDER BY c.created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$priority]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get complaints by date range
+     */
+    public function findByDateRange($startDate, $endDate, $limit = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.date BETWEEN ? AND ?
+            ORDER BY c.created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$startDate, $endDate]);
+        return $stmt->fetchAll();
     }
     
     /**
      * Search complaints
      */
-    public function search($searchTerm, $filters = []) {
+    public function search($searchTerm, $limit = null) {
         $sql = "
-            SELECT c.*, u.name as customer_name 
+            SELECT c.*, cu.Name as customer_name 
             FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
-            WHERE (
-                c.complaint_id LIKE ? OR 
-                c.complaint_type LIKE ? OR 
-                c.description LIKE ? OR 
-                c.location LIKE ? OR
-                u.name LIKE ?
-            )
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.complaint_id LIKE ? 
+               OR c.description LIKE ? 
+               OR cu.Name LIKE ?
+               OR c.Location LIKE ?
+            ORDER BY c.created_at DESC
         ";
         
-        $searchParam = "%$searchTerm%";
-        $params = [$searchParam, $searchParam, $searchParam, $searchParam, $searchParam];
-        
-        // Add filters
-        if (!empty($filters['status'])) {
-            $sql .= " AND c.status = ?";
-            $params[] = $filters['status'];
+        if ($limit) {
+            $sql .= " LIMIT $limit";
         }
         
-        if (!empty($filters['priority'])) {
-            $sql .= " AND c.priority = ?";
-            $params[] = $filters['priority'];
-        }
-        
-        if (!empty($filters['department'])) {
-            $sql .= " AND c.department = ?";
-            $params[] = $filters['department'];
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $sql .= " AND c.date >= ?";
-            $params[] = $filters['date_from'];
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $sql .= " AND c.date <= ?";
-            $params[] = $filters['date_to'];
-        }
-        
-        $sql .= " ORDER BY c.created_at DESC";
-        
+        $searchPattern = "%$searchTerm%";
         $stmt = $this->connection->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern]);
         return $stmt->fetchAll();
     }
     
@@ -296,90 +346,608 @@ class Complaint extends BaseModel {
     public function getStatistics($filters = []) {
         $stats = [];
         
-        // Base WHERE clause for filters
-        $whereClause = "WHERE 1=1";
+        // Build WHERE clause with all filters
+        $whereConditions = [];
         $params = [];
         
-        if (!empty($filters['customer_id'])) {
-            $whereClause .= " AND customer_id = ?";
-            $params[] = $filters['customer_id'];
-        }
-        
-        if (!empty($filters['assigned_to'])) {
-            $whereClause .= " AND assigned_to = ?";
-            $params[] = $filters['assigned_to'];
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $whereClause .= " AND date >= ?";
+        // Date filters
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $whereConditions[] = "date BETWEEN ? AND ?";
             $params[] = $filters['date_from'];
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $whereClause .= " AND date <= ?";
             $params[] = $filters['date_to'];
         }
         
+        // Department filter
+        if (!empty($filters['department'])) {
+            $whereConditions[] = "department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        // Assigned to filter
+        if (!empty($filters['assigned_to'])) {
+            $whereConditions[] = "Assigned_To_Department = ?";
+            $params[] = $filters['assigned_to'];
+        }
+        
+        // Customer filter
+        if (!empty($filters['customer_id'])) {
+            $whereConditions[] = "customer_id = ?";
+            $params[] = $filters['customer_id'];
+        }
+        
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        
         // Total complaints
-        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM complaints $whereClause");
+        $sql = "SELECT COUNT(*) as count FROM complaints " . $whereClause;
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
         $stats['total'] = $stmt->fetch()['count'];
         
-        // By status
-        $stmt = $this->connection->prepare("
+        // Complaints by status
+        $sql = "
             SELECT status, COUNT(*) as count 
-            FROM complaints $whereClause
+            FROM complaints 
+            " . $whereClause . "
             GROUP BY status
-        ");
+        ";
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
-        $statusStats = $stmt->fetchAll();
+        $stats['by_status'] = $stmt->fetchAll();
         
-        foreach ($statusStats as $statusStat) {
-            $stats['by_status'][$statusStat['status']] = $statusStat['count'];
-        }
-        
-        // By priority
-        $stmt = $this->connection->prepare("
+        // Complaints by priority
+        $sql = "
             SELECT priority, COUNT(*) as count 
-            FROM complaints $whereClause
+            FROM complaints 
+            " . $whereClause . "
             GROUP BY priority
-        ");
+        ";
+        $stmt = $this->connection->prepare($sql);
         $stmt->execute($params);
-        $priorityStats = $stmt->fetchAll();
+        $stats['by_priority'] = $stmt->fetchAll();
         
-        foreach ($priorityStats as $priorityStat) {
-            $stats['by_priority'][$priorityStat['priority']] = $priorityStat['count'];
-        }
+        // Complaints by department
+        $sql = "
+            SELECT department, COUNT(*) as count 
+            FROM complaints 
+            " . $whereClause . "
+            GROUP BY department
+        ";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $stats['by_department'] = $stmt->fetchAll();
+        
+        // Complaints by category
+        $sql = "
+            SELECT category, COUNT(*) as count 
+            FROM complaints 
+            " . $whereClause . "
+            GROUP BY category
+        ";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $stats['by_category'] = $stmt->fetchAll();
+        
+        // Complaints by type
+        $sql = "
+            SELECT Type, COUNT(*) as count 
+            FROM complaints 
+            " . $whereClause . "
+            GROUP BY Type
+        ";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $stats['by_type'] = $stmt->fetchAll();
+        
+        // Recent complaints (last 7 days)
+        $sql = "
+            SELECT COUNT(*) as count 
+            FROM complaints 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute();
+        $stats['recent_7_days'] = $stmt->fetch()['count'];
         
         return $stats;
     }
     
     /**
-     * Generate unique complaint ID
+     * Calculate average pendency of complaints
      */
-    private function generateComplaintId() {
-        do {
-            $id = generateComplaintId();
-            $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM complaints WHERE complaint_id = ?");
-            $stmt->execute([$id]);
-            $exists = $stmt->fetch()['count'] > 0;
-        } while ($exists);
+    public function calculateAveragePendency($filters = []) {
+        $whereConditions = [];
+        $params = [];
         
-        return $id;
+        // Apply filters
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $whereConditions[] = "date BETWEEN ? AND ?";
+            $params[] = $filters['date_from'];
+            $params[] = $filters['date_to'];
+        }
+        
+        if (!empty($filters['department'])) {
+            $whereConditions[] = "department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        
+        $sql = "
+            SELECT AVG(DATEDIFF(NOW(), created_at)) as avg_pendency
+            FROM complaints 
+            " . $whereClause . "
+            AND status IN ('Pending', 'Replied')
+        ";
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
+        
+        return round($result['avg_pendency'] ?? 0, 1);
     }
     
     /**
-     * Get recent complaints
+     * Calculate average reply time
      */
-    public function getRecent($limit = 10) {
+    public function calculateAverageReplyTime($filters = []) {
+        $whereConditions = [];
+        $params = [];
+        
+        // Apply filters
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $whereConditions[] = "date BETWEEN ? AND ?";
+            $params[] = $filters['date_from'];
+            $params[] = $filters['date_to'];
+        }
+        
+        if (!empty($filters['department'])) {
+            $whereConditions[] = "department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        
+        $sql = "
+            SELECT AVG(DATEDIFF(updated_at, created_at)) as avg_reply_time
+            FROM complaints 
+            " . $whereClause . "
+            AND status = 'Replied'
+        ";
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
+        
+        return round($result['avg_reply_time'] ?? 0, 1);
+    }
+    
+    /**
+     * Calculate number of forwards
+     */
+    public function calculateNumberOfForwards($filters = []) {
+        $whereConditions = [];
+        $params = [];
+        
+        // Apply filters
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $whereConditions[] = "date BETWEEN ? AND ?";
+            $params[] = $filters['date_from'];
+            $params[] = $filters['date_to'];
+        }
+        
+        if (!empty($filters['department'])) {
+            $whereConditions[] = "department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        
+        $sql = "
+            SELECT COUNT(*) as forward_count
+            FROM complaints 
+            " . $whereClause . "
+            AND Forwarded_Flag = 'Y'
+        ";
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
+        
+        return $result['forward_count'] ?? 0;
+    }
+    
+    /**
+     * Get subtype bifurcation for a specific type
+     */
+    public function getSubtypeBifurcation($type, $filters = []) {
+        $whereConditions = ["Type = ?"];
+        $params = [$type];
+        
+        // Apply filters
+        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+            $whereConditions[] = "date BETWEEN ? AND ?";
+            $params[] = $filters['date_from'];
+            $params[] = $filters['date_to'];
+        }
+        
+        if (!empty($filters['department'])) {
+            $whereConditions[] = "department = ?";
+            $params[] = $filters['department'];
+        }
+        
+        $whereClause = "WHERE " . implode(" AND ", $whereConditions);
+        
+        $sql = "
+            SELECT Subtype, COUNT(*) as count 
+            FROM complaints 
+            " . $whereClause . "
+            GROUP BY Subtype
+        ";
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get dashboard data for user
+     */
+    public function getDashboardData($userId, $userRole) {
+        $data = [];
+        
+        if ($userRole === 'customer') {
+            // Customer dashboard
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE customer_id = ?
+            ");
+            $stmt->execute([$userId]);
+            $data['total_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE customer_id = ? AND status = 'Pending'
+            ");
+            $stmt->execute([$userId]);
+            $data['pending_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE customer_id = ? AND status = 'Replied'
+            ");
+            $stmt->execute([$userId]);
+            $data['replied_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE customer_id = ? AND status = 'Closed'
+            ");
+            $stmt->execute([$userId]);
+            $data['closed_complaints'] = $stmt->fetch()['count'];
+            
+        } else {
+            // Staff dashboard
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE Assigned_To_Department = ?
+            ");
+            $stmt->execute([$userId]);
+            $data['assigned_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE Assigned_To_Department = ? AND status = 'Pending'
+            ");
+            $stmt->execute([$userId]);
+            $data['pending_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE Assigned_To_Department = ? AND status = 'Replied'
+            ");
+            $stmt->execute([$userId]);
+            $data['replied_complaints'] = $stmt->fetch()['count'];
+            
+            $stmt = $this->connection->prepare("
+                SELECT COUNT(*) as count 
+                FROM complaints 
+                WHERE Assigned_To_Department = ? AND status = 'Closed'
+            ");
+            $stmt->execute([$userId]);
+            $data['closed_complaints'] = $stmt->fetch()['count'];
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * Update complaint rating
+     */
+    public function updateRating($complaintId, $rating, $ratingRemarks = null) {
+        $sql = "UPDATE complaints SET rating = ?, updated_at = ?";
+        $params = [$rating, getCurrentDateTime()];
+        
+        if ($ratingRemarks !== null) {
+            $sql .= ", rating_remarks = ?";
+            $params[] = $ratingRemarks;
+        }
+        
+        $sql .= " WHERE complaint_id = ?";
+        $params[] = $complaintId;
+        
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
+    }
+    
+    /**
+     * Forward complaint to another department
+     */
+    public function forwardComplaint($complaintId, $toDepartment) {
         $stmt = $this->connection->prepare("
-            SELECT c.*, u.name as customer_name 
-            FROM complaints c
-            LEFT JOIN users u ON c.customer_id = u.customer_id
-            ORDER BY c.created_at DESC
-            LIMIT ?
+            UPDATE complaints 
+            SET Assigned_To_Department = ?, Forwarded_Flag = 'Y', updated_at = ? 
+            WHERE complaint_id = ?
         ");
-        $stmt->execute([$limit]);
+        return $stmt->execute([$toDepartment, getCurrentDateTime(), $complaintId]);
+    }
+    
+    /**
+     * Set awaiting approval flag
+     */
+    public function setAwaitingApproval($complaintId, $flag = 'Y') {
+        $stmt = $this->connection->prepare("
+            UPDATE complaints 
+            SET Awaiting_Approval_Flag = ?, updated_at = ? 
+            WHERE complaint_id = ?
+        ");
+        return $stmt->execute([$flag, getCurrentDateTime(), $complaintId]);
+    }
+    
+    /**
+     * Find complaints awaiting approval
+     */
+    public function findAwaitingApproval($limit = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.status = 'awaiting_approval' AND c.Awaiting_Approval_Flag = 'Y'
+            ORDER BY c.created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Count complaints with filters
+     */
+    public function countWithFilters($filters = [], $search = '') {
+        $sql = "SELECT COUNT(*) as count FROM complaints c";
+        $params = [];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($search)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$search%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                        case 'department':
+                            $conditions[] = "c.department = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(' AND ', $conditions);
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch()['count'];
+    }
+    
+    /**
+     * Find assigned complaints with filters
+     */
+    public function findAssignedToWithFilters($loginId, $filters = [], $search = '', $limit = null, $offset = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.Assigned_To_Department = ?
+        ";
+        $params = [$loginId];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($search)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$search%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                        case 'department':
+                            $conditions[] = "c.department = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " AND " . implode(' AND ', $conditions);
+        }
+        
+        $sql .= " ORDER BY c.created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+            if ($offset) {
+                $sql .= " OFFSET $offset";
+            }
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Count assigned complaints with filters
+     */
+    public function countAssignedToWithFilters($loginId, $filters = [], $search = '') {
+        $sql = "SELECT COUNT(*) as count FROM complaints c WHERE c.Assigned_To_Department = ?";
+        $params = [$loginId];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($search)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$search%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                        case 'department':
+                            $conditions[] = "c.department = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " AND " . implode(' AND ', $conditions);
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch()['count'];
+    }
+    
+    /**
+     * Search complaints with filters and pagination
+     */
+    public function searchWithFilters($searchTerm = '', $filters = [], $limit = null, $offset = null) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+        ";
+        $params = [];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($searchTerm)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$searchTerm%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                        case 'department':
+                            $conditions[] = "c.department = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " WHERE " . implode(' AND ', $conditions);
+        }
+        
+        $sql .= " ORDER BY c.created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+            if ($offset) {
+                $sql .= " OFFSET $offset";
+            }
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
     
@@ -387,6 +955,8 @@ class Complaint extends BaseModel {
      * Update complaint
      */
     public function updateComplaint($complaintId, $data) {
+        $data['updated_at'] = getCurrentDateTime();
+        
         $columns = array_keys($data);
         $setClause = array_map(function($column) {
             return "$column = ?";
@@ -402,12 +972,253 @@ class Complaint extends BaseModel {
     }
     
     /**
-     * Assign complaint to user
+     * Count complaints assigned to a user
      */
-    public function assignComplaint($complaintId, $assignedTo) {
-        $sql = "UPDATE complaints SET assigned_to = ?, updated_at = ? WHERE complaint_id = ?";
+    public function countAssignedTo($loginId) {
+        $stmt = $this->connection->prepare("
+            SELECT COUNT(*) as count 
+            FROM complaints 
+            WHERE Assigned_To_Department = ?
+        ");
+        $stmt->execute([$loginId]);
+        return $stmt->fetch()['count'];
+    }
+    
+    /**
+     * Generate unique complaint ID
+     */
+    private function generateComplaintId() {
+        $prefix = 'CMP';
+        $date = date('Ymd');
+        $random = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        return $prefix . $date . $random;
+    }
+    
+    /**
+     * Find complaints by customer with filters
+     * SECURITY: This method ensures customers can only see their own complaints
+     * The WHERE clause filters by customer_id to prevent data leakage
+     */
+    public function findByCustomerWithFilters($customerId, $filters = [], $search = '', $limit = null, $offset = null) {
+        // Validate customer ID to prevent SQL injection
+        if (empty($customerId)) {
+            return [];
+        }
+        
+        $sql = "
+            SELECT c.*, cu.Name as customer_name, w.Type as wagon_type, w.WagonCode as wagon_code
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN wagon_details w ON c.wagon_id = w.WagonID
+            WHERE c.customer_id = ?
+        ";
+        $params = [$customerId];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($search)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.Type LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$search%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " AND " . implode(' AND ', $conditions);
+        }
+        
+        $sql .= " ORDER BY c.created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+            if ($offset) {
+                $sql .= " OFFSET $offset";
+            }
+        }
+        
         $stmt = $this->connection->prepare($sql);
-        return $stmt->execute([$assignedTo, getCurrentDateTime(), $complaintId]);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Count complaints by customer with filters
+     * SECURITY: This method ensures customers can only count their own complaints
+     * The WHERE clause filters by customer_id to prevent data leakage
+     */
+    public function countByCustomerWithFilters($customerId, $filters = [], $search = '') {
+        // Validate customer ID to prevent SQL injection
+        if (empty($customerId)) {
+            return 0;
+        }
+        
+        $sql = "
+            SELECT COUNT(*) as count 
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            WHERE c.customer_id = ?
+        ";
+        $params = [$customerId];
+        $conditions = [];
+        
+        // Add search condition
+        if (!empty($search)) {
+            $conditions[] = "(c.complaint_id LIKE ? OR c.Type LIKE ? OR c.description LIKE ?)";
+            $searchPattern = "%$search%";
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+            $params[] = $searchPattern;
+        }
+        
+        // Add filter conditions
+        if (!empty($filters)) {
+            foreach ($filters as $key => $value) {
+                if (!empty($value)) {
+                    switch ($key) {
+                        case 'status':
+                            $conditions[] = "c.status = ?";
+                            $params[] = $value;
+                            break;
+                        case 'priority':
+                            $conditions[] = "c.priority = ?";
+                            $params[] = $value;
+                            break;
+                    }
+                }
+            }
+        }
+        
+        if (!empty($conditions)) {
+            $sql .= " AND " . implode(' AND ', $conditions);
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch()['count'];
+    }
+    
+    /**
+     * Count complaints by customer
+     * SECURITY: This method ensures customers can only count their own complaints
+     */
+    public function countByCustomer($customerId) {
+        // Validate customer ID to prevent SQL injection
+        if (empty($customerId)) {
+            return 0;
+        }
+        
+        $stmt = $this->connection->prepare("
+            SELECT COUNT(*) as count 
+            FROM complaints 
+            WHERE customer_id = ?
+        ");
+        $stmt->execute([$customerId]);
+        return $stmt->fetch()['count'];
+    }
+
+    /**
+     * Get recent complaints
+     */
+    public function getRecent($limit = 10) {
+        $sql = "
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            FROM complaints c
+            LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            ORDER BY c.created_at DESC
+            LIMIT ?
+        ";
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Get commercial controller for a specific shed based on division and zone
+     */
+    private function getCommercialControllerForShed($shedId) {
+        try {
+            // Get shed details with division and zone
+            $stmt = $this->connection->prepare("
+                SELECT s.Zone, s.Division 
+                FROM shed s 
+                WHERE s.ShedID = ?
+            ");
+            $stmt->execute([$shedId]);
+            $shedDetails = $stmt->fetch();
+            
+            if (!$shedDetails) {
+                return null;
+            }
+            
+            // Find commercial controller for this division and zone
+            $stmt = $this->connection->prepare("
+                SELECT login_id 
+                FROM users 
+                WHERE role = 'controller' 
+                AND department = 'COMMERCIAL' 
+                AND Division = ? 
+                AND Zone = ? 
+                AND status = 'active'
+                LIMIT 1
+            ");
+            $stmt->execute([$shedDetails['Division'], $shedDetails['Zone']]);
+            $controller = $stmt->fetch();
+            
+            return $controller ? $controller['login_id'] : null;
+            
+        } catch (Exception $e) {
+            error_log("Error getting commercial controller for shed: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Override findAll to include assigned_to alias for backward compatibility
+     */
+    public function findAll($conditions = [], $orderBy = 'created_at DESC', $limit = null) {
+        $sql = "SELECT *, Assigned_To_Department as assigned_to FROM {$this->table}";
+        $params = [];
+        
+        if (!empty($conditions)) {
+            $whereClause = [];
+            foreach ($conditions as $column => $value) {
+                $whereClause[] = "$column = ?";
+                $params[] = $value;
+            }
+            $sql .= " WHERE " . implode(" AND ", $whereClause);
+        }
+        
+        if ($orderBy) {
+            $sql .= " ORDER BY $orderBy";
+        }
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 }
 ?>

@@ -9,6 +9,11 @@
                     <p class="text-light mb-0" style="color: #e2e8f0 !important;">
                         © 2025 Central Railway. All rights reserved. Designed and Developed by ITCell Mumbai Commercial CR.
                     </p>
+                    <div class="mt-2">
+                        <a href="<?php echo BASE_URL; ?>login" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-user-shield"></i> Railway Admin Login
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -47,7 +52,8 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
             
-
+            // Auto-dismiss alerts
+            autoDismissAlerts();
 
             // Display session alert if available
             <?php
@@ -84,6 +90,15 @@
                     toast.addEventListener('mouseleave', Swal.resumeTimer);
                 }
             });
+        }
+        
+        // Auto-dismiss Bootstrap alerts (legacy function - now handled by SAMPARKApp.alerts)
+        function autoDismissAlerts() {
+            // This function is now deprecated and handled by SAMPARKApp.alerts.initAutoDismiss()
+            // Kept for backward compatibility
+            if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.alerts) {
+                SAMPARKApp.alerts.initAutoDismiss();
+            }
         }
         
 

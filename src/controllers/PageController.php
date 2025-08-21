@@ -3,8 +3,22 @@ require_once 'BaseController.php';
 
 class PageController extends BaseController {
     public function home() {
-        $this->loadView('header', ['pageTitle' => 'Welcome']);
-        $this->loadView('pages/home');
+        // Load models and get data for customer home page (same as customerHome)
+        $newsModel = $this->loadModel('News');
+        $quickLinkModel = $this->loadModel('QuickLink');
+        
+        $data = [
+            'pageTitle' => 'Home - SAMPARK',
+            'marqueeItems' => $newsModel->getMarquee(),
+            'featuredNews' => $newsModel->getFeatured(6),
+            'newsItems' => $newsModel->findByType('news', 4),
+            'announcements' => $newsModel->findByType('announcement', 4),
+            'advertisements' => $newsModel->findByType('advertisement', 3),
+            'quickLinks' => $quickLinkModel->getActive()
+        ];
+
+        $this->loadView('header', $data);
+        $this->loadView('pages/customer_home', $data);
         $this->loadView('footer');
     }
 
@@ -17,12 +31,12 @@ class PageController extends BaseController {
         
         $data = [
             'pageTitle' => 'Home - SAMPARK',
-            'marqueeItems' => $newsModel->getMarqueeItems(),
-            'featuredNews' => $newsModel->getFeaturedItems(6),
-            'newsItems' => $newsModel->getNewsByType('news', 4),
-            'announcements' => $newsModel->getNewsByType('announcement', 4),
-            'advertisements' => $newsModel->getNewsByType('advertisement', 3),
-            'quickLinks' => $quickLinkModel->getActiveLinks()
+            'marqueeItems' => $newsModel->getMarquee(),
+            'featuredNews' => $newsModel->getFeatured(6),
+            'newsItems' => $newsModel->findByType('news', 4),
+            'announcements' => $newsModel->findByType('announcement', 4),
+            'advertisements' => $newsModel->findByType('advertisement', 3),
+            'quickLinks' => $quickLinkModel->getActive()
         ];
 
         $this->loadView('header', $data);
@@ -116,11 +130,7 @@ class PageController extends BaseController {
         $this->loadView('footer');
     }
 
-    public function track() {
-        $this->loadView('header', ['pageTitle' => 'Track Status']);
-        $this->loadView('pages/track');
-        $this->loadView('footer');
-    }
+
 
     public function reports() {
         SessionManager::requireAnyRole(['admin', 'controller']);

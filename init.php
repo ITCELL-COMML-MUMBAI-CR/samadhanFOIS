@@ -54,6 +54,9 @@ class DatabaseInitializer {
             // Insert sample complaint types and categories
             $this->insertMasterData();
             
+            // Initialize system settings
+            $this->initializeSystemSettings();
+            
             $this->connection->commit();
             echo "Database initialization completed successfully!\n";
             
@@ -133,10 +136,29 @@ class DatabaseInitializer {
     }
     
     /**
+     * Initialize system settings
+     */
+    private function initializeSystemSettings() {
+        try {
+            require_once 'src/models/SystemSettings.php';
+            $settingsModel = new SystemSettings();
+            $settingsModel->initializeDefaultSettings();
+            echo "System settings initialized successfully.\n";
+            
+        } catch (Exception $e) {
+            echo "Warning: Could not initialize system settings: " . $e->getMessage() . "\n";
+        }
+    }
+    
+    /**
      * Check if tables exist and are properly set up
      */
     public function verifySetup() {
-        $tables = ['customers', 'users', 'complaints', 'transactions', 'evidence'];
+        $tables = [
+            'customers', 'users', 'complaints', 'transactions', 'evidence',
+            'complaint_categories', 'email_templates', 'news', 'quick_links',
+            'system_settings', 'shed', 'wagon_details', 'departments'
+        ];
         $missingTables = [];
         
         foreach ($tables as $table) {
@@ -162,7 +184,11 @@ class DatabaseInitializer {
      */
     public function getStatistics() {
         $stats = [];
-        $tables = ['customers', 'users', 'complaints', 'transactions', 'evidence'];
+        $tables = [
+            'customers', 'users', 'complaints', 'transactions', 'evidence',
+            'complaint_categories', 'email_templates', 'news', 'quick_links',
+            'system_settings', 'shed', 'wagon_details', 'departments'
+        ];
         
         foreach ($tables as $table) {
             try {

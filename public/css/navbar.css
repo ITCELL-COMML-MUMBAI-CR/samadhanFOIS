@@ -145,6 +145,24 @@
     text-decoration: none;
 }
 
+/* Active state for navigation links */
+.nav-link-animated.active {
+    background: var(--apple-blue, #0088cc);
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
+    transform: translateY(-1px);
+}
+
+.nav-link-animated.active:hover {
+    background: var(--apple-blue, #0088cc);
+    color: white !important;
+    transform: translateY(-1px);
+}
+
+.nav-link-animated.active i {
+    transform: scale(1.1);
+}
+
 .nav-link-animated i {
     font-size: 1.1rem;
     transition: transform 0.3s ease;
@@ -198,6 +216,18 @@
     background: var(--apple-blue, #0088cc);
     color: white;
     transform: scale(1.02);
+}
+
+/* Active state for dropdown items */
+.dropdown-item.active {
+    background: var(--apple-blue, #0088cc);
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3);
+}
+
+.dropdown-item.active:hover {
+    background: var(--apple-blue, #0088cc);
+    color: white !important;
 }
 
 .dropdown-item i {

@@ -78,9 +78,9 @@ if (!isset($currentUser)) {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <strong><?php echo htmlspecialchars($row['complaint_type']); ?></strong>
+                                    <strong><?php echo htmlspecialchars($row['Type']); ?></strong>
                                     <br>
-                                    <small class="text-muted"><?php echo htmlspecialchars($row['complaint_subtype']); ?></small>
+                                    <small class="text-muted"><?php echo htmlspecialchars($row['Subtype']); ?></small>
                                 </td>
                                 <td>
                                     <strong><?php echo htmlspecialchars($row['customer_name'] ?? 'Unknown'); ?></strong>

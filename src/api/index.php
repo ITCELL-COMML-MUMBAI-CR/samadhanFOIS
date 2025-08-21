@@ -109,6 +109,11 @@ try {
             include 'dashboard.php';
             break;
             
+        case 'subtype_bifurcation':
+            requireAuth();
+            include 'subtype_bifurcation.php';
+            break;
+            
         case 'reports':
             requireAuth();
             include 'reports.php';

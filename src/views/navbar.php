@@ -6,6 +6,9 @@
 
 $currentUser = SessionManager::getCurrentUser();
 $userRole = $_SESSION['user_role'] ?? '';
+
+// Get current page for highlighting
+$currentPage = getCurrentPage();
 ?>
 
 <!-- Stunning Navigation Bar -->
@@ -22,66 +25,39 @@ $userRole = $_SESSION['user_role'] ?? '';
                 <?php if (SessionManager::isLoggedIn()): ?>
                     <!-- Home Link -->
                     <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>customer-home">
+                        <a class="nav-link nav-link-animated <?php echo ($currentPage === 'customer-home') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-home">
                             <i class="fas fa-home"></i>
                             <span>Home</span>
                         </a>
                     </li>
-                    
-                    <!-- Dashboard Link -->
-                    <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>dashboard">
-                            <i class="fas fa-dashboard"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    
+                    <!-- Dashboard Link - Only for controller, viewer, and admin -->
+                    <?php if (in_array($userRole, ['controller', 'viewer', 'admin'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'dashboard') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>dashboard">
+                                <i class="fas fa-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
                     <!-- Role-based Navigation -->
                     <?php if ($userRole === 'customer'): ?>
                         <!-- Customer Navigation -->
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances/new">
-                                <i class="fas fa-plus-circle"></i>
-                                <span>New Grievance</span>
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'support-assistance') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>support/assistance">
+                                <i class="fas fa-headset"></i>
+                                <span>Support & Assistance</span>
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances/my">
-                                <i class="fas fa-list"></i>
-                                <span>My Grievances</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>track">
-                                <i class="fas fa-search"></i>
-                                <span>Track Status</span>
-                            </a>
-                        </li>
-                        
                     <?php elseif ($userRole === 'controller'): ?>
                         <!-- Controller Navigation -->
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances">
-                                <i class="fas fa-clipboard-list"></i>
-                                <span>All Grievances</span>
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'grievances-hub') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>grievances/hub">
+                                <i class="fas fa-comments"></i>
+                                <span>Complaints Hub</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances/tome">
-                                <i class="fas fa-tasks"></i>
-                                <span>Assigned to Me</span>
-                            </a>
-                        </li>
-                        <?php if (strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances/approvals">
-                                <i class="fas fa-clipboard-check"></i>
-                                <span>Approvals</span>
-                            </a>
-                        </li>
-                        <?php endif; ?>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>reports">
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'reports') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>reports">
                                 <i class="fas fa-chart-bar"></i>
                                 <span>Reports</span>
                             </a>
@@ -90,51 +66,49 @@ $userRole = $_SESSION['user_role'] ?? '';
                     <?php elseif ($userRole === 'admin'): ?>
                         <!-- Admin Navigation -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle nav-link-animated" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle nav-link-animated <?php echo (strpos($currentPage, 'admin-') === 0) ? 'active' : ''; ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-cog"></i>
                                 <span>Administration</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-animated">
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/users">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-users') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/users">
                                     <i class="fas fa-users"></i> User Management
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/categories">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-categories') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/categories">
                                     <i class="fas fa-tags"></i> Manage Categories
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/news">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-news') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/news">
                                     <i class="fas fa-newspaper"></i> News & Announcements
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/quicklinks">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-quicklinks') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/quicklinks">
                                     <i class="fas fa-external-link-alt"></i> Quick Links
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/reports">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-reports') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/reports">
                                     <i class="fas fa-chart-line"></i> Analytics
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/bulk-email">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-bulk-email') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/bulk-email">
                                     <i class="fas fa-envelope"></i> Bulk Email
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>admin/email-templates">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'admin-email-templates') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/email-templates">
                                     <i class="fas fa-envelope-open-text"></i> Email Templates
                                 </a></li>
-
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer/add">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'customer-add') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer/add">
                                     <i class="fas fa-user-plus"></i> Add Customer
                                 </a></li>
-                                <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>register">
+                                <li><a class="dropdown-item <?php echo ($currentPage === 'register') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>register">
                                     <i class="fas fa-user-edit"></i> Add User
                                 </a></li>
                             </ul>
                         </li>
-                        
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>grievances">
-                                <i class="fas fa-clipboard-list"></i>
-                                <span>All Grievances</span>
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'grievances-hub') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>grievances/hub">
+                                <i class="fas fa-comments"></i>
+                                <span>Complaints Hub</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>admin/logs">
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'admin-logs') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>admin/logs">
                                 <i class="fas fa-history"></i>
                                 <span>System Logs</span>
                             </a>
@@ -144,21 +118,9 @@ $userRole = $_SESSION['user_role'] ?? '';
                 <?php else: ?>
                     <!-- Public Navigation -->
                     <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>">
+                        <a class="nav-link nav-link-animated <?php echo ($currentPage === 'home') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>">
                             <i class="fas fa-home"></i>
                             <span>Home</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>about">
-                            <i class="fas fa-info-circle"></i>
-                            <span>About</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>contact">
-                            <i class="fas fa-envelope"></i>
-                            <span>Contact</span>
                         </a>
                     </li>
                 <?php endif; ?>
@@ -167,16 +129,13 @@ $userRole = $_SESSION['user_role'] ?? '';
             <!-- User Actions Section -->
             <ul class="navbar-nav ms-auto">
                 <?php if (SessionManager::isLoggedIn()): ?>
-
-                    
                     <!-- Help Link -->
                     <li class="nav-item">
-                        <a class="nav-link nav-link-animated" href="<?php echo BASE_URL; ?>help">
+                        <a class="nav-link nav-link-animated <?php echo ($currentPage === 'help') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>help">
                             <i class="fas fa-life-ring"></i>
                             <span>Help</span>
                         </a>
                     </li>
-
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -190,7 +149,7 @@ $userRole = $_SESSION['user_role'] ?? '';
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
                             
-                            <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>profile">
+                            <li><a class="dropdown-item <?php echo ($currentPage === 'profile') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>profile">
                                 <i class="fas fa-user"></i> Profile
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -199,19 +158,34 @@ $userRole = $_SESSION['user_role'] ?? '';
                             </a></li>
                         </ul>
                     </li>
-                    
+                <?php elseif (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']): ?>
+                    <!-- Customer logged in -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name"><?php echo htmlspecialchars($_SESSION['customer_name']); ?></span>
+                                <span class="user-role">CUSTOMER</span>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
+                            <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>support/assistance">
+                                <i class="fas fa-headset"></i> My Support Tickets
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item logout-link" href="<?php echo BASE_URL; ?>customer/logout">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a></li>
+                        </ul>
+                    </li>
                 <?php else: ?>
-                    <!-- Login/Register Links -->
+                    <!-- Login Link for customers -->
                     <li class="nav-item">
-                        <a class="nav-link nav-link-animated login-link" href="<?php echo BASE_URL; ?>login">
+                        <a class="nav-link nav-link-animated login-link <?php echo ($currentPage === 'customer-login') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-login">
                             <i class="fas fa-sign-in-alt"></i>
                             <span>Login</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link nav-link-animated register-link" href="<?php echo BASE_URL; ?>register">
-                            <i class="fas fa-user-plus"></i>
-                            <span>Register</span>
                         </a>
                     </li>
                 <?php endif; ?>

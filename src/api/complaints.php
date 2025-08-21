@@ -158,7 +158,26 @@ function handleViewComplaint($complaintId) {
         require_once __DIR__ . '/../models/Complaint.php';
         $complaintModel = new Complaint();
         
-        $complaint = $complaintModel->findByComplaintId($complaintId);
+        // For customers, we need to get complaint with wagon details
+        if ($_SESSION['user_role'] === 'customer') {
+            $customerId = $_SESSION['user_customer_id'] ?? null;
+            if (!$customerId) {
+                sendError('Customer ID not found in session', 403);
+            }
+            
+            // Get complaint with wagon details for customers
+            $complaints = $complaintModel->findByCustomerWithFilters($customerId, [], '', 1, 0);
+            $complaint = null;
+            foreach ($complaints as $comp) {
+                if ($comp['complaint_id'] === $complaintId) {
+                    $complaint = $comp;
+                    break;
+                }
+            }
+        } else {
+            // For admins/controllers, use the regular method
+            $complaint = $complaintModel->findByComplaintId($complaintId);
+        }
         
         if (!$complaint) {
             sendError('Complaint not found', 404);
@@ -196,10 +215,12 @@ function handleViewComplaint($complaintId) {
             $customerViewComplaint = [
                 'complaint_id' => $complaint['complaint_id'],
                 'category' => $complaint['category'],
-                'complaint_type' => $complaint['complaint_type'],
-                'complaint_subtype' => $complaint['complaint_subtype'],
-                'location' => $complaint['location'],
-                'fnr_no' => $complaint['fnr_no'],
+                'complaint_type' => $complaint['Type'],
+                'complaint_subtype' => $complaint['Subtype'],
+                'location' => $complaint['Location'],
+                'wagon_type' => $complaint['wagon_type'] ?? null,
+                'wagon_code' => $complaint['wagon_code'] ?? null,
+                'fnr_no' => $complaint['FNR_Number'],
                 'description' => $complaint['description'],
                 'action_taken' => $complaint['action_taken'],
                 'status' => $complaint['status'],
@@ -214,6 +235,15 @@ function handleViewComplaint($complaintId) {
         } else {
             // Admin/controllers see full details including auto-priority
             $complaint['display_priority'] = $complaintModel->calculateAutoPriority($complaint['created_at']);
+            
+            // Get transaction history
+            require_once __DIR__ . '/../models/Transaction.php';
+            $transactionModel = new Transaction();
+            $transactions = $transactionModel->findByComplaintId($complaintId);
+            
+            // Add transactions to complaint data
+            $complaint['transactions'] = $transactions;
+            
             sendSuccess($complaint);
         }
         

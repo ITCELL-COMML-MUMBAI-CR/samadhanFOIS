@@ -9,10 +9,12 @@ require_once '../src/utils/SessionManager.php';
 require_once '../src/controllers/BaseController.php';
 require_once '../src/controllers/PageController.php';
 require_once '../src/controllers/LoginController.php';
+require_once '../src/controllers/CustomerLoginController.php';
 require_once '../src/controllers/DashboardController.php';
 require_once '../src/controllers/ComplaintController.php';
 require_once '../src/controllers/AdminController.php';
 require_once '../src/controllers/CustomerController.php';
+require_once '../src/controllers/CustomerAuthController.php';
 
 
 // Start session management
@@ -69,10 +71,30 @@ switch ($controllerName) {
         $pageController->login();
         break;
         
+    case 'customer-login':
+        $controller = new CustomerLoginController();
+        $controller->handleLoginRequest();
+        
+        // Load the customer login page
+        include '../public/pages/customer_login.php';
+        break;
+        
     case 'customer':
         $controller = new CustomerController();
         if ($action === 'add') {
             $controller->add();
+        } elseif ($action === 'logout') {
+            $authController = new CustomerAuthController();
+            $authController->logout();
+        }
+        break;
+
+    case 'customer-auth':
+        $controller = new CustomerAuthController();
+        if ($action === 'authenticate') {
+            $controller->authenticate();
+        } elseif ($action === 'logout') {
+            $controller->logout();
         }
         break;
 
@@ -82,21 +104,39 @@ switch ($controllerName) {
         break;
         
     case 'grievances':
-        $controller = new ComplaintController();
+        // Redirect old grievance routes to new support system
         if ($action === 'new') {
-            $controller->create();
+            header('Location: ' . BASE_URL . 'support/new');
+            exit;
         } elseif ($action === 'my') {
-            $controller->my();
-        } elseif ($action === 'tome') {
-            $controller->assignedToMe();
-        } elseif ($action === 'approvals') {
-            $controller->approvals();
-        } elseif ($action === 'view' && !empty($params[0])) {
-            $controller->view($params[0]);
+            header('Location: ' . BASE_URL . 'support/assistance');
+            exit;
         } else {
-            $controller->index();
+            // For other grievance routes, use the support system
+            $controller = new ComplaintController();
+            if ($action === 'tome') {
+                $controller->assignedToMe();
+            } elseif ($action === 'hub') {
+                $controller->complaintsHub();
+            } elseif ($action === 'approvals') {
+                $controller->approvals();
+            } elseif ($action === 'view' && !empty($params[0])) {
+                $controller->view($params[0]);
+            } else {
+                $controller->index();
+            }
         }
         break;
+                case 'support':
+                $controller = new ComplaintController();
+                if ($action === 'assistance') {
+                    $controller->supportAssistance();
+                } elseif ($action === 'new') {
+                    $controller->newSupportTicket();
+                } else {
+                    $controller->supportAssistance();
+                }
+                break;
     case 'complaints':
         // Alias routes to grievances for backward compatibility
         $controller = new ComplaintController();
@@ -168,10 +208,7 @@ switch ($controllerName) {
         $controller = new PageController();
         $controller->profile();
         break;
-    case 'track':
-        $controller = new PageController();
-        $controller->track();
-        break;
+
     case 'reports':
         $controller = new PageController();
         $controller->reports();
@@ -184,8 +221,8 @@ switch ($controllerName) {
         
     case 'logout':
         SessionManager::logout();
-        header('Location: ' . BASE_URL . 'login');
-        exit;
+        // The logout method now handles redirection based on user type
+        break;
         
     default:
         $controller = new PageController();

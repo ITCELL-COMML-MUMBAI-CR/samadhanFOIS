@@ -48,8 +48,8 @@
 								<?php if (!empty($complaint['category'])): ?>
 									<span class="badge bg-primary"><?php echo htmlspecialchars($complaint['category']); ?></span><br>
 								<?php endif; ?>
-								<strong><?php echo htmlspecialchars($complaint['complaint_type']); ?></strong><br>
-								<small class="text-muted"><?php echo htmlspecialchars($complaint['complaint_subtype']); ?></small>
+								<strong><?php echo htmlspecialchars($complaint['Type'] ?? 'Not specified'); ?></strong><br>
+								<small class="text-muted"><?php echo htmlspecialchars($complaint['Subtype'] ?? 'Not specified'); ?></small>
 							</div>
 						</div>
 						<?php if (($currentUser['role'] ?? '') !== 'customer'): ?>
@@ -60,7 +60,7 @@
 						<?php endif; ?>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Location</label>
-							<div><i class="fas fa-map-marker-alt text-muted"></i> <?php echo htmlspecialchars($complaint['location']); ?></div>
+							<div><i class="fas fa-map-marker-alt text-muted"></i> <?php echo htmlspecialchars($complaint['Location'] ?? 'Not specified'); ?></div>
 						</div>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Date / Time</label>
@@ -254,27 +254,6 @@
 							<?php endforeach; ?>
 						</div>
 					<?php endif; ?>
-				</div>
-			</div>
-			<?php else: ?>
-			<!-- Customer-only section: Status info -->
-			<div class="card mb-3">
-				<div class="card-header">
-					<h5 class="mb-0"><i class="fas fa-info-circle"></i> Status Information</h5>
-				</div>
-				<div class="card-body">
-					<div class="mb-3">
-						<label class="text-muted small">Current Status</label>
-						<div>
-							<span class="badge status-<?php echo str_replace('_','-',$complaint['status']); ?>">
-								<?php echo ucfirst(str_replace('_',' ', $complaint['status'])); ?>
-							</span>
-						</div>
-					</div>
-					<div class="mb-0">
-						<label class="text-muted small">Last Updated</label>
-						<div><?php echo date('d-M-Y H:i', strtotime($complaint['updated_at'] ?? $complaint['created_at'])); ?></div>
-					</div>
 				</div>
 			</div>
 			<?php endif; ?>

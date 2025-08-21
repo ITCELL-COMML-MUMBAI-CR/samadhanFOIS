@@ -94,13 +94,24 @@ function handleDashboardStats() {
         $recentComplaints = $complaintModel->getRecent(5);
         $recentTransactions = $transactionModel->getRecent(10);
         
+        // Calculate pending and replied counts from status distribution
+        $pendingCount = 0;
+        $repliedCount = 0;
+        foreach ($stats['by_status'] ?? [] as $statusItem) {
+            if ($statusItem['status'] === 'Pending') {
+                $pendingCount = $statusItem['count'];
+            } elseif ($statusItem['status'] === 'Replied') {
+                $repliedCount = $statusItem['count'];
+            }
+        }
+        
         $response = [
             'summary' => [
                 'total_complaints' => $stats['total'] ?? 0,
                 'total_users' => $totalUsers ?? 0,
                 'total_customers' => $totalCustomers ?? 0,
-                'pending_complaints' => $stats['by_status']['pending'] ?? 0,
-                'replied_complaints' => $stats['by_status']['replied'] ?? 0
+                'pending_complaints' => $pendingCount,
+                'replied_complaints' => $repliedCount
             ],
             'status_distribution' => $stats['by_status'] ?? [],
             'priority_distribution' => $stats['by_priority'] ?? [],
@@ -152,9 +163,10 @@ function handleComplaintsByPriority() {
         GROUP BY priority
         ORDER BY 
             CASE priority 
-                WHEN 'high' THEN 1 
-                WHEN 'normal' THEN 2 
-                WHEN 'low' THEN 3 
+                WHEN 'Critical' THEN 1 
+                WHEN 'High' THEN 2 
+                WHEN 'Medium' THEN 3 
+                WHEN 'Low' THEN 4 
             END
     ";
     
@@ -193,12 +205,12 @@ function handleComplaintsByCategory() {
     
     $sql = "
         SELECT 
-            complaint_type as category,
+            Type as category,
             COUNT(*) as count,
             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM complaints WHERE date BETWEEN ? AND ?), 2) as percentage
         FROM complaints 
         WHERE date BETWEEN ? AND ?
-        GROUP BY complaint_type
+        GROUP BY Type
         ORDER BY count DESC
         LIMIT 10
     ";
@@ -221,9 +233,9 @@ function handleComplaintsTimeline() {
         SELECT 
             DATE_FORMAT(date, ?) as period,
             COUNT(*) as count,
-            SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied,
-            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as replied,
+            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN status = 'Reverted' THEN 1 ELSE 0 END) as rejected
         FROM complaints 
         WHERE date BETWEEN ? AND ?
         GROUP BY DATE_FORMAT(date, ?)
@@ -249,7 +261,7 @@ function handlePerformanceMetrics() {
             MIN(DATEDIFF(updated_at, created_at)) as min_resolution_days,
             MAX(DATEDIFF(updated_at, created_at)) as max_resolution_days
         FROM complaints 
-        WHERE status = 'replied' 
+        WHERE status = 'Replied' 
         AND date BETWEEN ? AND ?
         AND updated_at IS NOT NULL
     ";
@@ -275,8 +287,8 @@ function handlePerformanceMetrics() {
     $sql = "
         SELECT 
             COUNT(*) as total_complaints,
-            SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied_complaints,
-            ROUND(SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as replied_complaints,
+            ROUND(SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate
         FROM complaints 
         WHERE date BETWEEN ? AND ?
     ";
@@ -327,15 +339,15 @@ function handleResolutionTime() {
     
     $sql = "
         SELECT 
-            complaint_type,
+            Type,
             department,
             AVG(DATEDIFF(updated_at, created_at)) as avg_days,
             COUNT(*) as total_complaints,
-            SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved_count
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as resolved_count
         FROM complaints 
         WHERE date BETWEEN ? AND ?
         AND updated_at IS NOT NULL
-        GROUP BY complaint_type, department
+        GROUP BY Type, department
         ORDER BY avg_days DESC
     ";
     
@@ -407,11 +419,11 @@ function handleMISReport() {
     $sql = "
         SELECT 
             COUNT(*) as total_complaints,
-            SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied,
-            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as replied,
+            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN status = 'Reverted' THEN 1 ELSE 0 END) as rejected,
             AVG(DATEDIFF(updated_at, created_at)) as avg_reply_days,
-            ROUND(SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate
+            ROUND(SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate
         FROM complaints 
         WHERE date BETWEEN ? AND ?
     ";
@@ -424,8 +436,8 @@ function handleMISReport() {
         SELECT 
             department,
             COUNT(*) as total,
-            SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied,
-            ROUND(SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate,
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as replied,
+            ROUND(SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as reply_rate,
             AVG(DATEDIFF(updated_at, created_at)) as avg_days
         FROM complaints 
         WHERE date BETWEEN ? AND ?
@@ -438,12 +450,12 @@ function handleMISReport() {
     // Top Issues
     $sql = "
         SELECT 
-            complaint_type,
+            Type,
             COUNT(*) as count,
             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM complaints WHERE date BETWEEN ? AND ?), 2) as percentage
         FROM complaints 
         WHERE date BETWEEN ? AND ?
-        GROUP BY complaint_type
+        GROUP BY Type
         ORDER BY count DESC
         LIMIT 10
     ";
@@ -455,7 +467,7 @@ function handleMISReport() {
         SELECT 
             DATE_FORMAT(date, '%Y-%m') as month,
             COUNT(*) as complaints,
-            SUM(CASE WHEN status = 'replied' THEN 1 ELSE 0 END) as replied
+            SUM(CASE WHEN status = 'Replied' THEN 1 ELSE 0 END) as replied
         FROM complaints 
         WHERE date BETWEEN ? AND ?
         GROUP BY DATE_FORMAT(date, '%Y-%m')
@@ -493,7 +505,7 @@ function handleExportData() {
             a.name as assigned_to_name
         FROM complaints c
         LEFT JOIN users u ON c.customer_id = u.customer_id
-        LEFT JOIN users a ON c.assigned_to = a.login_id
+        LEFT JOIN users a ON c.Assigned_To_Department = a.login_id
         WHERE c.date BETWEEN ? AND ?
         ORDER BY c.created_at DESC
     ";
@@ -531,18 +543,18 @@ function handleGenerateSampleData() {
     // Sample complaint types
     $complaintTypes = ['Freight Damage', 'Delay in Delivery', 'Billing Issue', 'Service Quality', 'Documentation'];
     $departments = ['COMMERCIAL', 'OPERATIONS', 'FINANCE', 'CUSTOMER_SERVICE'];
-    $priorities = ['high', 'normal', 'low'];
-    $statuses = ['pending', 'replied', 'rejected'];
+    $priorities = ['Critical', 'High', 'Medium', 'Low'];
+    $statuses = ['Pending', 'Replied', 'Reverted'];
     
     // Generate sample complaints for the last 3 months
     for ($i = 0; $i < 50; $i++) {
         $date = date('Y-m-d', strtotime('-' . rand(0, 90) . ' days'));
         $status = $statuses[array_rand($statuses)];
-        $updatedAt = $status === 'replied' ? date('Y-m-d H:i:s', strtotime($date . ' +' . rand(1, 30) . ' days')) : null;
+        $updatedAt = $status === 'Replied' ? date('Y-m-d H:i:s', strtotime($date . ' +' . rand(1, 30) . ' days')) : null;
         
         $complaintData = [
             'customer_id' => 'ED' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT),
-            'complaint_type' => $complaintTypes[array_rand($complaintTypes)],
+            'Type' => $complaintTypes[array_rand($complaintTypes)],
             'description' => 'Sample complaint description ' . ($i + 1),
             'department' => $departments[array_rand($departments)],
             'priority' => $priorities[array_rand($priorities)],
@@ -551,7 +563,7 @@ function handleGenerateSampleData() {
             'time' => date('H:i:s'),
             'created_at' => $date . ' ' . date('H:i:s'),
             'updated_at' => $updatedAt,
-            'assigned_to' => 'commercial_controller'
+            'Assigned_To_Department' => 'commercial_controller'
         ];
         
         $complaintId = $complaintModel->createComplaint($complaintData);
@@ -560,10 +572,10 @@ function handleGenerateSampleData() {
             // Generate sample transactions
             $transactionModel->logStatusUpdate($complaintId, 'Complaint received and assigned', 'commercial_controller');
             
-            if ($status === 'replied') {
+            if ($status === 'Replied') {
                 $transactionModel->logStatusUpdate($complaintId, 'Complaint replied successfully', 'commercial_controller');
-            } elseif ($status === 'rejected') {
-                $transactionModel->logStatusUpdate($complaintId, 'Complaint rejected due to insufficient information', 'commercial_controller');
+            } elseif ($status === 'Reverted') {
+                $transactionModel->logStatusUpdate($complaintId, 'Complaint reverted due to insufficient information', 'commercial_controller');
             }
         }
     }

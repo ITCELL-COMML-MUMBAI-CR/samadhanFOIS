@@ -352,22 +352,28 @@ class EmailTemplateManager {
      * Show alert message
      */
     showAlert(message, type = 'info') {
-        const alertContainer = document.createElement('div');
-        alertContainer.className = `alert alert-${type} alert-dismissible fade show`;
-        alertContainer.innerHTML = `
-            <i class="fas fa-${this.getAlertIcon(type)}"></i> ${this.escapeHtml(message)}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        const container = document.querySelector('.container-fluid');
-        container.insertBefore(alertContainer, container.firstChild);
-        
-        // Auto-dismiss after 5 seconds
-        setTimeout(() => {
-            if (alertContainer.parentNode) {
-                alertContainer.remove();
-            }
-        }, 5000);
+        // Use centralized alert system if available
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(message, type, 5000);
+        } else {
+            // Fallback to local implementation
+            const alertContainer = document.createElement('div');
+            alertContainer.className = `alert alert-${type} alert-dismissible fade show`;
+            alertContainer.innerHTML = `
+                <i class="fas fa-${this.getAlertIcon(type)}"></i> ${this.escapeHtml(message)}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container-fluid');
+            container.insertBefore(alertContainer, container.firstChild);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertContainer.parentNode) {
+                    alertContainer.remove();
+                }
+            }, 5000);
+        }
     }
 
     /**

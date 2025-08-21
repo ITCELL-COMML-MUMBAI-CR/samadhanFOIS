@@ -111,91 +111,21 @@ class Transaction extends BaseModel {
     /**
      * Get recent transactions
      */
-    public function getRecent($limit = 10, $userId = null) {
-        $sql = "
-            SELECT t.*, 
-                   c.complaint_type,
-                   u1.name as created_by_name
-            FROM transactions t
-            LEFT JOIN complaints c ON t.complaint_id = c.complaint_id
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
-        ";
-        
-        $params = [];
-        
-        if ($userId) {
-            $sql .= " WHERE (t.from_user = ? OR t.to_user = ? OR t.created_by = ?)";
-            $params = [$userId, $userId, $userId];
-        }
-        
-        $sql .= " ORDER BY t.created_at DESC LIMIT ?";
-        $params[] = $limit;
-        
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
-    }
-    
-    /**
-     * Get transaction statistics
-     */
-    public function getStatistics($filters = []) {
-        $stats = [];
-        
-        // Base WHERE clause for filters
-        $whereClause = "WHERE 1=1";
-        $params = [];
-        
-        if (!empty($filters['user_id'])) {
-            $whereClause .= " AND (from_user = ? OR to_user = ? OR created_by = ?)";
-            $params[] = $filters['user_id'];
-            $params[] = $filters['user_id'];
-            $params[] = $filters['user_id'];
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $whereClause .= " AND DATE(created_at) >= ?";
-            $params[] = $filters['date_from'];
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $whereClause .= " AND DATE(created_at) <= ?";
-            $params[] = $filters['date_to'];
-        }
-        
-        // Total transactions
-        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM transactions $whereClause");
-        $stmt->execute($params);
-        $stats['total'] = $stmt->fetch()['count'];
-        
-        // By transaction type
+    public function getRecent($limit = 10) {
         $stmt = $this->connection->prepare("
-            SELECT transaction_type, COUNT(*) as count 
-            FROM transactions $whereClause
-            GROUP BY transaction_type
+            SELECT t.*, 
+                   u1.name as created_by_name,
+                   u2.name as from_user_name,
+                   u3.name as to_user_name
+            FROM transactions t
+            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u2 ON t.from_user = u2.login_id
+            LEFT JOIN users u3 ON t.to_user = u3.login_id
+            ORDER BY t.created_at DESC
+            LIMIT ?
         ");
-        $stmt->execute($params);
-        $typeStats = $stmt->fetchAll();
-        
-        foreach ($typeStats as $typeStat) {
-            $stats['by_type'][$typeStat['transaction_type']] = $typeStat['count'];
-        }
-        
-        return $stats;
-    }
-    
-    /**
-     * Generate unique transaction ID
-     */
-    private function generateTransactionId() {
-        do {
-            $id = generateTransactionId();
-            $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM transactions WHERE transaction_id = ?");
-            $stmt->execute([$id]);
-            $exists = $stmt->fetch()['count'] > 0;
-        } while ($exists);
-        
-        return $id;
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
     }
     
     /**
@@ -204,11 +134,13 @@ class Transaction extends BaseModel {
     public function findByType($type, $limit = null) {
         $sql = "
             SELECT t.*, 
-                   c.complaint_type,
-                   u1.name as created_by_name
+                   u1.name as created_by_name,
+                   u2.name as from_user_name,
+                   u3.name as to_user_name
             FROM transactions t
-            LEFT JOIN complaints c ON t.complaint_id = c.complaint_id
             LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u2 ON t.from_user = u2.login_id
+            LEFT JOIN users u3 ON t.to_user = u3.login_id
             WHERE t.transaction_type = ?
             ORDER BY t.created_at DESC
         ";
@@ -223,26 +155,89 @@ class Transaction extends BaseModel {
     }
     
     /**
-     * Get complaint history/timeline
+     * Get transactions by user
+     */
+    public function findByUser($userId, $limit = null) {
+        $sql = "
+            SELECT t.*, 
+                   u1.name as created_by_name,
+                   u2.name as from_user_name,
+                   u3.name as to_user_name
+            FROM transactions t
+            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u2 ON t.from_user = u2.login_id
+            LEFT JOIN users u3 ON t.to_user = u3.login_id
+            WHERE t.created_by = ? OR t.from_user = ? OR t.to_user = ?
+            ORDER BY t.created_at DESC
+        ";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([$userId, $userId, $userId]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get transaction statistics
+     */
+    public function getStatistics() {
+        $stats = [];
+        
+        // Total transactions
+        $stmt = $this->connection->prepare("SELECT COUNT(*) as count FROM transactions");
+        $stmt->execute();
+        $stats['total'] = $stmt->fetch()['count'];
+        
+        // Transactions by type
+        $stmt = $this->connection->prepare("
+            SELECT transaction_type, COUNT(*) as count 
+            FROM transactions 
+            GROUP BY transaction_type
+        ");
+        $stmt->execute();
+        $stats['by_type'] = $stmt->fetchAll();
+        
+        // Recent transactions (last 7 days)
+        $stmt = $this->connection->prepare("
+            SELECT COUNT(*) as count 
+            FROM transactions 
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        ");
+        $stmt->execute();
+        $stats['recent_7_days'] = $stmt->fetch()['count'];
+        
+        return $stats;
+    }
+    
+    /**
+     * Generate unique transaction ID
+     */
+    private function generateTransactionId() {
+        $prefix = 'TXN';
+        $date = date('Ymd');
+        $time = date('His');
+        $random = str_pad(mt_rand(1, 999), 3, '0', STR_PAD_LEFT);
+        return $prefix . $date . $time . $random;
+    }
+    
+    /**
+     * Get complaint history
      */
     public function getComplaintHistory($complaintId) {
         $stmt = $this->connection->prepare("
-            SELECT 
-                transaction_id,
-                transaction_type,
-                remarks,
-                created_at,
-                created_by,
-                from_user,
-                to_user,
-                from_department,
-                to_department,
-                (SELECT name FROM users WHERE login_id = t.created_by) as created_by_name,
-                (SELECT name FROM users WHERE login_id = t.from_user) as from_user_name,
-                (SELECT name FROM users WHERE login_id = t.to_user) as to_user_name
+            SELECT t.*,
+                   u1.name as created_by_name,
+                   u2.name as from_user_name,
+                   u3.name as to_user_name
             FROM transactions t
-            WHERE complaint_id = ?
-            ORDER BY created_at ASC
+            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u2 ON t.from_user = u2.login_id
+            LEFT JOIN users u3 ON t.to_user = u3.login_id
+            WHERE t.complaint_id = ?
+            ORDER BY t.created_at ASC
         ");
         $stmt->execute([$complaintId]);
         return $stmt->fetchAll();

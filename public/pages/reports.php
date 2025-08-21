@@ -48,12 +48,31 @@ if (!in_array($userRole, ['admin', 'controller', 'viewer'])) {
                 <div class="card-body">
                     <div class="row align-items-end">
                         <div class="col-md-3">
-                            <label class="form-label">Date From</label>
-                            <input type="date" id="dateFrom" class="form-control" value="<?php echo date('Y-m-01'); ?>">
+                            <label class="form-label">
+                                <i class="fas fa-calendar"></i> Date Filter
+                            </label>
+                            <select class="form-control" id="dateFilter">
+                                <option value="">All Dates</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="week">This Week</option>
+                                <option value="month" selected>This Month</option>
+                                <option value="quarter">This Quarter</option>
+                                <option value="year">This Year</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Date To</label>
-                            <input type="date" id="dateTo" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+                        <div class="col-md-3" id="customDateGroup" style="display: none;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="form-label">From</label>
+                                    <input type="date" id="startDate" class="form-control">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">To</label>
+                                    <input type="date" id="endDate" class="form-control">
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Report Type</label>

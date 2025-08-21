@@ -278,30 +278,35 @@ document.addEventListener('DOMContentLoaded', function() {
      * Utility function for displaying notifications
      */
     function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show notification-popup`;
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            min-width: 300px;
-            max-width: 400px;
-        `;
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification && notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
+        // Use centralized alert system if available
+        if (typeof window.showAlert === 'function') {
+            window.showAlert(message, type, 5000);
+        } else {
+            // Fallback to local implementation
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} alert-dismissible fade show notification-popup`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                max-width: 400px;
+            `;
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification && notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
     }
     
     /**

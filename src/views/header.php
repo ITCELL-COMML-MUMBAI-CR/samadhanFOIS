@@ -21,6 +21,12 @@
     <?php if (isset($pageTitle) && ($pageTitle === 'My Grievances' || $pageTitle === 'Customer Home')): ?>
     <link href="<?php echo BASE_URL; ?>css/customer_home.css" rel="stylesheet">
     <?php endif; ?>
+    <?php if (isset($pageTitle) && $pageTitle === 'Complaints Hub'): ?>
+    <link href="<?php echo BASE_URL; ?>css/complaints_hub.css" rel="stylesheet">
+    <?php endif; ?>
+    <?php if (isset($pageTitle) && $pageTitle === 'Support & Assistance'): ?>
+    <link href="<?php echo BASE_URL; ?>css/support_assistance.css" rel="stylesheet">
+    <?php endif; ?>
     
     <style>
         :root {
