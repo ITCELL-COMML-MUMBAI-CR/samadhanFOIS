@@ -525,7 +525,7 @@ class ComplaintController extends BaseController {
 
         // Fetch approvals list
         $complaintModel = $this->loadModel('Complaint');
-        $approvals = $complaintModel->findByStatus('awaiting_approval');
+        $approvals = $complaintModel->findAwaitingApproval($currentUser['login_id']);
 
         $data = compact('approvals', 'currentUser', 'error', 'success');
         
@@ -985,7 +985,7 @@ class ComplaintController extends BaseController {
             'closed' => $complaintModel->countWithFilters(['status' => 'closed'], ''),
             'forwarded' => $complaintModel->countWithFilters(['status' => 'forwarded'], ''),
             'reverted' => $complaintModel->countWithFilters(['status' => 'reverted'], ''),
-            'awaiting_approval' => $complaintModel->countWithFilters(['status' => 'awaiting_approval'], '')
+            'awaiting_approval' => $complaintModel->countAwaitingApproval($currentUser['login_id'])
         ];
         
         $data = compact(

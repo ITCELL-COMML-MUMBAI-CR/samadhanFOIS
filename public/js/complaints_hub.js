@@ -168,10 +168,9 @@ function loadComplaintDetails(complaintId) {
     fetch(`${BASE_URL}api/complaints/view/${complaintId}`)
         .then(response => response.json())
         .then(data => {
-            console.log('API Response:', data); // Debug log
             if (!data.error) {
-                // API returns complaint data directly in the response
-                const complaint = data.data || data;
+                // API returns complaint data in the data field
+                const complaint = data.data;
                 displayComplaintDetails(complaint);
                 loadTransactionHistory(complaint);
             } else {
@@ -186,40 +185,100 @@ function loadComplaintDetails(complaintId) {
 
 function displayComplaintDetails(complaint) {
     const infoSection = document.querySelector('.complaint-info-section');
+    console.log('Complaint data:', complaint);
+    console.log('Evidence data:', complaint.evidence);
     
-    console.log('Complaint data:', complaint); // Debug log
-    
-    // Create complaint details HTML
+    // Create complaint details HTML with all available fields except status and priority
     const detailsHTML = `
         <div class="info-group">
             <label class="info-label">Customer Information</label>
-            <div class="info-content">
-                <strong>${complaint.customer_name || 'Unknown'}</strong><br>
-                <small>ID: ${complaint.customer_id || 'N/A'}</small>
+            <div class="info-content"><p>
+                <strong>${complaint.customer_name || 'Unknown'}</strong></br>
+                <small>ID: ${complaint.customer_id || 'N/A'}</small><br>
+                ${complaint.customer_email ? `<small>Email: ${complaint.customer_email}</small>` : ''}
+            </p>
             </div>
         </div>
         
         <div class="info-group">
             <label class="info-label">Complaint Type</label>
             <div class="info-content">
-                ${complaint.complaint_type || 'Not specified'}
-                ${complaint.complaint_subtype ? `<br><small>${complaint.complaint_subtype}</small>` : ''}
+                ${complaint.Type || 'Not specified'}
+                ${complaint.Subtype ? `<br><small>${complaint.Subtype}</small>` : ''}
             </div>
         </div>
         
         <div class="info-group">
-            <label class="info-label">Location</label>
+            <label class="info-label">Category</label>
             <div class="info-content">
-                ${complaint.location || 'Not specified'}
+                ${complaint.category || 'Not specified'}
+            </div>
+        </div>
+                
+        <div class="info-group">
+            <label class="info-label">Shed Information</label>
+            <div class="info-content">
+                ${complaint.shed_terminal ? `${complaint.shed_terminal}` : ''}
+                ${complaint.shed_type ? `<br><small>Type: ${complaint.shed_type}</small>` : ''}
+                ${!complaint.shed_terminal && !complaint.shed_type ? 'Not specified' : ''}
             </div>
         </div>
         
         <div class="info-group">
-            <label class="info-label">Status</label>
+            <label class="info-label">Wagon Information</label>
             <div class="info-content">
-                <span class="badge status-${(complaint.status || 'pending').replace('_', '-')}">
-                    <i class="fas fa-circle"></i> ${(complaint.status || 'pending').replace('_', ' ')}
-                </span>
+                ${complaint.wagon_type ? `Type: ${complaint.wagon_type}` : ''}
+                ${complaint.wagon_code ? `<br>Code: ${complaint.wagon_code}` : ''}
+                ${!complaint.wagon_type && !complaint.wagon_code ? 'Not specified' : ''}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">FNR Number / GST Number / eIndent </label>
+            <div class="info-content">
+                ${complaint.FNR_Number || 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Department</label>
+            <div class="info-content">
+                ${complaint.department || 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Division</label>
+            <div class="info-content">
+                ${complaint.Division || 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Zone</label>
+            <div class="info-content">
+                ${complaint.Zone || 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Assigned To</label>
+            <div class="info-content">
+                ${complaint.assigned_to_name || complaint.assigned_to || 'Not assigned'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Date</label>
+            <div class="info-content">
+                ${complaint.date ? new Date(complaint.date).toLocaleDateString() : 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Time</label>
+            <div class="info-content">
+                ${complaint.time || 'Not specified'}
             </div>
         </div>
         
@@ -230,12 +289,87 @@ function displayComplaintDetails(complaint) {
             </div>
         </div>
         
+        <div class="info-group">
+            <label class="info-label">Updated Date</label>
+            <div class="info-content">
+                ${complaint.updated_at ? formatDateTime(complaint.updated_at) : 'Not specified'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Forwarded Flag</label>
+            <div class="info-content">
+                ${complaint.Forwarded_Flag === 'Y' ? 'Yes' : 'No'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Awaiting Approval</label>
+            <div class="info-content">
+                ${complaint.Awaiting_Approval_Flag === 'Y' ? 'Yes' : 'No'}
+            </div>
+        </div>
+        
+        <div class="info-group">
+            <label class="info-label">Rating</label>
+            <div class="info-content">
+                ${complaint.rating || 'Not rated'}
+            </div>
+        </div>
+        
         <div class="info-group full-width">
             <label class="info-label">Description</label>
             <div class="info-content description-text">
                 ${complaint.description || 'No description provided'}
             </div>
         </div>
+        
+        <div class="info-group full-width">
+            <label class="info-label">Action Taken</label>
+            <div class="info-content description-text">
+                ${complaint.action_taken || 'No action taken yet'}
+            </div>
+        </div>
+        
+        ${complaint.rating_remarks ? `
+        <div class="info-group full-width">
+            <label class="info-label">Rating Remarks</label>
+            <div class="info-content description-text">
+                ${complaint.rating_remarks}
+            </div>
+        </div>
+        ` : ''}
+        
+        ${complaint.evidence && complaint.evidence.length > 0 ? `
+        <div class="info-group full-width">
+            <label class="info-label">Evidence Files</label>
+            <div class="info-content evidence-section">
+                <div class="evidence-grid">
+                    ${complaint.evidence.map((evidence, index) => `
+                        <div class="evidence-item">
+                            <div class="evidence-preview">
+                                ${evidence.filename.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/) ? 
+                                    `<img src="${evidence.url}" alt="Evidence ${index + 1}" class="evidence-image" onclick="openEvidenceModal('${evidence.url}', '${evidence.filename}')">` :
+                                    `<div class="evidence-file-icon" onclick="openEvidenceModal('${evidence.url}', '${evidence.filename}')">
+                                        <i class="fas fa-file-alt"></i>
+                                        <span class="file-name">${evidence.filename}</span>
+                                    </div>`
+                                }
+                            </div>
+                            <div class="evidence-actions">
+                                <button class="btn btn-sm btn-outline-primary" onclick="openEvidenceModal('${evidence.url}', '${evidence.filename}')">
+                                    <i class="fas fa-eye"></i> View
+                                </button>
+                                <a href="${evidence.url}" download="${evidence.filename}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-download"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        ` : ''}
     `;
     
     infoSection.innerHTML = detailsHTML;
@@ -1055,6 +1189,66 @@ function updateUserDropdown() {
             }
         });
     }
+}
+
+// Evidence modal functionality
+function openEvidenceModal(url, filename) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('evidenceModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'evidenceModal';
+        modal.className = 'modal fade';
+        modal.setAttribute('tabindex', '-1');
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Evidence: ${filename}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <div id="evidenceContent"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="${url}" download="${filename}" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Update modal content
+    const evidenceContent = modal.querySelector('#evidenceContent');
+    const fileExtension = filename.toLowerCase().split('.').pop();
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExtension)) {
+        // Image file
+        evidenceContent.innerHTML = `<img src="${url}" alt="${filename}" class="img-fluid evidence-modal-image">`;
+    } else if (['pdf'].includes(fileExtension)) {
+        // PDF file
+        evidenceContent.innerHTML = `<iframe src="${url}" width="100%" height="500px" frameborder="0"></iframe>`;
+    } else {
+        // Other file types
+        evidenceContent.innerHTML = `
+            <div class="evidence-file-preview">
+                <i class="fas fa-file-alt fa-4x text-muted mb-3"></i>
+                <h6>${filename}</h6>
+                <p class="text-muted">This file type cannot be previewed directly.</p>
+                <a href="${url}" download="${filename}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Download to View
+                </a>
+            </div>
+        `;
+    }
+    
+    // Show modal
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
 }
 
 // Initialize department dropdown functionality

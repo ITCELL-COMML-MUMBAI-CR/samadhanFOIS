@@ -303,13 +303,33 @@ function handleViewComplaint($complaintId) {
             // Admin/controllers see full details including auto-priority
             $complaint['display_priority'] = $complaintModel->calculateAutoPriority($complaint['created_at']);
             
+            // Get evidence data for admin/controllers
+            require_once __DIR__ . '/../models/Evidence.php';
+            $evidenceModel = new Evidence();
+            $evidence = $evidenceModel->findByComplaintId($complaintId);
+            
+            // Prepare evidence images for response
+            $evidenceImages = [];
+            if ($evidence) {
+                for ($i = 1; $i <= 3; $i++) {
+                    $imageField = "image_$i";
+                    if (!empty($evidence[$imageField])) {
+                        $evidenceImages[] = [
+                            'filename' => $evidence[$imageField],
+                            'url' => BASE_URL . 'uploads/evidences/' . $evidence[$imageField]
+                        ];
+                    }
+                }
+            }
+            
             // Get transaction history
             require_once __DIR__ . '/../models/Transaction.php';
             $transactionModel = new Transaction();
             $transactions = $transactionModel->findByComplaintId($complaintId);
             
-            // Add transactions to complaint data
+            // Add transactions and evidence to complaint data
             $complaint['transactions'] = $transactions;
+            $complaint['evidence'] = $evidenceImages;
             
             sendSuccess($complaint);
         }

@@ -730,23 +730,55 @@ class Complaint extends BaseModel {
     /**
      * Find complaints awaiting approval
      */
-    public function findAwaitingApproval($limit = null) {
+    public function findAwaitingApproval($assignedTo = null, $limit = null) {
         $sql = "
             SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.status = 'awaiting_approval' AND c.Awaiting_Approval_Flag = 'Y'
-            ORDER BY c.created_at DESC
         ";
+        
+        $params = [];
+        
+        // Filter by assigned user if provided
+        if ($assignedTo) {
+            $sql .= " AND c.Assigned_To_Department = ?";
+            $params[] = $assignedTo;
+        }
+        
+        $sql .= " ORDER BY c.created_at DESC";
         
         if ($limit) {
             $sql .= " LIMIT $limit";
         }
         
         $stmt = $this->connection->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll();
+    }
+    
+    /**
+     * Count complaints awaiting approval (both status and flag)
+     */
+    public function countAwaitingApproval($assignedTo = null) {
+        $sql = "
+            SELECT COUNT(*) as count 
+            FROM complaints c 
+            WHERE c.status = 'awaiting_approval' AND c.Awaiting_Approval_Flag = 'Y'
+        ";
+        
+        $params = [];
+        
+        // Filter by assigned user if provided
+        if ($assignedTo) {
+            $sql .= " AND c.Assigned_To_Department = ?";
+            $params[] = $assignedTo;
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch()['count'];
     }
     
     /**

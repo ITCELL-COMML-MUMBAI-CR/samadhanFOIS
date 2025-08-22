@@ -252,9 +252,9 @@ if (!isset($currentUser)) {
                 </div>
                 
                 <div class="action-buttons">
-                    <button class="btn btn-sm btn-outline-primary" id="viewDetailsBtn" title="View Full Details">
+                    <!-- <button class="btn btn-sm btn-outline-primary" id="viewDetailsBtn" title="View Full Details">
                         <i class="fas fa-eye"></i> View
-                    </button>
+                    </button> -->
                     <button class="btn btn-sm btn-outline-warning" id="forwardBtn" title="Forward Complaint">
                         <i class="fas fa-share"></i> Forward
                     </button>
