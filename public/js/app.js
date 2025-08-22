@@ -88,13 +88,23 @@ const SAMPARKApp = {
         // Enhanced fetch with JSON handling
         fetchJson: function(url, options = {}) {
             return fetch(url, options)
-                .then(response => SAMPARKApp.utils.handleJsonResponse(response));
+                .then(response => {
+                    // Check for authentication errors
+                    if (response.status === 401 || response.status === 403) {
+                        // Session might have expired, clear notifications
+                        SAMPARKApp.alerts.clearAll();
+                        // Redirect to login page
+                        window.location.href = BASE_URL + 'login';
+                        throw new Error('Authentication required');
+                    }
+                    return SAMPARKApp.utils.handleJsonResponse(response);
+                });
         }
     },
     
     // Alert system
     alerts: {
-        show: function(message, type = 'info', duration = 5000) {
+        show: function(message, type = 'info', duration = 2000) {
             const alertId = SAMPARKApp.utils.generateId();
             const alertHtml = `
                 <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -127,20 +137,87 @@ const SAMPARKApp = {
             }
         },
         
-        success: function(message, duration = 5000) {
+        success: function(message, duration = 2000) {
             this.show(message, 'success', duration);
         },
         
-        error: function(message, duration = 5000) {
+        error: function(message, duration = 2000) {
             this.show(message, 'danger', duration);
         },
         
-        warning: function(message, duration = 5000) {
+        warning: function(message, duration = 2000) {
             this.show(message, 'warning', duration);
         },
         
-        info: function(message, duration = 5000) {
+        info: function(message, duration = 2000) {
             this.show(message, 'info', duration);
+        },
+        
+        // Clear all alerts and notifications
+        clearAll: function() {
+            // Clear all Bootstrap alerts
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                try {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                } catch (e) {
+                    // Fallback: remove manually if Bootstrap Alert fails
+                    alert.remove();
+                }
+            });
+            
+            // Clear any SweetAlert toasts
+            if (typeof Swal !== 'undefined') {
+                Swal.close();
+            }
+            
+            // Clear any notification containers
+            const alertContainers = document.querySelectorAll('.alert-container');
+            alertContainers.forEach(container => {
+                container.innerHTML = '';
+            });
+            
+            // Clear any notification popups
+            const notificationPopups = document.querySelectorAll('.notification-popup');
+            notificationPopups.forEach(popup => {
+                popup.remove();
+            });
+            
+            // Clear any toast notifications
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(toast => {
+                try {
+                    const bsToast = new bootstrap.Toast(toast);
+                    bsToast.hide();
+                } catch (e) {
+                    toast.remove();
+                }
+            });
+            
+            // Clear any notification-related localStorage/sessionStorage
+            try {
+                // Clear any notification-related keys (if they exist)
+                const notificationKeys = [
+                    'notifications',
+                    'notification_count',
+                    'alert_messages',
+                    'toast_messages',
+                    'notification_settings'
+                ];
+                
+                notificationKeys.forEach(key => {
+                    if (localStorage.getItem(key)) {
+                        localStorage.removeItem(key);
+                    }
+                    if (sessionStorage.getItem(key)) {
+                        sessionStorage.removeItem(key);
+                    }
+                });
+            } catch (e) {
+                // Ignore storage errors
+                console.warn('Could not clear notification storage:', e);
+            }
         },
         
         // Dismiss alert with animation
@@ -180,12 +257,12 @@ const SAMPARKApp = {
                 // Add slide-in animation
                 alert.classList.add('alert-slide-in');
                 
-                // Set timeout to auto-dismiss after 5 seconds
+                // Set timeout to auto-dismiss after 2 seconds
                 setTimeout(() => {
                     if (alert && alert.parentNode) {
                         SAMPARKApp.alerts.dismissAlert(alert);
                     }
-                }, 5000);
+                }, 2000);
                 
                 // Add close button if not present
                 if (!alert.querySelector('.btn-close')) {
@@ -211,7 +288,7 @@ const SAMPARKApp = {
         // Set up observer for dynamically created alerts
         setupAlertObserver: function() {
             // Create global functions for other scripts to use
-            window.showAlert = function(message, type = 'info', duration = 5000) {
+            window.showAlert = function(message, type = 'info', duration = 2000) {
                 const alertContainer = document.createElement('div');
                 alertContainer.className = `alert alert-${type} alert-dismissible fade show`;
                 alertContainer.innerHTML = `
@@ -253,7 +330,7 @@ const SAMPARKApp = {
             };
             
             // Global showToast function for compatibility
-            window.showToast = function(type, message, duration = 5000) {
+            window.showToast = function(type, message, duration = 2000) {
                 const iconMap = {
                     'success': 'success',
                     'danger': 'error',
@@ -290,7 +367,7 @@ const SAMPARKApp = {
                                     if (node.parentNode) {
                                         SAMPARKApp.alerts.dismissAlert(node);
                                     }
-                                }, 5000);
+                                }, 2000);
                                 
                                 // Add close button if not present
                                 if (!node.querySelector('.btn-close')) {
@@ -563,6 +640,21 @@ const SAMPARKApp = {
             // Initialize alert auto-dismiss
             SAMPARKApp.alerts.initAutoDismiss();
             
+            // Initialize logout handler
+            SAMPARKApp.logout.init();
+            
+            // Clear any stale notifications on page load
+            if (!document.querySelector('.logout-link')) {
+                // User is not logged in, clear any remaining notifications
+                SAMPARKApp.alerts.clearAll();
+            }
+            
+            // Clear notifications on page unload (in case of session timeout)
+            window.addEventListener('beforeunload', function() {
+                // Clear any persistent notifications
+                SAMPARKApp.alerts.clearAll();
+            });
+            
             //console.log('SAMPARK App initialized successfully');
         });
     },
@@ -608,6 +700,43 @@ const SAMPARKApp = {
                     }
                 });
             });
+        }
+    },
+    
+    // Logout handler
+    logout: {
+        init: function() {
+            // Add click handler to logout links
+            const logoutLinks = document.querySelectorAll('.logout-link');
+            logoutLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Clear all notifications and alerts
+                    SAMPARKApp.alerts.clearAll();
+                    
+                    // Show a brief loading message
+                    SAMPARKApp.alerts.info('Logging out...', 1000);
+                    
+                    // Navigate to logout URL after a short delay
+                    setTimeout(() => {
+                        window.location.href = this.href;
+                    }, 500);
+                });
+            });
+            
+            // Check for session timeout and clear notifications if needed
+            this.checkSessionStatus();
+        },
+        
+        // Check if user session is still valid
+        checkSessionStatus: function() {
+            // Check if user is logged in by looking for logout link
+            const logoutLink = document.querySelector('.logout-link');
+            if (!logoutLink) {
+                // User is not logged in, clear all notifications
+                SAMPARKApp.alerts.clearAll();
+            }
         }
     }
 };

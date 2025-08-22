@@ -152,7 +152,7 @@ $currentPage = getCurrentPage();
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
                             
-                            <li><a class="dropdown-item <?php echo ($currentPage === 'profile') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>profile">
+                            <li><a class="dropdown-item <?php echo ($currentPage === 'profile' || $currentPage === 'staff-profile') ? 'active' : ''; ?>" href="<?php echo ($currentUser['role'] === 'customer') ? BASE_URL . 'profile' : BASE_URL . 'staff-profile'; ?>">
                                 <i class="fas fa-user"></i> Profile
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
@@ -165,7 +165,7 @@ $currentPage = getCurrentPage();
                     <li class="nav-item">
                         <a class="nav-link nav-link-animated login-link <?php echo ($currentPage === 'customer-login') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-login">
                             <i class="fas fa-sign-in-alt"></i>
-                            <span>Login</span>
+                            <span>Customer Login</span>
                         </a>
                     </li>
                 <?php endif; ?>

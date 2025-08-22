@@ -72,11 +72,11 @@ class CustomerTicketsController extends BaseController {
         $customerId = $currentUser['customer_id'];
         
         // Validate input
-        $ticketId = intval($_POST['ticket_id'] ?? 0);
+        $ticketId = $_POST['ticket_id'] ?? 0;
         $rating = intval($_POST['rating'] ?? 0);
         $remarks = trim($_POST['remarks'] ?? '');
         
-        if ($ticketId <= 0 || $rating < 1 || $rating > 5) {
+        if (empty($ticketId) || $rating < 1 || $rating > 5) {
             echo json_encode(['error' => true, 'message' => 'Invalid input parameters']);
             return;
         }
@@ -87,7 +87,7 @@ class CustomerTicketsController extends BaseController {
         
         try {
             // Verify ticket belongs to customer and is in replied status
-            $ticket = $complaintModel->findById($ticketId);
+            $ticket = $complaintModel->findByComplaintId($ticketId);
             if (!$ticket || $ticket['customer_id'] != $customerId || strtolower($ticket['status']) !== 'replied') {
                 echo json_encode(['error' => true, 'message' => 'Invalid ticket or ticket not in replied status']);
                 return;
@@ -106,7 +106,7 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'feedback_submitted',
                     'remarks' => "Customer feedback submitted. Rating: $rating stars" . ($remarks ? ". Remarks: $remarks" : ''),
-                    'created_by' => $currentUser['user_id'] ?? 'customer'
+                    'created_by' => $currentUser['login_id'] ?? 'customer'
                 ]);
                 
                 echo json_encode(['error' => false, 'message' => 'Feedback submitted successfully']);
@@ -142,10 +142,10 @@ class CustomerTicketsController extends BaseController {
         $customerId = $currentUser['customer_id'];
         
         // Validate input
-        $ticketId = intval($_POST['ticket_id'] ?? 0);
+        $ticketId = $_POST['ticket_id'] ?? 0;
         $additionalInfo = trim($_POST['additional_info'] ?? '');
         
-        if ($ticketId <= 0 || empty($additionalInfo)) {
+        if (empty($ticketId) || empty($additionalInfo)) {
             echo json_encode(['error' => true, 'message' => 'Invalid input parameters']);
             return;
         }
@@ -156,7 +156,7 @@ class CustomerTicketsController extends BaseController {
         
         try {
             // Verify ticket belongs to customer and is in reverted status
-            $ticket = $complaintModel->findById($ticketId);
+            $ticket = $complaintModel->findByComplaintId($ticketId);
             if (!$ticket || $ticket['customer_id'] != $customerId || strtolower($ticket['status']) !== 'reverted') {
                 echo json_encode(['error' => true, 'message' => 'Invalid ticket or ticket not in reverted status']);
                 return;
@@ -174,7 +174,7 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'additional_info_provided',
                     'remarks' => "Customer provided additional information: $additionalInfo",
-                    'created_by' => $currentUser['user_id'] ?? 'customer'
+                    'created_by' => $currentUser['login_id'] ?? 'customer'
                 ]);
                 
                 echo json_encode(['error' => false, 'message' => 'Additional information submitted successfully']);
@@ -195,15 +195,15 @@ class CustomerTicketsController extends BaseController {
         $currentUser = SessionManager::getCurrentUser();
         $customerId = $currentUser['customer_id'];
         // Validate ticket ID
-        $ticketId = intval($ticketId);
-        if (strlen($ticketId) <= 0) {
+        if (empty($ticketId)) {
             http_response_code(400);
-            echo json_encode(['error' => true, 'message' => 'Invalid ticket ID $ticketId']);
+            echo json_encode(['error' => true, 'message' => 'Invalid ticket ID']);
             return;
         }
         
         // Load models
         $complaintModel = $this->loadModel('Complaint');
+        $evidenceModel = $this->loadModel('Evidence');
         
         try {
             // Get ticket details
@@ -215,6 +215,10 @@ class CustomerTicketsController extends BaseController {
                 echo json_encode(['error' => true, 'message' => 'Access denied']);
                 return;
             }
+            
+            // Get evidence
+            $evidence = $evidenceModel->getImages($ticketId);
+            $ticket['evidence'] = $evidence;
             
             echo json_encode(['error' => false, 'data' => $ticket]);
             
@@ -233,8 +237,7 @@ class CustomerTicketsController extends BaseController {
         $customerId = $currentUser['customer_id'];
         
         // Validate ticket ID
-        $ticketId = intval($ticketId);
-        if ($ticketId <= 0) {
+        if (empty($ticketId)) {
             http_response_code(400);
             echo json_encode(['error' => true, 'message' => 'Invalid ticket ID']);
             return;
@@ -246,7 +249,7 @@ class CustomerTicketsController extends BaseController {
         
         try {
             // Verify ticket belongs to customer
-            $ticket = $complaintModel->findById($ticketId);
+            $ticket = $complaintModel->findByComplaintId($ticketId);
             if (!$ticket || $ticket['customer_id'] != $customerId) {
                 http_response_code(403);
                 echo json_encode(['error' => true, 'message' => 'Access denied']);
@@ -256,7 +259,12 @@ class CustomerTicketsController extends BaseController {
             // Get transaction history
             $transactions = $transactionModel->findByComplaintId($ticketId);
             
-            echo json_encode(['error' => false, 'data' => $transactions]);
+            // Filter out internal remarks
+            $filteredTransactions = array_filter($transactions, function($transaction) {
+                return $transaction['transaction_type'] !== 'internal_remark';
+            });
+            
+            echo json_encode(['error' => false, 'data' => array_values($filteredTransactions)]);
             
         } catch (Exception $e) {
             error_log("Error getting transaction history: " . $e->getMessage());

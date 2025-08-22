@@ -246,5 +246,45 @@ class ComplaintCategory extends BaseModel {
             'errors' => $errors
         ];
     }
+    
+    /**
+     * Get all complaint types (unique types across all categories)
+     */
+    public function getComplaintTypes() {
+        $stmt = $this->connection->prepare("
+            SELECT DISTINCT Type 
+            FROM complaint_categories 
+            ORDER BY Type ASC
+        ");
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+    
+    /**
+     * Get type-subtype mapping for cascading dropdowns
+     */
+    public function getTypeSubtypeMapping() {
+        $stmt = $this->connection->prepare("
+            SELECT Type, SubType 
+            FROM complaint_categories 
+            ORDER BY Type ASC, SubType ASC
+        ");
+        $stmt->execute();
+        $results = $stmt->fetchAll();
+        
+        $mapping = [];
+        foreach ($results as $row) {
+            $type = $row['Type'];
+            $subtype = $row['SubType'];
+            
+            if (!isset($mapping[$type])) {
+                $mapping[$type] = [];
+            }
+            
+            $mapping[$type][] = $subtype;
+        }
+        
+        return $mapping;
+    }
 }
 ?>

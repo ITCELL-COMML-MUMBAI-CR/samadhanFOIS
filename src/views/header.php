@@ -171,7 +171,7 @@
         }
     </style>
 </head>
-<body>
+<body class="<?php echo (SessionManager::isLoggedIn()) ? 'logged-in' : 'guest'; ?>">
     <!-- Compact Header -->
     <header class="compact-header">
         <div class="container">
@@ -196,13 +196,10 @@
     </header>
     
     <!-- JavaScript Files -->
-    <?php if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in']): ?>
-        <script>
-            // Define BASE_URL for JavaScript
-            const BASE_URL = '<?php echo BASE_URL; ?>';
-        </script>
-
-    <?php endif; ?>
+    <script>
+        // Define BASE_URL for JavaScript
+        const BASE_URL = '<?php echo BASE_URL; ?>';
+    </script>
     
     <!-- Navigation Bar - Hide on login page -->
     <?php 

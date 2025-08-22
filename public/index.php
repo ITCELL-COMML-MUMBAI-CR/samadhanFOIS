@@ -80,6 +80,29 @@ switch ($controllerName) {
         include '../public/pages/customer_login.php';
         break;
         
+    case 'support':
+        if ($action === 'new') {
+            // Handle customer authentication if form is submitted
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_identifier']) && isset($_POST['password'])) {
+                $customerAuthController = new CustomerAuthController();
+                $authSuccess = $customerAuthController->handleAuthRequest();
+                
+                if ($authSuccess) {
+                    // Redirect to the same page to show the authenticated form
+                    header('Location: ' . BASE_URL . 'support/new');
+                    exit;
+                }
+            }
+            
+            // Load the new support ticket page with authentication
+            include '../public/pages/new_support_ticket_with_auth.php';
+        } else {
+            // Handle other support actions if needed
+            http_response_code(404);
+            echo "Support action not found";
+        }
+        break;
+        
     case 'customer':
         $controller = new CustomerController();
         if ($action === 'add') {
@@ -98,7 +121,6 @@ switch ($controllerName) {
         } elseif ($action === 'additional-info') {
             $controller->submitAdditionalInfo();
         } elseif ($action === 'details') {
-            echo "<script>console.log('PARAMS $params[0]');</script>";
             $controller->getTicketDetails($params[0] ?? '');
         } elseif ($action === 'history') {
             $controller->getTransactionHistory($params[0] ?? '');
@@ -219,6 +241,11 @@ switch ($controllerName) {
     case 'profile':
         $controller = new PageController();
         $controller->profile();
+        break;
+        
+    case 'staff-profile':
+        $controller = new PageController();
+        $controller->staffProfile();
         break;
 
     case 'reports':

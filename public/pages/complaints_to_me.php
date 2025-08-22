@@ -195,8 +195,15 @@ if (!isset($currentUser)) {
                                         <small class="text-muted"><?php echo htmlspecialchars($grievance['customer_id']); ?></small>
                                     </td>
                                     <td class="text-center align-middle">
-                                        <i class="fas fa-map-marker-alt text-muted"></i>
-                                        <?php echo htmlspecialchars($grievance['location']); ?>
+                                        <i class="fas fa-industry text-muted"></i>
+                                        <?php if (!empty($grievance['shed_terminal'])): ?>
+                                            <?php echo htmlspecialchars($grievance['shed_terminal']); ?>
+                                            <?php if (!empty($grievance['shed_type'])): ?>
+                                                <br><small class="text-muted"><?php echo htmlspecialchars($grievance['shed_type']); ?></small>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="text-muted">N/A</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="text-center align-middle">
                                         <span class="badge priority-<?php echo $grievance['display_priority']; ?>">

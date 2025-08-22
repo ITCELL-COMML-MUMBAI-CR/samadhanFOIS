@@ -282,7 +282,7 @@ if (!isset($currentUser)) {
                 </div>
                 
                 <div class="info-group">
-                    <label class="info-label">Location</label>
+                    <label class="info-label">Shed</label>
                     <div class="info-content" id="detailLocation"></div>
                 </div>
                 

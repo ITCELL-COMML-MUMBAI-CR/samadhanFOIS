@@ -924,9 +924,9 @@ class ComplaintController extends BaseController {
             $sheds = $stmt->fetchAll();
             
             // Get wagon types
-            $stmt = $connection->prepare("SELECT WagonID, WagonCode, Type FROM wagon_details ORDER BY Type ASC");
-            $stmt->execute();
-            $wagons = $stmt->fetchAll();
+            require_once __DIR__ . '/../models/Wagon.php';
+            $wagonModel = new Wagon();
+            $wagons = $wagonModel->getAllWagons();
             
         } catch (Exception $e) {
             $error = 'Unable to load page data.';
@@ -951,7 +951,10 @@ class ComplaintController extends BaseController {
             if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
                 throw new Exception('Invalid security token');
             }
-            
+            // Check for recent submission to prevent duplicates
+            if (isset($_SESSION['last_submission']) && (time() - $_SESSION['last_submission'] < 60)) {
+                throw new Exception('You have recently submitted a complaint. Please wait a minute before submitting another.');
+            }
             // Check if customer is authenticated
             // Customers can be authenticated either through regular login or customer-specific login
             $customerAuthenticated = (
@@ -997,17 +1000,11 @@ class ComplaintController extends BaseController {
                 $evidenceModel = $this->loadModel('Evidence');
                 $transactionModel = $this->loadModel('Transaction');
                 
-                $shedStmt = $connection->prepare("SELECT Terminal, Type FROM shed WHERE ShedID = ?");
-                $shedStmt->execute([$formData['shed_id']]);
-                $shedDetails = $shedStmt->fetch();
-                $location = $shedDetails ? $shedDetails['Terminal'] . ' (' . $shedDetails['Type'] . ')' : '';
-                
                 // Use customer session data instead of user data
                 $complaintData = [
                     'Type' => $categoryMapping['Type'],
                     'Subtype' => $categoryMapping['SubType'],
                     'category' => $categoryMapping['Category'],
-                    'Location' => $location,
                     'shed_id' => $formData['shed_id'],
                     'wagon_id' => $formData['wagon_id'],
                     'FNR_Number' => $formData['fnr_no'],
@@ -1045,6 +1042,9 @@ class ComplaintController extends BaseController {
                     $transactionModel->logStatusUpdate($complaintId, 'Support ticket submitted by customer. Assigned to Commercial Controller for review.', 'commercial_controller');
                 
                     $this->sendConfirmationEmail($_SESSION, $complaintId, $complaintData);
+                    
+                    // Set session timestamp to prevent duplicate submissions
+                    $_SESSION['last_submission'] = time();
                     
                     $_SESSION['alert_message'] = "Support ticket submitted successfully! Your ticket ID is: $complaintId";
                     $_SESSION['alert_type'] = 'success';

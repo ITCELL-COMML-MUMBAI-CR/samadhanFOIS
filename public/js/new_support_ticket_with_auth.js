@@ -3,9 +3,24 @@
  * Handles customer authentication and form submission
  */
 
+// Define BASE_URL if not already defined
+if (typeof BASE_URL === 'undefined') {
+    // Try to get BASE_URL from the page
+    const baseUrlElement = document.querySelector('meta[name="base-url"]');
+    if (baseUrlElement) {
+        window.BASE_URL = baseUrlElement.getAttribute('content');
+    } else {
+        // Fallback: construct from current URL
+        const pathArray = window.location.pathname.split('/');
+        const basePath = pathArray.slice(0, -1).join('/') + '/';
+        window.BASE_URL = window.location.origin + basePath;
+    }
+}
+
 class SupportTicketAuth {
     constructor() {
         this.selectedFiles = []; // Array to store selected files
+        this.isSubmitting = false; // Flag to prevent double submission
         this.initializeEventListeners();
         this.initializeTooltips();
     }
@@ -40,23 +55,53 @@ class SupportTicketAuth {
         if (typeSelect && subtypeSelect) {
             this.setupCascadingDropdown(typeSelect, subtypeSelect);
         }
+
+        // Password Toggle Functionality
+        const passwordInput = document.getElementById('customer_password');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const passwordToggleIcon = document.getElementById('passwordToggleIcon');
+
+        if (passwordToggle && passwordInput && passwordToggleIcon) {
+            passwordToggle.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                
+                // Toggle icon
+                if (type === 'text') {
+                    passwordToggleIcon.classList.remove('fa-eye');
+                    passwordToggleIcon.classList.add('fa-eye-slash');
+                } else {
+                    passwordToggleIcon.classList.remove('fa-eye-slash');
+                    passwordToggleIcon.classList.add('fa-eye');
+                }
+            });
+        }
     }
 
     /**
      * Initialize Bootstrap tooltips
      */
     initializeTooltips() {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+        // Wait for Bootstrap to be available
+        if (typeof bootstrap !== 'undefined') {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        } else {
+            // If Bootstrap is not available, try again after a short delay
+            setTimeout(() => {
+                this.initializeTooltips();
+            }, 100);
+        }
     }
 
     /**
      * Handle customer authentication
      */
     async handleAuthentication(e) {
-        e.preventDefault();
+        // Don't prevent default - let the form submit normally
+        // e.preventDefault();
         
         const form = e.target;
         const submitBtn = document.getElementById('authSubmitBtn');
@@ -66,54 +111,8 @@ class SupportTicketAuth {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Authenticating...';
         
-        try {
-            const formData = new FormData(form);
-            
-            const response = await fetch(BASE_URL + 'customer-auth/authenticate', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                // Authentication successful
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Authentication Successful!',
-                    text: `Welcome back, ${data.customer.name}!`,
-                    confirmButtonColor: '#28a745',
-                    confirmButtonText: 'Continue'
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                // Authentication failed
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Authentication Failed',
-                    text: data.message,
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'OK'
-                });
-            }
-        } catch (error) {
-            console.error('Authentication error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Network Error',
-                text: 'There was a network error. Please try again.',
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'OK'
-            });
-        } finally {
-            // Reset button state
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnText;
-        }
+        // Let the form submit normally - no need for manual form.submit()
+        // The PHP backend will handle authentication and redirect
     }
 
     /**
@@ -121,6 +120,11 @@ class SupportTicketAuth {
      */
     async handleFormSubmission(e) {
         e.preventDefault();
+        
+        // Prevent double submission
+        if (this.isSubmitting) {
+            return;
+        }
         
         const form = e.target;
         const submitBtn = document.getElementById('submitBtn');
@@ -170,6 +174,7 @@ class SupportTicketAuth {
             }
         });
         
+        this.isSubmitting = true;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Submitting...';
         
@@ -181,7 +186,7 @@ class SupportTicketAuth {
                 formData.append(`evidence[${index}]`, file);
             });
             
-            const response = await fetch(window.location.href, {
+            const response = await fetch(BASE_URL + 'api/complaints', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -214,6 +219,9 @@ class SupportTicketAuth {
                     if (result.isConfirmed) {
                         window.location.href = BASE_URL + 'customer-tickets';
                     } else if (result.dismiss === Swal.DismissReason.cancel) {
+                        this.resetForm(form);
+                    } else if (result.dismiss === Swal.DismissReason.backdrop || result.dismiss === Swal.DismissReason.escape) {
+                        // User clicked outside or pressed escape - reset the form
                         this.resetForm(form);
                     }
                 });
@@ -250,7 +258,8 @@ class SupportTicketAuth {
                 confirmButtonText: 'OK'
             });
         } finally {
-            // Reset button state
+            // Reset button state and submission flag
+            this.isSubmitting = false;
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
         }

@@ -1,6 +1,6 @@
 /**
  * Customer Home Page Styles
- * Responsive CSS for customer home page with marquee, cards, and cascades
+ * Optimized CSS for customer home page with marquee and simplified animations
  */
 
 /* ====================================
@@ -188,12 +188,11 @@
     border-radius: 10px;
     padding: 20px;
     border-left: 4px solid #3498db;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
 }
 
 .news-card:hover {
     background: #e9ecef;
-    transform: translateX(5px);
 }
 
 .news-card-header {
@@ -232,13 +231,12 @@
     border-radius: 10px;
     padding: 15px;
     border-left: 4px solid #ffc107;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease;
     align-items: flex-start;
 }
 
 .announcement-card:hover {
     background: #fff2b3;
-    transform: translateX(5px);
 }
 
 .announcement-icon {
@@ -290,15 +288,10 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
-.advertisement-carousel {
+.advertisement-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-}
-
-.advertisement-slide {
-    display: flex;
-    justify-content: center;
 }
 
 .advertisement-card {
@@ -307,9 +300,7 @@
     border-radius: 12px;
     padding: 20px;
     text-align: center;
-    width: 100%;
-    max-width: 300px;
-    transition: transform 0.3s ease;
+    transition: transform 0.2s ease;
 }
 
 .advertisement-card:hover {
@@ -364,7 +355,7 @@
     padding: 20px;
     text-decoration: none;
     color: inherit;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, transform 0.2s ease;
     border: 2px solid transparent;
 }
 
@@ -372,9 +363,8 @@
     background: #e9ecef;
     color: inherit;
     text-decoration: none;
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: #3498db;
-    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.2);
 }
 
 .quick-action-icon {
@@ -407,6 +397,10 @@
 /* Railway System Specific Styles */
 .railway-system .quick-action-icon {
     background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.railway-system:hover {
+    border-color: #e74c3c;
 }
 
 .railway-fois .quick-action-icon {
@@ -446,17 +440,6 @@
     background: linear-gradient(135deg, #8e44ad, #9b59b6);
 }
 
-/* Railway System Card Hover Effects */
-.railway-system:hover {
-    border-color: #e74c3c;
-    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.2);
-}
-
-.grievance-action:hover {
-    border-color: #3498db;
-    box-shadow: 0 8px 20px rgba(52, 152, 219, 0.2);
-}
-
 /* External System Specific Styles */
 .external-system .quick-action-icon {
     background: linear-gradient(135deg, #17a2b8, #138496);
@@ -464,7 +447,6 @@
 
 .external-system:hover {
     border-color: #17a2b8;
-    box-shadow: 0 8px 20px rgba(23, 162, 184, 0.2);
 }
 
 /* System Link Specific Styles */
@@ -474,7 +456,6 @@
 
 .system-link:hover {
     border-color: #6c757d;
-    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.2);
 }
 
 /* ====================================
@@ -535,7 +516,7 @@
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .advertisement-carousel {
+    .advertisement-grid {
         grid-template-columns: repeat(2, 1fr);
     }
     
@@ -568,7 +549,7 @@
     /* Single column layout */
     .featured-cascade,
     .quick-actions-grid,
-    .advertisement-carousel {
+    .advertisement-grid {
         grid-template-columns: 1fr;
     }
     
@@ -621,7 +602,6 @@
         padding: 20px;
     }
     
-    .featured-content,
     .news-card {
         padding: 15px;
     }
@@ -636,14 +616,25 @@
         font-size: 1rem;
     }
     
-    .help-section {
-        padding: 20px;
+    .support-ticket-card {
+        padding: 1rem;
     }
     
-    .help-actions .btn {
-        display: block;
-        width: 100%;
-        margin: 5px 0;
+    .support-ticket-icon i {
+        font-size: 2.5rem;
+    }
+    
+    .support-ticket-title {
+        font-size: 1.25rem;
+    }
+    
+    .support-ticket-description {
+        font-size: 0.9rem;
+    }
+    
+    .support-ticket-card .btn-railway-primary {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
     }
     
     /* Stack news card headers on very small screens */
@@ -659,7 +650,7 @@
 }
 
 /* ====================================
-   ACCESSIBILITY AND ANIMATIONS
+   ACCESSIBILITY AND PERFORMANCE
    ==================================== */
 
 /* Reduce motion for users who prefer it */
@@ -668,16 +659,16 @@
         animation: none;
     }
     
-    .featured-card,
     .news-card,
     .announcement-card,
     .quick-action-card,
-    .advertisement-card {
+    .advertisement-card,
+    .support-ticket-card {
         transition: none;
     }
     
-    .featured-card:hover,
-    .quick-action-card:hover {
+    .quick-action-card:hover,
+    .support-ticket-card:hover {
         transform: none;
     }
 }
@@ -689,7 +680,6 @@
         color: #fff;
     }
     
-    .featured-card,
     .news-section,
     .announcements-section,
     .advertisements-banner,
@@ -718,8 +708,7 @@
 /* Print styles */
 @media print {
     .marquee-container,
-    .quick-actions-section,
-    .help-section {
+    .quick-actions-section {
         display: none;
     }
     
@@ -728,7 +717,6 @@
         padding: 0;
     }
     
-    .featured-card,
     .news-section,
     .announcements-section {
         box-shadow: none;
@@ -882,12 +870,11 @@
     background: white;
     border-radius: 1rem;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    transition: transform 0.2s ease;
 }
 
 .support-ticket-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px);
 }
 
 .support-ticket-icon {
@@ -924,7 +911,7 @@
     font-weight: 600;
     padding: 1rem 2.5rem;
     border-radius: 0.75rem;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-size: 1.1rem;
@@ -932,8 +919,7 @@
 
 .support-ticket-card .btn-railway-primary:hover {
     background: linear-gradient(135deg, #5a67d8 0%, var(--railway-blue) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
     color: white;
 }
 

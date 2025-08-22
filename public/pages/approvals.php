@@ -87,7 +87,17 @@ if (!isset($currentUser)) {
                                     <br>
                                     <small class="text-muted"><?php echo htmlspecialchars($row['customer_id']); ?></small>
                                 </td>
-                                <td><?php echo htmlspecialchars($row['location']); ?></td>
+                                <td>
+                                    <?php if (!empty($row['shed_terminal'])): ?>
+                                        <i class="fas fa-industry text-muted"></i>
+                                        <?php echo htmlspecialchars($row['shed_terminal']); ?>
+                                        <?php if (!empty($row['shed_type'])): ?>
+                                            <br><small class="text-muted"><?php echo htmlspecialchars($row['shed_type']); ?></small>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">N/A</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <small>
                                         <?php echo date('d-M-Y', strtotime($row['date'])); ?>

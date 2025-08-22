@@ -21,7 +21,7 @@ class Complaint extends BaseModel {
         $data['updated_at'] = getCurrentDateTime();
         $data['status'] = 'Pending';
         $data['priority'] = 'Low'; // Default priority is now 'Low' as per requirements
-        $data['department'] = $data['department'] ?? 'COMMERCIAL';
+        $data['department'] = $data['department'] ?? '';
         $data['Forwarded_Flag'] = 'N';
         $data['Awaiting_Approval_Flag'] = 'N';
         
@@ -69,11 +69,12 @@ class Complaint extends BaseModel {
         $stmt = $this->connection->prepare("
             SELECT c.*, cu.Name as customer_name, cu.Email as customer_email,
                    u.name as assigned_to_name, w.Type as wagon_type, w.WagonCode as wagon_code,
-                   c.Assigned_To_Department as assigned_to
+                   c.Assigned_To_Department as assigned_to, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             LEFT JOIN users u ON c.Assigned_To_Department = u.login_id
             LEFT JOIN wagon_details w ON c.wagon_id = w.WagonID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.complaint_id = ?
         ");
         $stmt->execute([$complaintId]);
@@ -85,9 +86,11 @@ class Complaint extends BaseModel {
      */
     public function findByCustomer($customerId, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
+                   s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.customer_id = ?
             ORDER BY c.created_at DESC
         ";
@@ -106,9 +109,11 @@ class Complaint extends BaseModel {
      */
     public function findByStatus($status, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
+                   s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.status = ?
             ORDER BY c.created_at DESC
         ";
@@ -127,9 +132,11 @@ class Complaint extends BaseModel {
      */
     public function findAssignedTo($loginId, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
+                   s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.Assigned_To_Department = ?
             ORDER BY c.created_at DESC
         ";
@@ -257,9 +264,10 @@ class Complaint extends BaseModel {
      */
     public function findByDepartment($department, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name 
+            SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.department = ?
             ORDER BY c.created_at DESC
         ";
@@ -278,9 +286,10 @@ class Complaint extends BaseModel {
      */
     public function findByPriority($priority, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name 
+            SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.priority = ?
             ORDER BY c.created_at DESC
         ";
@@ -299,9 +308,10 @@ class Complaint extends BaseModel {
      */
     public function findByDateRange($startDate, $endDate, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name 
+            SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.date BETWEEN ? AND ?
             ORDER BY c.created_at DESC
         ";
@@ -320,13 +330,13 @@ class Complaint extends BaseModel {
      */
     public function search($searchTerm, $limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name 
+            SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.complaint_id LIKE ? 
                OR c.description LIKE ? 
                OR cu.Name LIKE ?
-               OR c.Location LIKE ?
             ORDER BY c.created_at DESC
         ";
         
@@ -336,7 +346,7 @@ class Complaint extends BaseModel {
         
         $searchPattern = "%$searchTerm%";
         $stmt = $this->connection->prepare($sql);
-        $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern]);
+        $stmt->execute([$searchPattern, $searchPattern, $searchPattern]);
         return $stmt->fetchAll();
     }
     
@@ -716,9 +726,10 @@ class Complaint extends BaseModel {
      */
     public function findAwaitingApproval($limit = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name 
+            SELECT c.*, cu.Name as customer_name, s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.status = 'awaiting_approval' AND c.Awaiting_Approval_Flag = 'Y'
             ORDER BY c.created_at DESC
         ";
@@ -742,9 +753,8 @@ class Complaint extends BaseModel {
         
         // Add search condition
         if (!empty($search)) {
-            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $conditions[] = "(c.complaint_id LIKE ? OR c.description LIKE ?)";
             $searchPattern = "%$search%";
-            $params[] = $searchPattern;
             $params[] = $searchPattern;
             $params[] = $searchPattern;
         }
@@ -785,9 +795,11 @@ class Complaint extends BaseModel {
      */
     public function findAssignedToWithFilters($loginId, $filters = [], $search = '', $limit = null, $offset = null) {
         $sql = "
-            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to
+            SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
+                   s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.Assigned_To_Department = ?
         ";
         $params = [$loginId];
@@ -795,9 +807,8 @@ class Complaint extends BaseModel {
         
         // Add search condition
         if (!empty($search)) {
-            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $conditions[] = "(c.complaint_id LIKE ? OR c.description LIKE ?)";
             $searchPattern = "%$search%";
-            $params[] = $searchPattern;
             $params[] = $searchPattern;
             $params[] = $searchPattern;
         }
@@ -852,9 +863,8 @@ class Complaint extends BaseModel {
         
         // Add search condition
         if (!empty($search)) {
-            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $conditions[] = "(c.complaint_id LIKE ? OR c.description LIKE ?)";
             $searchPattern = "%$search%";
-            $params[] = $searchPattern;
             $params[] = $searchPattern;
             $params[] = $searchPattern;
         }
@@ -904,9 +914,8 @@ class Complaint extends BaseModel {
         
         // Add search condition
         if (!empty($searchTerm)) {
-            $conditions[] = "(c.complaint_id LIKE ? OR c.subject LIKE ? OR c.description LIKE ?)";
+            $conditions[] = "(c.complaint_id LIKE ? OR c.description LIKE ?)";
             $searchPattern = "%$searchTerm%";
-            $params[] = $searchPattern;
             $params[] = $searchPattern;
             $params[] = $searchPattern;
         }
@@ -1006,10 +1015,12 @@ class Complaint extends BaseModel {
         }
         
         $sql = "
-            SELECT c.*, cu.Name as customer_name, w.Type as wagon_type, w.WagonCode as wagon_code
+            SELECT c.*, cu.Name as customer_name, w.Type as wagon_type, w.WagonCode as wagon_code,
+                   s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             LEFT JOIN wagon_details w ON c.wagon_id = w.WagonID
+            LEFT JOIN shed s ON c.shed_id = s.ShedID
             WHERE c.customer_id = ?
         ";
         $params = [$customerId];

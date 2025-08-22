@@ -215,6 +215,23 @@ function submitAdditionalInfo() {
  * @returns {string} The generated HTML string.
  */
 function generateTicketDetailsHTML(ticket) {
+    let evidenceHTML = '<h6>Evidence:</h6>';
+    if (ticket.evidence && ticket.evidence.length > 0) {
+        evidenceHTML += '<div class="row">';
+        ticket.evidence.forEach(img => {
+            evidenceHTML += `
+                <div class="col-md-4 mb-2">
+                    <a href="${img.url}" target="_blank">
+                        <img src="${img.url}" class="img-thumbnail" alt="Evidence">
+                    </a>
+                </div>
+            `;
+        });
+        evidenceHTML += '</div>';
+    } else {
+        evidenceHTML += '<p class="text-muted">No evidence submitted.</p>';
+    }
+
     return `
         <div class="row">
             <div class="col-lg-8">
@@ -225,12 +242,15 @@ function generateTicketDetailsHTML(ticket) {
                     <tr><th>Subtype:</th><td>${ticket.Subtype || 'N/A'}</td></tr>
                     <tr><th>Status:</th><td><span class="status-badge status-${ticket.status.toLowerCase()}">${ticket.status}</span></td></tr>
                     <tr><th>Created:</th><td>${formatDate(ticket.created_at)}</td></tr>
-                    <tr><th>Location:</th><td>${ticket.Location || 'N/A'}</td></tr>
+                    <tr><th>Location:</th><td>${ticket.shed_terminal ? ticket.shed_terminal + (ticket.shed_type ? ' (' + ticket.shed_type + ')' : '') : 'N/A'}</td></tr>
                 </table>
                 <h6>Description:</h6>
                 <p class="bg-light p-3 rounded">${ticket.description || 'No description.'}</p>
                 
                 ${ticket.action_taken ? `<h6>Action Taken:</h6><p class="bg-light p-3 rounded">${ticket.action_taken}</p>` : ''}
+                
+                <hr>
+                ${evidenceHTML}
             </div>
             <div class="col-lg-4">
                 <h5><i class="fas fa-history text-primary"></i> History</h5>
@@ -241,7 +261,6 @@ function generateTicketDetailsHTML(ticket) {
         </div>
     `;
 }
-
 /**
  * Fetches and displays the transaction history for a ticket inside the details modal.
  * @param {string} ticketId - The ID of the ticket.

@@ -9,6 +9,14 @@
  * - If either method is active, customer is considered authenticated
  */
 
+require_once __DIR__ . '/../../src/utils/SessionManager.php';
+
+// Set page title
+$pageTitle = 'Create New Support Ticket';
+
+// Include header
+require_once __DIR__ . '/../../src/views/header.php';
+
 // Check if customer is already authenticated
 // Customers can be authenticated either through regular login or customer-specific login
 $customerAuthenticated = (
@@ -16,17 +24,57 @@ $customerAuthenticated = (
     (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
      isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
 );
+
+// Debug: Log authentication status
+error_log("Customer authentication status: " . ($customerAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'));
+if (isset($_SESSION['user_logged_in'])) {
+    error_log("Session user_logged_in: " . ($_SESSION['user_logged_in'] ? 'TRUE' : 'FALSE'));
+}
+if (isset($_SESSION['user_customer_id'])) {
+    error_log("Session user_customer_id: " . $_SESSION['user_customer_id']);
+}
+
+    // Load necessary data for the support ticket form if customer is authenticated
+    if ($customerAuthenticated) {
+        require_once __DIR__ . '/../../src/models/ComplaintCategory.php';
+        require_once __DIR__ . '/../../src/models/Shed.php';
+        require_once __DIR__ . '/../../src/models/Department.php';
+        require_once __DIR__ . '/../../src/models/Wagon.php';
+        
+        $complaintCategoryModel = new ComplaintCategory();
+        $shedModel = new Shed();
+        $departmentModel = new Department();
+        $wagonModel = new Wagon();
+        
+        // Get complaint types and subtypes
+        $complaintTypes = $complaintCategoryModel->getComplaintTypes();
+        $typeSubtypeMapping = $complaintCategoryModel->getTypeSubtypeMapping();
+        
+        // Get sheds for location selection
+        $sheds = $shedModel->getAllSheds();
+        
+        // Get wagons
+        $wagons = $wagonModel->getAllWagons();
+    }
 ?>
 
 <!-- Load necessary CSS and JS files -->
+<meta name="base-url" content="<?php echo BASE_URL; ?>">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/new_support_ticket_with_auth.css">
-
-<!-- Define BASE_URL for JavaScript -->
-<script>
-    const BASE_URL = '<?php echo BASE_URL; ?>';
-</script>
-
 <script src="<?php echo BASE_URL; ?>js/new_support_ticket_with_auth.js"></script>
+
+<!-- Alert Messages -->
+<?php if (isset($_SESSION['alert_message'])): ?>
+    <div class="alert-container">
+        <div class="alert alert-<?php echo $_SESSION['alert_type'] ?? 'info'; ?> alert-dismissible fade show" role="alert">
+            <?php 
+            echo htmlspecialchars($_SESSION['alert_message']);
+            unset($_SESSION['alert_message'], $_SESSION['alert_type']);
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="container">
     <div class="row justify-content-center">
@@ -53,36 +101,35 @@ $customerAuthenticated = (
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> 
                             <strong>Authentication Required:</strong> You must be a registered customer to submit support tickets. 
-                            Please enter your email and password to continue.
+                            Please enter your email or mobile number and password to continue.
                         </div>
                         
-                        <form id="customerAuthForm" method="POST">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-floating mb-3">
-                                        <input type="email" class="form-control" id="customer_email" name="email" 
-                                               placeholder="Email" required>
-                                        <label for="customer_email">
-                                            <i class="fas fa-envelope"></i> Email Address *
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating mb-3">
-                                        <input type="password" class="form-control" id="customer_password" name="password" 
-                                               placeholder="Password" required>
-                                        <label for="customer_password">
-                                            <i class="fas fa-lock"></i> Password *
-                                        </label>
-                                    </div>
+                        <form id="customerAuthForm" method="POST" action="<?php echo BASE_URL; ?>support/new" class="login-form">
+                            <div class="form-group">
+                                <label for="login_identifier" class="form-label">
+                                    <i class="fas fa-user"></i> Email or Mobile Number
+                                </label>
+                                <input type="text" class="form-control" id="login_identifier" name="login_identifier" 
+                                       placeholder="Enter your email or mobile number" required>
+                                <div class="form-text">Enter your registered email address or mobile number</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customer_password" class="form-label">
+                                    <i class="fas fa-lock"></i> Password
+                                </label>
+                                <div class="password-input-container">
+                                    <input type="password" class="form-control" id="customer_password" name="password" 
+                                           placeholder="Enter your password" required>
+                                    <button type="button" class="password-toggle-btn" id="passwordToggle">
+                                        <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                                    </button>
                                 </div>
                             </div>
                             
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-railway-primary btn-lg" id="authSubmitBtn">
-                                    <i class="fas fa-sign-in-alt"></i> Authenticate & Continue
-                                </button>
-                            </div>
+                            <button type="submit" class="btn btn-railway-primary btn-lg w-100" id="authSubmitBtn">
+                                <i class="fas fa-sign-in-alt"></i> Authenticate & Continue
+                            </button>
                         </form>
                         
                         <div class="mt-3 text-center">
@@ -123,7 +170,8 @@ $customerAuthenticated = (
                         </h5>
                     </div>
                     <div class="card-body">
-                        <form method="POST" enctype="multipart/form-data" id="supportTicketForm">
+                        <form method="POST" enctype="multipart/form-data" id="supportTicketForm" action="<?php echo BASE_URL; ?>api/complaints">
+                            <input type="hidden" name="action" value="create">
                             <input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
                             
                             <!-- Complaint Type and Subtype Selection -->
@@ -161,7 +209,7 @@ $customerAuthenticated = (
                             
                             <!-- FNR Number -->
                             <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="fnr_no" name="fnr_no" required
+                                <input type="text" class="form-control" id="fnr_no" name="fnr_no" 
                                        placeholder="FNR Number" value="<?php echo htmlspecialchars($_POST['fnr_no'] ?? ''); ?>">
                                 <label for="fnr_no">
                                     <i class="fas fa-receipt"></i> FNR Number / GSTN IN / eIndent*
@@ -178,7 +226,7 @@ $customerAuthenticated = (
                                     <?php foreach ($sheds as $shed): ?>
                                         <option value="<?php echo htmlspecialchars($shed['ShedID']); ?>" 
                                                 <?php echo ($_POST['shed_id'] ?? '') == $shed['ShedID'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($shed['Terminal'] . ' - ' . $shed['Type']); ?>
+                                            <?php echo htmlspecialchars($shed['Terminal'] . ' - ' . $shed['Name'] . ' - ' . $shed['Division'] . ' - ' . $shed['Zone']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -307,396 +355,10 @@ $customerAuthenticated = (
 
 <script>
 // Type-Subtype mapping for cascading dropdowns
-const typeSubtypeMapping = <?php echo json_encode($typeSubtypeMapping ?? []); ?>;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    <?php if (!$customerAuthenticated): ?>
-    // Customer Authentication Form Handler
-    // This section only runs if customer is not authenticated through either method
-    const authForm = document.getElementById('customerAuthForm');
-    const authSubmitBtn = document.getElementById('authSubmitBtn');
-    
-    authForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Show loading state
-        authSubmitBtn.disabled = true;
-        authSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Authenticating...';
-        
-        const formData = new FormData(authForm);
-        
-        // Submit authentication request
-        fetch('<?php echo BASE_URL; ?>customer-auth/authenticate', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Authentication successful - reload page to show form
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Authentication Successful!',
-                    text: 'Welcome back, ' + data.customer.name + '!',
-                    confirmButtonColor: '#28a745',
-                    confirmButtonText: 'Continue'
-                }).then(() => {
-                    window.location.reload();
-                });
-            } else {
-                // Authentication failed
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Authentication Failed',
-                    text: data.message,
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'OK'
-                });
-                
-                // Reset button state
-                authSubmitBtn.disabled = false;
-                authSubmitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate & Continue';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Network Error',
-                text: 'There was a network error. Please try again.',
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'OK'
-            });
-            
-            // Reset button state
-            authSubmitBtn.disabled = false;
-            authSubmitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Authenticate & Continue';
-        });
-    });
-    <?php else: ?>
-    // Support Ticket Form Handler (only if authenticated)
-    const typeSelect = document.getElementById('complaint_type');
-    const subtypeSelect = document.getElementById('complaint_subtype');
-    const descriptionField = document.getElementById('description');
-    const fileInput = document.getElementById('evidence');
-    const fileUploadArea = document.getElementById('fileUploadArea');
-    const imagePreview = document.getElementById('imagePreview');
-    
-    // Cascading dropdown: Type -> Subtype
-    typeSelect.addEventListener('change', function() {
-        const selectedType = this.value;
-        updateSubtypeOptions(selectedType);
-    });
-    
-    function updateSubtypeOptions(selectedType) {
-        subtypeSelect.innerHTML = '<option value="">Select Issue Subtype</option>';
-        
-        if (selectedType && typeSubtypeMapping[selectedType]) {
-            subtypeSelect.disabled = false;
-            
-            typeSubtypeMapping[selectedType].forEach(function(subtype) {
-                const option = document.createElement('option');
-                option.value = subtype;
-                option.textContent = subtype;
-                if ('<?php echo htmlspecialchars($_POST['complaint_subtype'] ?? ''); ?>' === subtype) {
-                    option.selected = true;
-                }
-                subtypeSelect.appendChild(option);
-            });
-        } else {
-            subtypeSelect.disabled = true;
-            subtypeSelect.innerHTML = '<option value="">First select an issue type</option>';
-        }
-    }
-    
-    if (typeSelect.value) {
-        updateSubtypeOptions(typeSelect.value);
-    }
-    
-
-    
-    const form = document.getElementById('supportTicketForm');
-    const submitBtn = document.getElementById('submitBtn');
-    const originalBtnText = submitBtn.innerHTML;
-    
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Validate description length
-        if (descriptionField.value.length < 20) {
-            descriptionField.focus();
-            descriptionField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            Swal.fire({
-                icon: 'error',
-                title: 'Description Too Short',
-                html: `
-                    <div class="text-start">
-                        <p>Your description is only <strong>${descriptionField.value.length}</strong> characters long.</p>
-                        <p>Please provide at least <strong>20 characters</strong> with more details about your issue.</p>
-                        <div class="alert alert-info">
-                            <small><i class="fas fa-lightbulb"></i> <strong>Tip:</strong> Include specific details like:</small>
-                            <ul class="small mb-0 mt-2">
-                                <li>When did the issue occur?</li>
-                                <li>What exactly happened?</li>
-                                <li>What was the impact?</li>
-                                <li>Any error messages or codes?</li>
-                            </ul>
-                        </div>
-                    </div>
-                `,
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'I Understand',
-                width: '500px'
-            });
-            
-            return;
-        }
-        
-        // Show loading state
-        Swal.fire({
-            title: 'Submitting Support Ticket...',
-            html: 'Please wait while we process your request.',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Submitting...';
-        
-        const formData = new FormData(form);
-        
-        // Submit form via AJAX
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                return response.text();
-            }
-        })
-        .then(data => {
-            let isSuccess = false;
-            let message = '';
-            
-            if (typeof data === 'object' && data.success) {
-                isSuccess = true;
-                message = data.message;
-            } else if (typeof data === 'string' && (data.includes('Support ticket submitted successfully') || data.includes('alert-success'))) {
-                isSuccess = true;
-                message = 'Support ticket submitted successfully!';
-            }
-            
-            if (isSuccess) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Support Ticket Submitted Successfully!',
-                    text: message || 'Your complaint has been submitted and will be reviewed by our team.',
-                    confirmButtonColor: '#28a745',
-                    confirmButtonText: 'View My Tickets',
-                    showCancelButton: true,
-                    cancelButtonText: 'Submit Another',
-                    cancelButtonColor: '#6c757d'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = '<?php echo BASE_URL; ?>customer-tickets';
-                    } else if (result.dismiss === Swal.DismissReason.cancel) {
-                        form.reset();
-                        imagePreview.innerHTML = '';
-                        subtypeSelect.disabled = true;
-                        subtypeSelect.innerHTML = '<option value="">First select an issue type</option>';
-                        
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = originalBtnText;
-                    }
-                });
-            } else {
-                let errorMessage = 'There was an error submitting your support ticket. Please try again.';
-                
-                if (typeof data === 'object' && data.message) {
-                    errorMessage = data.message;
-                } else if (typeof data === 'string' && data.includes('alert-danger')) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data;
-                    const errorElement = tempDiv.querySelector('.alert-danger');
-                    if (errorElement) {
-                        errorMessage = errorElement.textContent.trim();
-                    }
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Submission Failed',
-                    text: errorMessage,
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'OK'
-                });
-                
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Network Error',
-                text: 'There was a network error. Please check your connection and try again.',
-                confirmButtonColor: '#dc3545',
-                confirmButtonText: 'OK'
-            });
-            
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalBtnText;
-        });
-    });
-    
-
-    <?php endif; ?>
-});
+window.typeSubtypeMapping = <?php echo json_encode($typeSubtypeMapping ?? []); ?>;
 </script>
 
-<style>
-.file-upload-area {
-    border: 2px dashed #dee2e6;
-    border-radius: 0.5rem;
-    padding: 3rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.file-upload-area:hover,
-.file-upload-area.dragover {
-    border-color: var(--railway-blue);
-    background-color: #f8f9fa;
-}
-
-/* Enhanced form validation styles */
-.form-control.is-valid {
-    border-color: #28a745;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-}
-
-.form-control.is-invalid {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-}
-
-.form-control.is-valid:focus {
-    border-color: #28a745;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
-}
-
-.form-control.is-invalid:focus {
-    border-color: #dc3545;
-    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
-}
-
-/* Character counter animations */
-.form-text {
-    transition: all 0.3s ease;
-}
-
-.form-text.text-success {
-    font-weight: 600;
-}
-
-.form-text.text-danger {
-    font-weight: 600;
-}
-
-/* Smooth focus transition */
-#description {
-    transition: all 0.3s ease;
-}
-
-#description:focus {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-/* SweetAlert Customization */
-.swal2-popup {
-    border-radius: 0.75rem;
-    font-family: inherit;
-}
-
-.swal2-title {
-    color: #2c3e50;
-    font-weight: 600;
-}
-
-.swal2-content {
-    color: #5a6c7d;
-}
-
-.swal2-confirm {
-    border-radius: 0.5rem !important;
-    font-weight: 500 !important;
-}
-
-.swal2-cancel {
-    border-radius: 0.5rem !important;
-    font-weight: 500 !important;
-}
-
-.swal2-icon {
-    border-width: 3px;
-}
-
-.swal2-icon.swal2-success {
-    border-color: #28a745;
-    color: #28a745;
-}
-
-.swal2-icon.swal2-error {
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
-.swal2-icon.swal2-info {
-    border-color: #17a2b8;
-    color: #17a2b8;
-}
-
-@media (max-width: 768px) {
-    .file-upload-area {
-        padding: 2rem 1rem;
-    }
-    
-    .card-body {
-        padding: 1rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .form-floating {
-        margin-bottom: 1rem;
-    }
-    
-    .btn-lg {
-        margin-bottom: 0.5rem;
-    }
-}
-</style>
+<?php
+// Include footer
+require_once __DIR__ . '/../../src/views/footer.php';
+?>

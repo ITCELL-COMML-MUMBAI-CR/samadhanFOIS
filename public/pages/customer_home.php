@@ -2,7 +2,7 @@
 /**
  * Customer Home Page
  * Displays news, announcements, and advertisements for logged-in customers
- * Features: Marquee text, cards layout, responsive design
+ * Features: Marquee text, simplified layout, responsive design, optimized performance
  */
 
 // Clean the test DB file after successful operation
@@ -28,12 +28,7 @@ if (file_exists('../../test_news_db.php')) {
     </div>
 <?php endif; ?>
 
-
-
 <div class="container-fluid customer-home">
-    <!-- Latest News and Announcements Section -->
-
-
     <!-- News and Announcements Grid -->
     <div class="row mb-5">
         <!-- Latest News -->
@@ -45,8 +40,8 @@ if (file_exists('../../test_news_db.php')) {
                         Latest News
                     </h3>
                     <div class="news-cards">
-                        <?php foreach ($newsItems as $index => $news): ?>
-                            <div class="news-card" data-aos="slide-right" data-aos-delay="<?php echo $index * 150; ?>">
+                        <?php foreach ($newsItems as $news): ?>
+                            <div class="news-card">
                                 <div class="news-card-header">
                                     <h5 class="news-title"><?php echo htmlspecialchars($news['title']); ?></h5>
                                     <small class="text-muted">
@@ -87,8 +82,8 @@ if (file_exists('../../test_news_db.php')) {
                         Important Announcements
                     </h3>
                     <div class="announcements-cards">
-                        <?php foreach ($announcements as $index => $announcement): ?>
-                            <div class="announcement-card" data-aos="slide-left" data-aos-delay="<?php echo $index * 150; ?>">
+                        <?php foreach ($announcements as $announcement): ?>
+                            <div class="announcement-card">
                                 <div class="announcement-icon">
                                     <i class="fas fa-exclamation-circle"></i>
                                 </div>
@@ -135,26 +130,24 @@ if (file_exists('../../test_news_db.php')) {
                     Special Notices
                 </h3>
                 <div class="advertisements-banner">
-                    <div class="advertisement-carousel">
-                        <?php foreach ($advertisements as $index => $ad): ?>
-                            <div class="advertisement-slide" data-aos="zoom-in" data-aos-delay="<?php echo $index * 200; ?>">
-                                <div class="advertisement-card">
-                                    <?php if (!empty($ad['image_url'])): ?>
-                                        <div class="advertisement-image">
-                                            <img src="<?php echo htmlspecialchars($ad['image_url']); ?>"
-                                                alt="<?php echo htmlspecialchars($ad['title']); ?>">
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="advertisement-content">
-                                        <h4 class="advertisement-title"><?php echo htmlspecialchars($ad['title']); ?></h4>
-                                        <p class="advertisement-text"><?php echo htmlspecialchars($ad['content']); ?></p>
-                                        <?php if (!empty($ad['link_url'])): ?>
-                                            <a href="<?php echo htmlspecialchars($ad['link_url']); ?>"
-                                                class="btn btn-success btn-sm" target="_blank">
-                                                Learn More <i class="fas fa-external-link-alt"></i>
-                                            </a>
-                                        <?php endif; ?>
+                    <div class="advertisement-grid">
+                        <?php foreach ($advertisements as $ad): ?>
+                            <div class="advertisement-card">
+                                <?php if (!empty($ad['image_url'])): ?>
+                                    <div class="advertisement-image">
+                                        <img src="<?php echo htmlspecialchars($ad['image_url']); ?>"
+                                            alt="<?php echo htmlspecialchars($ad['title']); ?>">
                                     </div>
+                                <?php endif; ?>
+                                <div class="advertisement-content">
+                                    <h4 class="advertisement-title"><?php echo htmlspecialchars($ad['title']); ?></h4>
+                                    <p class="advertisement-text"><?php echo htmlspecialchars($ad['content']); ?></p>
+                                    <?php if (!empty($ad['link_url'])): ?>
+                                        <a href="<?php echo htmlspecialchars($ad['link_url']); ?>"
+                                            class="btn btn-success btn-sm" target="_blank">
+                                            Learn More <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -164,22 +157,22 @@ if (file_exists('../../test_news_db.php')) {
         </div>
     <?php endif; ?>
 
-    <!-- Quick Links -->
+    <!-- External Quick Links Only -->
     <div class="row mb-5">
         <div class="col-12">
             <div class="quick-actions-section">
                 <h3 class="section-title">
                     <i class="fas fa-external-link-alt text-info"></i>
-                    Quick Actions
+                    External Links
                 </h3>
                 <div class="quick-actions-grid">
                     <?php if (!empty($quickLinks)): ?>
-                        <?php foreach ($quickLinks as $index => $link): ?>
+                        <?php foreach ($quickLinks as $link): ?>
                             <?php
-                            // Determine URL - add BASE_URL if it's a relative URL
+                            // Only show external links (not internal pages)
                             $url = $link['url'];
                             if (!preg_match('/^https?:\/\//', $url)) {
-                                $url = BASE_URL . ltrim($url, '/');
+                                continue; // Skip internal links
                             }
 
                             // Determine CSS class based on category
@@ -188,19 +181,15 @@ if (file_exists('../../test_news_db.php')) {
                                 case 'railway':
                                     $categoryClass = 'railway-system';
                                     break;
-                                case 'grievance':
-                                    $categoryClass = 'grievance-action';
-                                    break;
                                 case 'external':
                                     $categoryClass = 'external-system';
                                     break;
                                 default:
-                                    $categoryClass = 'system-link';
+                                    $categoryClass = 'external-system';
                             }
                             ?>
                             <a href="<?php echo htmlspecialchars($url); ?>"
-                                class="quick-action-card <?php echo $categoryClass; ?>" data-aos="flip-left"
-                                data-aos-delay="<?php echo ($index + 1) * 100; ?>"
+                                class="quick-action-card <?php echo $categoryClass; ?>"
                                 target="<?php echo htmlspecialchars($link['target']); ?>">
                                 <div class="quick-action-icon">
                                     <?php if ($link['icon_type'] === 'upload' && !empty($link['icon_path'])): ?>
@@ -217,25 +206,13 @@ if (file_exists('../../test_news_db.php')) {
                                 </div>
                             </a>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <!-- Fallback quick links if none are configured -->
-                        <a href="<?php echo BASE_URL; ?>customer-tickets" class="quick-action-card grievance-action"
-                            data-aos="flip-left" data-aos-delay="100">
-                            <div class="quick-action-icon">
-                                <i class="fas fa-ticket-alt"></i>
-                            </div>
-                            <div class="quick-action-content">
-                                <h5>My Support Tickets</h5>
-                                <p>View and track complaints</p>
-                            </div>
-                        </a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- New Support Ticket Section - Isolated below navbar -->
+    <!-- New Support Ticket Section -->
     <div class="container-fluid mb-4">
         <div class="row justify-content-center">
             <div class="col-lg-8 col-md-10">
@@ -258,6 +235,6 @@ if (file_exists('../../test_news_db.php')) {
     </div>
 </div>
 
-<!-- Load necessary CSS and JS files -->
+<!-- Load optimized CSS and JS files -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>css/customer_home.css">
 <script src="<?php echo BASE_URL; ?>js/customer_home.js"></script>

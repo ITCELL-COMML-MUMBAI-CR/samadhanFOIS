@@ -101,16 +101,8 @@ $stmt = $connection->prepare("
 $stmt->execute();
 $stats['monthly_trend'] = $stmt->fetchAll();
 
-// Top locations
-$stmt = $connection->prepare("
-    SELECT Location, COUNT(*) as count 
-    FROM complaints 
-    GROUP BY Location 
-    ORDER BY count DESC 
-    LIMIT 10
-");
-$stmt->execute();
-$stats['top_locations'] = $stmt->fetchAll();
+// Top locations - removed as Location column is being dropped
+$stats['top_locations'] = [];
 
 // Customer satisfaction (ratings)
 $stmt = $connection->prepare("
@@ -262,36 +254,7 @@ require_once '../src/views/header.php';
 
     <!-- Detailed Statistics -->
     <div class="row mb-4">
-        <!-- Top Locations -->
-        <div class="col-xl-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Top Complaint Locations</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Location</th>
-                                    <th>Count</th>
-                                    <th>Percentage</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($stats['top_locations'] as $location): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($location['Location']); ?></td>
-                                    <td><?php echo $location['count']; ?></td>
-                                    <td><?php echo round(($location['count'] / $stats['total_complaints']) * 100, 1); ?>%</td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Top Locations - Removed as Location column is being dropped -->
 
         <!-- Customer Ratings -->
         <div class="col-xl-6">

@@ -1,3 +1,4 @@
+
 <?php
 /**
  * Complaints API
@@ -142,33 +143,69 @@ function handleComplaintList() {
 
 function handleCreateComplaint() {
     try {
-        $input = getJsonInput();
+        // Handle both JSON and form data
+        $input = $_SERVER['CONTENT_TYPE'] === 'application/json' ? getJsonInput() : $_POST;
         
         require_once __DIR__ . '/../models/Complaint.php';
-        $complaintModel = new Complaint();
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
+        // Get current user for authentication
+        $currentUser = SessionManager::getCurrentUser();
+        
+        // For customer submissions, get customer ID from session
+        if (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) {
+            $input['customer_id'] = $_SESSION['customer_id'];
+        } elseif (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && isset($_SESSION['user_customer_id'])) {
+            $input['customer_id'] = $_SESSION['user_customer_id'];
+        } else {
+            sendError('Customer authentication required', 401);
+        }
+        
+        // Map form fields to complaint model fields
+        $complaintData = [
+            'customer_id' => $input['customer_id'],
+            'description' => $input['description'] ?? '',
+            'category' => $input['complaint_type'] ?? '',
+            'Type' => $input['complaint_type'] ?? '',
+            'Subtype' => $input['complaint_subtype'] ?? '',
+            'FNR_Number ' => $input['fnr_no'] ?? '',
+            'shed_id' => $input['shed_id'] ?? '',
+            'wagon_id' => $input['wagon_id'] ?? ''
+        ];
         
         // Validate required fields
-        $requiredFields = ['customer_id', 'subject', 'description', 'category'];
+        $requiredFields = ['customer_id', 'description', 'Type', 'Subtype'];
         foreach ($requiredFields as $field) {
-            if (empty($input[$field])) {
+            if (empty($complaintData[$field])) {
                 sendError("Field '$field' is required");
             }
         }
         
-        // Ensure default assignment to commercial controller
-        if (empty($input['assigned_to'])) {
-            $input['assigned_to'] = 'commercial_controller';
-        }
-        $complaintId = $complaintModel->createComplaint($input);
+        $complaintModel = new Complaint();
+        $complaintId = $complaintModel->createComplaint($complaintData);
         
         if ($complaintId) {
-            sendSuccess(['complaint_id' => $complaintId], 'Complaint created successfully');
+            // Handle file uploads if any
+            if (!empty($_FILES['evidence'])) {
+                require_once __DIR__ . '/../models/Evidence.php';
+                $evidenceModel = new Evidence();
+                $evidenceModel->handleFileUpload($_FILES['evidence'], $complaintId);
+            }
+            
+            // Return success response with complaint ID
+            $response = [
+                'success' => true,
+                'message' => 'Support ticket created successfully',
+                'data' => ['complaint_id' => $complaintId]
+            ];
+            echo json_encode($response);
+            exit;
         } else {
-            sendError('Failed to create complaint');
+            sendError('Failed to create support ticket');
         }
         
     } catch (Exception $e) {
-        sendError('Failed to create complaint: ' . $e->getMessage());
+        sendError('Failed to create support ticket: ' . $e->getMessage());
     }
 }
 
@@ -247,7 +284,7 @@ function handleViewComplaint($complaintId) {
                 'category' => $complaint['category'],
                 'complaint_type' => $complaint['Type'],
                 'complaint_subtype' => $complaint['Subtype'],
-                'location' => $complaint['Location'],
+                'location' => null, // Location column removed
                 'wagon_type' => $complaint['wagon_type'] ?? null,
                 'wagon_code' => $complaint['wagon_code'] ?? null,
                 'fnr_no' => $complaint['FNR_Number'],

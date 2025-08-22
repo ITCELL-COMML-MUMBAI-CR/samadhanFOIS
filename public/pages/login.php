@@ -136,6 +136,7 @@ if (isset($_GET['timeout'])) {
                         <h1 class="welcome-title">Welcome to</h1>
                         <h2 class="system-title">SAMPARK</h2>
                         <p class="system-subtitle">Support and Mediation Portal for All Rail Cargo</p>
+                        <p class="customer-login-subtitle">Railway Admin Portal</p>
                     </div>
                 </div>
             </div>

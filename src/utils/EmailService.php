@@ -110,7 +110,7 @@ class EmailService {
                         <p><strong>Type:</strong> {$complaintDetails['complaint_type']}</p>
                         <p><strong>Subtype:</strong> {$complaintDetails['complaint_subtype']}</p>
                         <p><strong>Category:</strong> {$complaintDetails['category']}</p>
-                        <p><strong>Location:</strong> {$complaintDetails['location']}</p>" . 
+                        " . 
                         (!empty($complaintDetails['fnr_no']) ? "<p><strong>FNR Number:</strong> {$complaintDetails['fnr_no']}</p>" : "") . "
                         <p><strong>Status:</strong> Pending Review</p>
                         <p><strong>Assigned Department:</strong> {$complaintDetails['department']}</p>

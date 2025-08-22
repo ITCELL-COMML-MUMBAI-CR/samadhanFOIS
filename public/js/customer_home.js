@@ -1,28 +1,15 @@
 /**
  * Customer Home Page JavaScript
- * Handles dynamic functionality, animations, and interactions
+ * Optimized for performance with marquee functionality
  */
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Initialize AOS (Animate On Scroll) if available
-    if (typeof AOS !== 'undefined') {
-        AOS.init({
-            duration: 800,
-            easing: 'ease-in-out',
-            once: true,
-            offset: 100
-        });
-    }
-
     // Initialize marquee functionality
     initializeMarquee();
     
-    // Initialize card interactions
-    initializeCardInteractions();
-    
-    // Initialize advertisement carousel
-    initializeAdvertisementCarousel();
+    // Initialize basic functionality
+    initializeBasicInteractions();
     
     // Initialize responsive features
     initializeResponsiveFeatures();
@@ -80,103 +67,30 @@ function adjustMarqueeSpeed() {
 }
 
 /**
- * Initialize card interactions and effects
+ * Initialize basic interactions without heavy animations
  */
-function initializeCardInteractions() {
-    // Add ripple effect to cards
-    addRippleEffect();
-    
-    // Initialize card tilt effect for featured cards
-    initializeCardTilt();
+function initializeBasicInteractions() {
+    // Add basic hover effects for cards
+    initializeCardHoverEffects();
     
     // Add loading states for external links
     initializeExternalLinks();
-    
-    // Initialize card expand functionality
-    initializeCardExpansion();
 }
 
 /**
- * Add ripple effect to clickable cards
+ * Initialize simple card hover effects
  */
-function addRippleEffect() {
-    const clickableCards = document.querySelectorAll('.quick-action-card, .featured-card, .advertisement-card');
+function initializeCardHoverEffects() {
+    const cards = document.querySelectorAll('.quick-action-card, .news-card, .announcement-card, .advertisement-card');
     
-    clickableCards.forEach(card => {
-        card.addEventListener('click', function(e) {
-            const ripple = document.createElement('span');
-            const rect = this.getBoundingClientRect();
-            const size = Math.max(rect.width, rect.height);
-            const x = e.clientX - rect.left - size / 2;
-            const y = e.clientY - rect.top - size / 2;
-            
-            ripple.style.cssText = `
-                position: absolute;
-                border-radius: 50%;
-                background: rgba(255, 255, 255, 0.3);
-                transform: scale(0);
-                animation: ripple 0.6s linear;
-                width: ${size}px;
-                height: ${size}px;
-                left: ${x}px;
-                top: ${y}px;
-                pointer-events: none;
-            `;
-            
-            // Add ripple animation keyframes if not already present
-            if (!document.querySelector('#ripple-styles')) {
-                const style = document.createElement('style');
-                style.id = 'ripple-styles';
-                style.textContent = `
-                    @keyframes ripple {
-                        to {
-                            transform: scale(4);
-                            opacity: 0;
-                        }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            this.style.position = 'relative';
-            this.style.overflow = 'hidden';
-            this.appendChild(ripple);
-            
-            // Remove ripple after animation
-            setTimeout(() => {
-                if (ripple.parentNode) {
-                    ripple.parentNode.removeChild(ripple);
-                }
-            }, 600);
-        });
-    });
-}
-
-/**
- * Initialize subtle tilt effect for featured cards
- */
-function initializeCardTilt() {
-    const featuredCards = document.querySelectorAll('.featured-card');
-    
-    featuredCards.forEach(card => {
-        card.addEventListener('mousemove', function(e) {
-            if (window.innerWidth < 768) return; // Disable on mobile
-            
-            const rect = this.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            const deltaX = (e.clientX - centerX) / (rect.width / 2);
-            const deltaY = (e.clientY - centerY) / (rect.height / 2);
-            
-            const tiltX = deltaY * 5; // Max 5 degrees
-            const tiltY = deltaX * -5; // Max 5 degrees
-            
-            this.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(10px)`;
+    cards.forEach(card => {
+        // Add basic hover class for styling
+        card.addEventListener('mouseenter', function() {
+            this.classList.add('hover');
         });
         
         card.addEventListener('mouseleave', function() {
-            this.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
+            this.classList.remove('hover');
         });
     });
 }
@@ -188,7 +102,10 @@ function initializeExternalLinks() {
     const externalLinks = document.querySelectorAll('a[target="_blank"]');
     
     externalLinks.forEach(link => {
-        // Add loading state
+        // Add security attributes
+        link.setAttribute('rel', 'noopener noreferrer');
+        
+        // Add basic loading state
         link.addEventListener('click', function() {
             const originalText = this.innerHTML;
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening...';
@@ -200,145 +117,6 @@ function initializeExternalLinks() {
                 this.style.pointerEvents = 'auto';
             }, 2000);
         });
-        
-        // Add security attributes
-        link.setAttribute('rel', 'noopener noreferrer');
-    });
-}
-
-/**
- * Initialize card expansion functionality for mobile
- */
-function initializeCardExpansion() {
-    const newsCards = document.querySelectorAll('.news-card, .announcement-card');
-    
-    newsCards.forEach(card => {
-        card.addEventListener('click', function() {
-            if (window.innerWidth >= 768) return; // Only on mobile
-            
-            this.classList.toggle('expanded');
-            
-            // Toggle full content visibility
-            const excerpt = this.querySelector('.news-content, .announcement-text');
-            if (excerpt && this.classList.contains('expanded')) {
-                excerpt.style.webkitLineClamp = 'unset';
-                excerpt.style.maxHeight = 'none';
-            } else if (excerpt) {
-                excerpt.style.webkitLineClamp = '3';
-                excerpt.style.maxHeight = '4.5em';
-            }
-        });
-    });
-}
-
-/**
- * Initialize advertisement carousel functionality
- */
-function initializeAdvertisementCarousel() {
-    const carousel = document.querySelector('.advertisement-carousel');
-    if (!carousel) return;
-    
-    // Add auto-scroll for advertisements on desktop
-    if (window.innerWidth >= 992) {
-        initializeAutoScroll(carousel);
-    }
-    
-    // Add touch/swipe support for mobile
-    if (window.innerWidth < 768) {
-        initializeTouchSwipe(carousel);
-    }
-}
-
-/**
- * Initialize auto-scroll for advertisement carousel
- */
-function initializeAutoScroll(carousel) {
-    const slides = carousel.querySelectorAll('.advertisement-slide');
-    if (slides.length <= 1) return;
-    
-    let currentIndex = 0;
-    let autoScrollInterval;
-    
-    function showSlide(index) {
-        slides.forEach((slide, i) => {
-            slide.style.opacity = i === index ? '1' : '0.7';
-            slide.style.transform = i === index ? 'scale(1)' : 'scale(0.95)';
-        });
-    }
-    
-    function nextSlide() {
-        currentIndex = (currentIndex + 1) % slides.length;
-        showSlide(currentIndex);
-    }
-    
-    function startAutoScroll() {
-        autoScrollInterval = setInterval(nextSlide, 4000);
-    }
-    
-    function stopAutoScroll() {
-        clearInterval(autoScrollInterval);
-    }
-    
-    // Initialize
-    showSlide(0);
-    startAutoScroll();
-    
-    // Pause on hover
-    carousel.addEventListener('mouseenter', stopAutoScroll);
-    carousel.addEventListener('mouseleave', startAutoScroll);
-    
-    // Pause when tab is not visible
-    document.addEventListener('visibilitychange', function() {
-        if (document.hidden) {
-            stopAutoScroll();
-        } else {
-            startAutoScroll();
-        }
-    });
-}
-
-/**
- * Initialize touch/swipe support for mobile
- */
-function initializeTouchSwipe(carousel) {
-    let startX, startY, distX, distY;
-    const threshold = 50; // Minimum distance for swipe
-    
-    carousel.addEventListener('touchstart', function(e) {
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-    });
-    
-    carousel.addEventListener('touchmove', function(e) {
-        if (!startX || !startY) return;
-        
-        const touch = e.touches[0];
-        distX = touch.clientX - startX;
-        distY = touch.clientY - startY;
-        
-        // Prevent default scroll if horizontal swipe
-        if (Math.abs(distX) > Math.abs(distY)) {
-            e.preventDefault();
-        }
-    });
-    
-    carousel.addEventListener('touchend', function() {
-        if (!startX || !startY) return;
-        
-        if (Math.abs(distX) > threshold && Math.abs(distX) > Math.abs(distY)) {
-            // Horizontal swipe detected
-            if (distX > 0) {
-                // Swipe right - scroll left
-                carousel.scrollBy({ left: -200, behavior: 'smooth' });
-            } else {
-                // Swipe left - scroll right
-                carousel.scrollBy({ left: 200, behavior: 'smooth' });
-            }
-        }
-        
-        // Reset
-        startX = startY = distX = distY = null;
     });
 }
 
@@ -374,31 +152,14 @@ function handleResponsiveChanges() {
     
     // Update grid layouts dynamically
     updateGridLayouts(isMobile, isTablet);
-    
-    // Update card interactions
-    updateCardInteractions(isMobile);
-    
-    // Update animation states
-    updateAnimations(isMobile);
 }
 
 /**
  * Update grid layouts based on screen size
  */
 function updateGridLayouts(isMobile, isTablet) {
-    const featuredCascade = document.querySelector('.featured-cascade');
     const quickActionsGrid = document.querySelector('.quick-actions-grid');
-    const advertisementCarousel = document.querySelector('.advertisement-carousel');
-    
-    if (featuredCascade) {
-        if (isMobile) {
-            featuredCascade.style.gridTemplateColumns = '1fr';
-        } else if (isTablet) {
-            featuredCascade.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        } else {
-            featuredCascade.style.gridTemplateColumns = 'repeat(3, 1fr)';
-        }
-    }
+    const advertisementGrid = document.querySelector('.advertisement-grid');
     
     if (quickActionsGrid) {
         if (isMobile) {
@@ -409,34 +170,15 @@ function updateGridLayouts(isMobile, isTablet) {
             quickActionsGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
         }
     }
-}
-
-/**
- * Update card interactions for different screen sizes
- */
-function updateCardInteractions(isMobile) {
-    const featuredCards = document.querySelectorAll('.featured-card');
     
-    featuredCards.forEach(card => {
+    if (advertisementGrid) {
         if (isMobile) {
-            // Disable hover effects on mobile
-            card.style.transform = 'none';
+            advertisementGrid.style.gridTemplateColumns = '1fr';
+        } else if (isTablet) {
+            advertisementGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
         } else {
-            // Re-enable hover effects on desktop
-            card.style.transform = '';
+            advertisementGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
         }
-    });
-}
-
-/**
- * Update animations based on device capabilities
- */
-function updateAnimations(isMobile) {
-    // Reduce animations on mobile for better performance
-    if (isMobile) {
-        document.documentElement.style.setProperty('--animation-duration', '0.2s');
-    } else {
-        document.documentElement.style.setProperty('--animation-duration', '0.3s');
     }
 }
 
@@ -461,7 +203,7 @@ function initializeAccessibility() {
  * Initialize keyboard navigation
  */
 function initializeKeyboardNavigation() {
-    const focusableElements = document.querySelectorAll('.quick-action-card, .featured-card a, .news-card a, .announcement-card a');
+    const focusableElements = document.querySelectorAll('.quick-action-card, .news-card a, .announcement-card a, .advertisement-card a');
     
     focusableElements.forEach(element => {
         element.addEventListener('keydown', function(e) {
@@ -541,16 +283,19 @@ function handleReducedMotion() {
             marqueeScroll.style.animation = 'none';
         }
         
-        // Disable other animations
-        const animatedElements = document.querySelectorAll('.featured-card, .news-card, .announcement-card, .quick-action-card');
+        // Disable all transitions and animations
+        const animatedElements = document.querySelectorAll('.news-card, .announcement-card, .quick-action-card, .advertisement-card, .support-ticket-card');
         animatedElements.forEach(element => {
             element.style.transition = 'none';
         });
         
-        // Disable AOS animations
-        if (typeof AOS !== 'undefined') {
-            AOS.init({ disable: true });
-        }
+        // Remove hover effects
+        const cards = document.querySelectorAll('.quick-action-card, .news-card, .announcement-card, .advertisement-card');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', function(e) {
+                e.preventDefault();
+            });
+        });
     }
 }
 
@@ -570,30 +315,13 @@ function debounce(func, wait) {
 }
 
 /**
- * Performance monitoring and optimization
+ * Performance monitoring
  */
 function initializePerformanceOptimization() {
-    // Lazy load images
-    if ('IntersectionObserver' in window) {
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    img.classList.remove('lazy');
-                    observer.unobserve(img);
-                }
-            });
-        });
-        
-        const lazyImages = document.querySelectorAll('img[data-src]');
-        lazyImages.forEach(img => imageObserver.observe(img));
-    }
-    
     // Optimize scroll events
     let ticking = false;
     function updateOnScroll() {
-        // Add scroll-based optimizations here
+        // Minimal scroll handling
         ticking = false;
     }
     

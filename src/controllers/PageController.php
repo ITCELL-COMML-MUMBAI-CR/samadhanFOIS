@@ -107,26 +107,40 @@ class PageController extends BaseController {
         SessionManager::requireLogin();
         
         $currentUser = SessionManager::getCurrentUser();
-        $userModel = $this->loadModel('User');
         $customerModel = $this->loadModel('Customer');
         
-        // Get complete user data from users table
-        $userDetails = $userModel->findByLoginId($currentUser['login_id']);
-        
-        // Get customer data if user has customer_id
+        // Get customer data
         $customerDetails = null;
-        if (!empty($userDetails['customer_id'])) {
-            $customerDetails = $customerModel->findById($userDetails['customer_id']);
+        if (!empty($currentUser['customer_id'])) {
+            $customerDetails = $customerModel->findById($currentUser['customer_id']);
         }
         
         $data = [
-            'pageTitle' => 'Profile',
-            'userDetails' => $userDetails,
+            'pageTitle' => 'Customer Profile',
             'customerDetails' => $customerDetails
         ];
         
         $this->loadView('header', $data);
         $this->loadView('pages/profile', $data);
+        $this->loadView('footer');
+    }
+
+    public function staffProfile() {
+        SessionManager::requireLogin();
+        
+        $currentUser = SessionManager::getCurrentUser();
+        $userModel = $this->loadModel('User');
+        
+        // Get complete user data from users table
+        $userDetails = $userModel->findByLoginId($currentUser['login_id']);
+        
+        $data = [
+            'pageTitle' => 'Staff Profile',
+            'userDetails' => $userDetails
+        ];
+        
+        $this->loadView('header', $data);
+        $this->loadView('pages/staff_profile', $data);
         $this->loadView('footer');
     }
 

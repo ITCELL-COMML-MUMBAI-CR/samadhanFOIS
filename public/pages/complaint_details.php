@@ -60,7 +60,17 @@
 						<?php endif; ?>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Location</label>
-							<div><i class="fas fa-map-marker-alt text-muted"></i> <?php echo htmlspecialchars($complaint['Location'] ?? 'Not specified'); ?></div>
+							<div>
+								<i class="fas fa-industry text-muted"></i> 
+								<?php if (!empty($complaint['shed_terminal'])): ?>
+									<?php echo htmlspecialchars($complaint['shed_terminal']); ?>
+									<?php if (!empty($complaint['shed_type'])): ?>
+										<small class="text-muted">(<?php echo htmlspecialchars($complaint['shed_type']); ?>)</small>
+									<?php endif; ?>
+								<?php else: ?>
+									<span class="text-muted">Not specified</span>
+								<?php endif; ?>
+							</div>
 						</div>
 						<div class="col-md-6 mb-3">
 							<label class="text-muted small">Date / Time</label>

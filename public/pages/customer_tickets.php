@@ -71,9 +71,12 @@ if (!isset($currentUser)) {
                                     </div>
                                 </td>
                                 <td>
-                                    <?php if (!empty($ticket['Location'])): ?>
-                                        <i class="fas fa-map-marker-alt text-muted"></i>
-                                        <?php echo htmlspecialchars($ticket['Location']); ?>
+                                    <?php if (!empty($ticket['shed_terminal'])): ?>
+                                        <i class="fas fa-industry text-muted"></i>
+                                        <?php echo htmlspecialchars($ticket['shed_terminal']); ?>
+                                        <?php if (!empty($ticket['shed_type'])): ?>
+                                            <br><small class="text-muted"><?php echo htmlspecialchars($ticket['shed_type']); ?></small>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
