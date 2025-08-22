@@ -8,7 +8,70 @@ require_once 'BaseModel.php';
 
 class Customer extends BaseModel {
     protected $table = 'customers';
+
+    /**
+     * Get all customers with filtering and pagination.
+     * This new method centralizes the logic previously in the view file.
+     */
+    public function getAllCustomersFiltered($filters = [], $page = 1, $limit = 20) {
+        $whereConditions = [];
+        $params = [];
+
+        if (!empty($filters['search'])) {
+            $whereConditions[] = "(Name LIKE ? OR Email LIKE ? OR MobileNumber LIKE ? OR CompanyName LIKE ?)";
+            $searchTerm = '%' . $filters['search'] . '%';
+            $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
+        }
+
+        if (!empty($filters['company'])) {
+            $whereConditions[] = "CompanyName LIKE ?";
+            $params[] = '%' . $filters['company'] . '%';
+        }
+
+        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+
+        // Get total count for pagination
+        $countSql = "SELECT COUNT(*) as count FROM {$this->table} " . $whereClause;
+        $stmt = $this->connection->prepare($countSql);
+        $stmt->execute($params);
+        $totalCustomers = $stmt->fetch()['count'];
+        $totalPages = ceil($totalCustomers / $limit);
+
+        // Get paginated customer data
+        $offset = ($page - 1) * $limit;
+        $sql = "SELECT c.*, 
+                (SELECT COUNT(*) FROM complaints WHERE customer_id = c.CustomerID) as complaint_count
+                FROM {$this->table} c
+                {$whereClause} 
+                ORDER BY c.CustomerID DESC 
+                LIMIT ? OFFSET ?";
+        
+        $pagedParams = array_merge($params, [$limit, $offset]);
+        $stmt = $this->connection->prepare($sql);
+        // PDO requires integer values for LIMIT and OFFSET to be bound as such
+        foreach ($pagedParams as $key => &$val) {
+            if (is_int($val)) {
+                $stmt->bindParam($key + 1, $val, PDO::PARAM_INT);
+            } else {
+                $stmt->bindParam($key + 1, $val, PDO::PARAM_STR);
+            }
+        }
+
+        $stmt->execute();
+        $customers = $stmt->fetchAll();
+
+        return [$customers, $totalCustomers, $totalPages];
+    }
     
+    /**
+     * Get a list of unique company names for the filter dropdown.
+     */
+    public function getUniqueCompanies() {
+        $stmt = $this->connection->prepare("SELECT DISTINCT CompanyName FROM {$this->table} WHERE CompanyName IS NOT NULL AND CompanyName != '' ORDER BY CompanyName ASC");
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     /**
      * Generate a new customer ID in format ED + YYYYMMDD + two digit random number
      */

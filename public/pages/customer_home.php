@@ -219,10 +219,10 @@ if (file_exists('../../test_news_db.php')) {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <!-- Fallback quick links if none are configured -->
-                        <a href="<?php echo BASE_URL; ?>support/assistance" class="quick-action-card grievance-action"
+                        <a href="<?php echo BASE_URL; ?>customer-tickets" class="quick-action-card grievance-action"
                             data-aos="flip-left" data-aos-delay="100">
                             <div class="quick-action-icon">
-                                <i class="fas fa-list-alt"></i>
+                                <i class="fas fa-ticket-alt"></i>
                             </div>
                             <div class="quick-action-content">
                                 <h5>My Support Tickets</h5>

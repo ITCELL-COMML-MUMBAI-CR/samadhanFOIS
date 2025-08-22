@@ -5,6 +5,7 @@
 
 class SupportTicketAuth {
     constructor() {
+        this.selectedFiles = []; // Array to store selected files
         this.initializeEventListeners();
         this.initializeTooltips();
     }
@@ -175,6 +176,11 @@ class SupportTicketAuth {
         try {
             const formData = new FormData(form);
             
+            // Add selected files to form data
+            this.selectedFiles.forEach((file, index) => {
+                formData.append(`evidence[${index}]`, file);
+            });
+            
             const response = await fetch(window.location.href, {
                 method: 'POST',
                 body: formData,
@@ -206,7 +212,7 @@ class SupportTicketAuth {
                     cancelButtonColor: '#6c757d'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = BASE_URL + 'support/assistance';
+                        window.location.href = BASE_URL + 'customer-tickets';
                     } else if (result.dismiss === Swal.DismissReason.cancel) {
                         this.resetForm(form);
                     }
@@ -257,6 +263,9 @@ class SupportTicketAuth {
         const imagePreview = document.getElementById('imagePreview');
         const subtypeSelect = document.getElementById('complaint_subtype');
         
+        // Clear selected files
+        this.selectedFiles = [];
+        
         if (imagePreview) {
             imagePreview.innerHTML = '';
         }
@@ -264,6 +273,12 @@ class SupportTicketAuth {
         if (subtypeSelect) {
             subtypeSelect.disabled = true;
             subtypeSelect.innerHTML = '<option value="">First select an issue type</option>';
+        }
+        
+        // Reset file input
+        const fileInput = document.getElementById('evidence');
+        if (fileInput) {
+            fileInput.value = '';
         }
     }
 
@@ -276,13 +291,65 @@ class SupportTicketAuth {
     }
 
     /**
-     * Setup file upload functionality
+     * Setup file upload functionality with incremental selection
      */
     setupFileUpload(fileInput, fileUploadArea) {
-        // Drag and drop functionality
-        if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.fileUpload) {
-            SAMPARKApp.fileUpload.setupDragDrop(fileUploadArea);
-        }
+        // Custom drag and drop functionality for incremental selection
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        });
+        
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            
+            const droppedFiles = Array.from(e.dataTransfer.files);
+            const imagePreview = document.getElementById('imagePreview');
+            
+            if (droppedFiles.length === 0) {
+                return;
+            }
+            
+            // Check if adding these files would exceed the limit
+            if (this.selectedFiles.length + droppedFiles.length > 3) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Too Many Files',
+                    text: `You can only select up to 3 files. You currently have ${this.selectedFiles.length} files selected.`,
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
+            
+            // Validate dropped files
+            if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.fileUpload) {
+                const validation = SAMPARKApp.fileUpload.validate(droppedFiles);
+                
+                if (!validation.valid) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'File Upload Error',
+                        text: validation.errors.join('\n'),
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+            
+            // Add dropped files to selected files array
+            this.selectedFiles = [...this.selectedFiles, ...droppedFiles];
+            
+            // Update preview
+            this.updateFilePreview(imagePreview);
+        });
         
         // Click to upload
         fileUploadArea.addEventListener('click', (e) => {
@@ -291,18 +358,31 @@ class SupportTicketAuth {
             }
         });
         
-        // File selection
+        // File selection - now handles incremental addition
         fileInput.addEventListener('change', (e) => {
-            const files = e.target.files;
+            const newFiles = Array.from(e.target.files);
             const imagePreview = document.getElementById('imagePreview');
             
-            if (files.length === 0) {
-                imagePreview.innerHTML = '';
+            if (newFiles.length === 0) {
                 return;
             }
             
+            // Check if adding these files would exceed the limit
+            if (this.selectedFiles.length + newFiles.length > 3) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Too Many Files',
+                    text: `You can only select up to 3 files. You currently have ${this.selectedFiles.length} files selected.`,
+                    confirmButtonColor: '#dc3545',
+                    confirmButtonText: 'OK'
+                });
+                fileInput.value = '';
+                return;
+            }
+            
+            // Validate new files
             if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.fileUpload) {
-                const validation = SAMPARKApp.fileUpload.validate(files);
+                const validation = SAMPARKApp.fileUpload.validate(newFiles);
                 
                 if (!validation.valid) {
                     Swal.fire({
@@ -313,13 +393,107 @@ class SupportTicketAuth {
                         confirmButtonText: 'OK'
                     });
                     fileInput.value = '';
-                    imagePreview.innerHTML = '';
                     return;
                 }
-                
-                SAMPARKApp.fileUpload.previewImages(files, imagePreview);
             }
+            
+            // Add new files to selected files array
+            this.selectedFiles = [...this.selectedFiles, ...newFiles];
+            
+            // Update preview
+            this.updateFilePreview(imagePreview);
+            
+            // Clear the file input for next selection
+            fileInput.value = '';
         });
+    }
+
+    /**
+     * Update file preview with all selected files
+     */
+    updateFilePreview(container) {
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        this.selectedFiles.forEach((file, index) => {
+            const preview = document.createElement('div');
+            preview.className = 'col-md-4 mb-3';
+            
+            if (file.type.startsWith('image/')) {
+                // Image preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.innerHTML = `
+                        <div class="card file-preview-card">
+                            <img src="${e.target.result}" class="card-img-top">
+                            <div class="card-body">
+                                <button type="button" class="btn btn-outline-danger btn-remove" 
+                                        onclick="supportTicketAuth.removeFile(${index})" title="Remove file">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <small class="text-muted d-block">${file.name}</small>
+                                <small class="text-muted">${Math.round(file.size / 1024)} KB</small>
+                            </div>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Non-image file preview
+                preview.innerHTML = `
+                    <div class="card file-preview-card">
+                        <div class="file-icon">
+                            <i class="fas fa-file"></i>
+                        </div>
+                        <div class="card-body">
+                            <button type="button" class="btn btn-outline-danger btn-remove" 
+                                    onclick="supportTicketAuth.removeFile(${index})" title="Remove file">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <small class="text-muted d-block">${file.name}</small>
+                            <small class="text-muted">${Math.round(file.size / 1024)} KB</small>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(preview);
+        });
+        
+        // Update upload area text and state based on remaining slots
+        const remainingSlots = 3 - this.selectedFiles.length;
+        const uploadArea = document.getElementById('fileUploadArea');
+        if (uploadArea) {
+            const uploadText = uploadArea.querySelector('p');
+            if (uploadText) {
+                if (remainingSlots === 0) {
+                    uploadText.textContent = 'Maximum 3 files selected. Remove files to add more.';
+                    uploadArea.classList.add('disabled');
+                } else if (remainingSlots === 1) {
+                    uploadText.textContent = `Drag and drop 1 more file here or click to select`;
+                    uploadArea.classList.remove('disabled');
+                } else {
+                    uploadText.textContent = `Drag and drop up to ${remainingSlots} more files here or click to select`;
+                    uploadArea.classList.remove('disabled');
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove a file from the selected files array
+     */
+    removeFile(index) {
+        this.selectedFiles.splice(index, 1);
+        const imagePreview = document.getElementById('imagePreview');
+        this.updateFilePreview(imagePreview);
+        
+        // Re-enable upload area if files were removed
+        const uploadArea = document.getElementById('fileUploadArea');
+        if (uploadArea && this.selectedFiles.length < 3) {
+            uploadArea.classList.remove('disabled');
+        }
     }
 
     /**
@@ -361,7 +535,7 @@ class SupportTicketAuth {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    new SupportTicketAuth();
+    window.supportTicketAuth = new SupportTicketAuth();
 });
 
 // Export for global access if needed

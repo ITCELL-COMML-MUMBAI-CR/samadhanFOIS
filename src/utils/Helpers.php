@@ -469,9 +469,7 @@ function getCurrentPage() {
     
     // Check for specific support/grievance pages
     if ($controllerName === 'support') {
-        if ($action === 'assistance') {
-            return 'support-assistance';
-        } elseif ($action === 'new') {
+        if ($action === 'new') {
             return 'support-new';
         }
         return 'support';

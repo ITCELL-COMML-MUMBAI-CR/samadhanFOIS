@@ -88,6 +88,27 @@ switch ($controllerName) {
             $authController->logout();
         }
         break;
+        
+    case 'customer-tickets':
+        require_once '../src/controllers/CustomerTicketsController.php';
+        $controller = new CustomerTicketsController();
+        if ($action === 'feedback') {
+            $controller->submitFeedback();
+        } elseif ($action === 'additional-info') {
+            $controller->submitAdditionalInfo();
+        } elseif ($action === 'details') {
+            $controller->getTicketDetails($params[0] ?? '');
+        } elseif ($action === 'history') {
+            $controller->getTransactionHistory($params[0] ?? '');
+        } else {
+            $controller->index();
+        }
+        break;
+        
+    case 'customer-debug':
+        // Temporary debug page for customer authentication
+        include '../public/pages/customer_debug.php';
+        break;
 
     case 'customer-auth':
         $controller = new CustomerAuthController();
@@ -109,7 +130,7 @@ switch ($controllerName) {
             header('Location: ' . BASE_URL . 'support/new');
             exit;
         } elseif ($action === 'my') {
-            header('Location: ' . BASE_URL . 'support/assistance');
+                            header('Location: ' . BASE_URL . 'customer-tickets');
             exit;
         } else {
             // For other grievance routes, use the support system
@@ -137,21 +158,6 @@ switch ($controllerName) {
                     $controller->supportAssistance();
                 }
                 break;
-    case 'complaints':
-        // Alias routes to grievances for backward compatibility
-        $controller = new ComplaintController();
-        if ($action === 'new') {
-            $controller->create();
-        } elseif ($action === 'my') {
-            $controller->my();
-        } elseif ($action === 'tome') {
-            $controller->assignedToMe();
-        } elseif ($action === 'view' && !empty($params[0])) {
-            $controller->view($params[0]);
-        } else {
-            $controller->index();
-        }
-        break;
         
     case 'admin':
         $controller = new AdminController();
@@ -173,7 +179,7 @@ switch ($controllerName) {
             $controller->emailTemplates();
         } elseif ($action === 'dashboard') {
             $controller->dashboard();
-        } elseif ($action === 'customers') {
+        } elseif ($action === 'customers') { // THIS IS THE NEW ROUTE
             $controller->customers();
         } else {
             $controller->dashboard();

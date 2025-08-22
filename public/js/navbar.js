@@ -117,14 +117,21 @@ function initializeUserProfile() {
         });
     }
     
-    // Ensure dropdown functionality works
+    // Ensure dropdown functionality works with Bootstrap
     const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
     dropdownToggles.forEach(toggle => {
+        // Add fallback dropdown functionality if Bootstrap fails
         toggle.addEventListener('click', function(e) {
-            e.preventDefault();
+            // Check if Bootstrap dropdown is working
             const dropdownMenu = this.nextElementSibling;
             if (dropdownMenu && dropdownMenu.classList.contains('dropdown-menu')) {
-                dropdownMenu.classList.toggle('show');
+                // If Bootstrap didn't handle it, we'll do it manually
+                setTimeout(() => {
+                    if (!dropdownMenu.classList.contains('show')) {
+                        // Bootstrap didn't work, let's do it manually
+                        dropdownMenu.classList.add('show');
+                    }
+                }, 10);
             }
         });
     });
@@ -138,6 +145,17 @@ function initializeUserProfile() {
             });
         }
     });
+    
+    // Special handling for customer dropdown
+    const customerDropdownToggle = document.getElementById('customerDropdownToggle');
+    const customerDropdownMenu = document.getElementById('customerDropdownMenu');
+    
+    if (customerDropdownToggle && customerDropdownMenu) {
+        customerDropdownToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            customerDropdownMenu.classList.toggle('show');
+        });
+    }
     
     // Add logout confirmation
     const logoutLink = document.querySelector('.logout-link');

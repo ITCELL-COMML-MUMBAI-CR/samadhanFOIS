@@ -1134,6 +1134,55 @@ class Complaint extends BaseModel {
         $stmt->execute([$customerId]);
         return $stmt->fetch()['count'];
     }
+    
+    /**
+     * Auto-close complaints after 3 days with null feedback
+     * This should be called periodically (via cron job or on page load)
+     */
+    public function autoCloseOldComplaints() {
+        try {
+            // Get complaints that are older than 3 days and still in replied status
+            $stmt = $this->connection->prepare("
+                SELECT complaint_id, customer_id, created_at 
+                FROM complaints 
+                WHERE status = 'Replied' 
+                AND created_at <= DATE_SUB(NOW(), INTERVAL 3 DAY)
+                AND (rating IS NULL OR rating = '')
+            ");
+            $stmt->execute();
+            $oldComplaints = $stmt->fetchAll();
+            
+            $closedCount = 0;
+            foreach ($oldComplaints as $complaint) {
+                // Update complaint to closed with null feedback
+                $updateData = [
+                    'status' => 'Closed',
+                    'rating' => null,
+                    'rating_remarks' => 'Auto-closed'
+                ];
+                
+                if ($this->updateComplaint($complaint['complaint_id'], $updateData)) {
+                    // Log the auto-close transaction
+                    require_once __DIR__ . '/Transaction.php';
+                    $transactionModel = new Transaction();
+                    $transactionModel->createTransaction([
+                        'complaint_id' => $complaint['complaint_id'],
+                        'transaction_type' => 'auto_close',
+                        'remarks' => 'Complaint auto-closed after 3 days due to no customer feedback',
+                        'created_by' => 'system'
+                    ]);
+                    
+                    $closedCount++;
+                }
+            }
+            
+            return $closedCount;
+            
+        } catch (Exception $e) {
+            error_log("Error auto-closing old complaints: " . $e->getMessage());
+            return false;
+        }
+    }
 
     /**
      * Get recent complaints

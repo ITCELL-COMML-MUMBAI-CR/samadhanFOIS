@@ -839,92 +839,9 @@ class ComplaintController extends BaseController {
      * Support & Assistance page for customers
      */
     public function supportAssistance() {
-        // Check if customer is authenticated
-        // Customers can be authenticated either through regular login or customer-specific login
-        $customerAuthenticated = (
-            (isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) ||
-            (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
-             isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))
-        );
-        
-        if (!$customerAuthenticated) {
-            // Redirect to new support ticket page for authentication
-            header('Location: ' . BASE_URL . 'support/new');
-            exit;
-        }
-        
-        $complaintModel = $this->loadModel('Complaint');
-        
-        // Get filters
-        $status = $_GET['status'] ?? '';
-        $priority = $_GET['priority'] ?? '';
-        $search = $_GET['search'] ?? '';
-        $view = $_GET['view'] ?? 'all';
-        $page = max(1, (int)($_GET['page'] ?? 1));
-        $limit = 50;
-        $offset = ($page - 1) * $limit;
-        
-        // Initialize error and success variables
-        $error = '';
-        $success = '';
-        
-        // Get session messages
-        if (isset($_SESSION['alert_message'])) {
-            if (isset($_SESSION['alert_type']) && $_SESSION['alert_type'] === 'success') {
-                $success = $_SESSION['alert_message'];
-            } else {
-                $error = $_SESSION['alert_message'];
-            }
-            
-            // Clear session messages after retrieving them
-            unset($_SESSION['alert_message']);
-            unset($_SESSION['alert_type']);
-        }
-        
-        // Get customer's support tickets (complaints)
-        $filters = [];
-        if (!empty($status)) $filters['status'] = $status;
-        if (!empty($priority)) $filters['priority'] = $priority;
-        
-        // Get customer's complaints - SECURE: Only shows complaints for this specific customer
-        $customerId = $this->getCurrentCustomerId();
-        $supportTickets = $complaintModel->findByCustomerWithFilters($customerId, $filters, $search, $limit, $offset);
-        $totalCount = $complaintModel->countByCustomerWithFilters($customerId, $filters, $search);
-        
-        // Calculate auto-priority for each ticket and ensure status is available
-        foreach ($supportTickets as &$ticket) {
-            $ticket['display_priority'] = $complaintModel->calculateAutoPriority($ticket['created_at'] ?? '');
-            // Ensure status is properly set
-            if (!isset($ticket['status']) || empty($ticket['status'])) {
-                $ticket['status'] = 'pending';
-            }
-            // Ensure other fields have default values to prevent null issues
-            $ticket['complaint_id'] = $ticket['complaint_id'] ?? '';
-            $ticket['Type'] = $ticket['Type'] ?? 'Not specified';
-            $ticket['Subtype'] = $ticket['Subtype'] ?? '';
-            $ticket['description'] = $ticket['description'] ?? '';
-            $ticket['priority'] = $ticket['priority'] ?? 'medium';
-        }
-        
-        $totalPages = ceil($totalCount / $limit);
-        
-        // Get statistics for customer's tickets
-        $statistics = [
-            'total' => $complaintModel->countByCustomer($customerId),
-            'pending' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'pending'], ''),
-            'replied' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'replied'], ''),
-            'closed' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'closed'], ''),
-            'reverted' => $complaintModel->countByCustomerWithFilters($customerId, ['status' => 'reverted'], '')
-        ];
-        
-        $data = compact(
-            'supportTickets', 'totalCount', 'error', 'success', 
-            'status', 'priority', 'search', 'view', 'page', 'totalPages', 'statistics'
-        );
-        
-        $this->loadView('header', ['pageTitle' => 'Support & Assistance']);
-        $this->loadView('pages/support_assistance', $data);
-        $this->loadView('footer');
+        // Redirect to the new customer tickets page
+        header('Location: ' . BASE_URL . 'customer-tickets');
+        exit;
     }
 
     /**
@@ -1124,7 +1041,8 @@ class ComplaintController extends BaseController {
                         }
                     }
                     
-                    $transactionModel->logStatusUpdate($complaintId, 'Support ticket submitted by customer. Assigned to Commercial Controller for review.', $_SESSION['customer_email']);
+                    // Use commercial_controller login_id for customer transactions since complaints are assigned to commercial department
+                    $transactionModel->logStatusUpdate($complaintId, 'Support ticket submitted by customer. Assigned to Commercial Controller for review.', 'commercial_controller');
                 
                     $this->sendConfirmationEmail($_SESSION, $complaintId, $complaintData);
                     
@@ -1142,8 +1060,8 @@ class ComplaintController extends BaseController {
                         ]);
                         exit;
                     } else {
-                        // Redirect to support assistance page for regular form submissions
-                        $this->redirect('support/assistance');
+                        // Redirect to customer tickets page for regular form submissions
+                        $this->redirect('customer-tickets');
                     }
                     return ['', 'Support ticket submitted successfully!'];
                 } else {

@@ -43,9 +43,19 @@ $currentPage = getCurrentPage();
                     <?php if ($userRole === 'customer'): ?>
                         <!-- Customer Navigation -->
                         <li class="nav-item">
-                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'support-assistance') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>support/assistance">
-                                <i class="fas fa-headset"></i>
-                                <span>Support & Assistance</span>
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'customer-tickets') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-tickets">
+                                <i class="fas fa-ticket-alt"></i>
+                                <span>My Support Tickets</span>
+                            </a>
+                        </li>
+                    <?php elseif ((isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) || 
+                               (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+                                isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))): ?>
+                        <!-- Customer logged in (either method) - Show tickets link -->
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-animated <?php echo ($currentPage === 'customer-tickets') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-tickets">
+                                <i class="fas fa-ticket-alt"></i>
+                                <span>My Support Tickets</span>
                             </a>
                         </li>
                     <?php elseif ($userRole === 'controller'): ?>
@@ -143,6 +153,23 @@ $currentPage = getCurrentPage();
                             <span>Help</span>
                         </a>
                     </li>
+                <?php elseif ((isset($_SESSION['customer_logged_in']) && $_SESSION['customer_logged_in']) || 
+                           (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] && 
+                            isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))): ?>
+                    <!-- Customer logged in - Show tickets button prominently -->
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-animated btn btn-outline-light btn-sm me-2 <?php echo ($currentPage === 'customer-tickets') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>customer-tickets">
+                            <i class="fas fa-ticket-alt"></i>
+                            <span>My Tickets</span>
+                        </a>
+                    </li>
+                    <!-- Help Link for customers -->
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-animated <?php echo ($currentPage === 'help') ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>help">
+                            <i class="fas fa-life-ring"></i>
+                            <span>Help</span>
+                        </a>
+                    </li>
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -170,7 +197,7 @@ $currentPage = getCurrentPage();
                             isset($_SESSION['user_customer_id']) && !empty($_SESSION['user_customer_id']))): ?>
                     <!-- Customer logged in (either method) -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle user-profile-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" id="customerDropdownToggle">
                             <div class="user-avatar">
                                 <i class="fas fa-user-circle"></i>
                             </div>
@@ -179,9 +206,9 @@ $currentPage = getCurrentPage();
                                 <span class="user-role">CUSTOMER</span>
                             </div>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated">
-                            <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>support/assistance">
-                                <i class="fas fa-headset"></i> My Support Tickets
+                        <ul class="dropdown-menu dropdown-menu-end dropdown-menu-animated" id="customerDropdownMenu">
+                            <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>customer-tickets">
+                                <i class="fas fa-ticket-alt"></i> My Support Tickets
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item logout-link" href="<?php echo BASE_URL; ?>customer/logout">

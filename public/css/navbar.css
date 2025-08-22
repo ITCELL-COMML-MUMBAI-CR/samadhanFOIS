@@ -282,7 +282,23 @@
 }
 
 .dropdown-menu.show {
-    display: block;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Ensure customer dropdown is visible */
+#customerDropdownMenu {
+    z-index: 1001;
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#customerDropdownMenu.show {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* User Profile Styles */

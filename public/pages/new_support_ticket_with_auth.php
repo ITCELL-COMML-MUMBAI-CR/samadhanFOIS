@@ -235,9 +235,9 @@ $customerAuthenticated = (
                                     
                                     <div class="file-upload-area" id="fileUploadArea" style="cursor: pointer;">
                                         <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
-                                        <p>Drag and drop files here or click to select</p>
+                                        <p>Drag and drop files here or click to select (Max 3 files)</p>
                                         <input type="file" class="form-control" id="evidence" name="evidence[]" 
-                                               multiple accept="image/*,.pdf,.doc,.docx" style="display: none;">
+                                               accept="image/*,.pdf,.doc,.docx" style="display: none;">
                                         <button type="button" class="btn btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('evidence').click();">
                                             <i class="fas fa-upload"></i> Select Files
                                         </button>
@@ -422,42 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSubtypeOptions(typeSelect.value);
     }
     
-    // File upload handling
-    if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.fileUpload) {
-        SAMPARKApp.fileUpload.setupDragDrop(fileUploadArea);
-    }
-    
-    fileUploadArea.addEventListener('click', function(e) {
-        if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
-            fileInput.click();
-        }
-    });
-    
-    fileInput.addEventListener('change', function() {
-        if (this.files.length === 0) {
-            imagePreview.innerHTML = '';
-            return;
-        }
-        
-        if (typeof SAMPARKApp !== 'undefined' && SAMPARKApp.fileUpload) {
-            const validation = SAMPARKApp.fileUpload.validate(this.files);
-            
-            if (!validation.valid) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'File Upload Error',
-                    text: validation.errors.join('\n'),
-                    confirmButtonColor: '#dc3545',
-                    confirmButtonText: 'OK'
-                });
-                this.value = '';
-                imagePreview.innerHTML = '';
-                return;
-            }
-            
-            SAMPARKApp.fileUpload.previewImages(this.files, imagePreview);
-        }
-    });
+
     
     const form = document.getElementById('supportTicketForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -554,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     cancelButtonColor: '#6c757d'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href = '<?php echo BASE_URL; ?>support/assistance';
+                        window.location.href = '<?php echo BASE_URL; ?>customer-tickets';
                     } else if (result.dismiss === Swal.DismissReason.cancel) {
                         form.reset();
                         imagePreview.innerHTML = '';
@@ -606,11 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    form.addEventListener('reset', function() {
-        imagePreview.innerHTML = '';
-        subtypeSelect.disabled = true;
-        subtypeSelect.innerHTML = '<option value="">First select an issue type</option>';
-    });
+
     <?php endif; ?>
 });
 </script>

@@ -167,20 +167,9 @@ class SessionManager {
         if (!self::isLoggedIn()) {
             return null;
         }
-        
-        // Check if this is a customer
-        if (self::isCustomer()) {
-            return [
-                'login_id' => $_SESSION['user_customer_id'] ?? null,
-                'name' => $_SESSION['user_name'] ?? null,
-                'role' => $_SESSION['user_role'] ?? 'customer',
-                'department' => $_SESSION['user_department'] ?? null,
-                'customer_id' => $_SESSION['user_customer_id'] ?? null,
-                'email' => $_SESSION['user_email'] ?? null,
-                'company' => $_SESSION['user_company'] ?? null,
-                'designation' => $_SESSION['user_designation'] ?? null
-            ];
-        } else {
+
+        // CORRECTED LOGIC: Check for the presence of a role to distinguish users from customers
+        if (isset($_SESSION['user_role']) && $_SESSION['user_role'] !== 'customer') {
             // Regular user (admin, controller, etc.)
             return [
                 'login_id' => $_SESSION['user_login_id'] ?? null,
@@ -189,6 +178,18 @@ class SessionManager {
                 'department' => $_SESSION['user_department'] ?? null,
                 'customer_id' => $_SESSION['user_customer_id'] ?? null,
                 'email' => $_SESSION['user_email'] ?? null
+            ];
+        } else {
+            // This handles both customer-specific logins and users with the 'customer' role
+            return [
+                'login_id' => $_SESSION['user_customer_id'] ?? $_SESSION['user_login_id'] ?? null,
+                'name' => $_SESSION['user_name'] ?? null,
+                'role' => 'customer',
+                'department' => null,
+                'customer_id' => $_SESSION['user_customer_id'] ?? null,
+                'email' => $_SESSION['user_email'] ?? null,
+                'company' => $_SESSION['user_company'] ?? null,
+                'designation' => $_SESSION['user_designation'] ?? null
             ];
         }
     }

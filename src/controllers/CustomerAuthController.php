@@ -22,7 +22,7 @@ class CustomerAuthController extends BaseController {
         }
         
         $customerModel = $this->loadModel('Customer');
-        $customer = $customerModel->authenticateCustomer($email, $password);
+        $customer = $customerModel->authenticateCustomerByEmailOrMobile($email, $password);
         
         if ($customer) {
             // Store customer session

@@ -47,7 +47,7 @@
                                 <i class="fas fa-tachometer-alt"></i> Dashboard
                             </a>
                         <?php elseif (class_exists('SessionManager') && SessionManager::isLoggedIn()): ?>
-                            <a href="<?php echo BASE_URL; ?>support/assistance" class="btn btn-outline-success">
+                            <a href="<?php echo BASE_URL; ?>customer-tickets" class="btn btn-outline-success">
                                 <i class="fas fa-headset"></i> Support & Assistance
                             </a>
                         <?php else: ?>
@@ -89,7 +89,7 @@
                                 <?php if (class_exists('SessionManager') && SessionManager::isLoggedIn() && in_array($_SESSION['user_role'], ['controller', 'viewer', 'admin'])): ?>
                                     <li><a href="<?php echo BASE_URL; ?>dashboard" class="text-decoration-none"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                                 <?php endif; ?>
-                                <li><a href="<?php echo BASE_URL; ?>support/assistance" class="text-decoration-none"><i class="fas fa-headset"></i> Support & Assistance</a></li>
+                                <li><a href="<?php echo BASE_URL; ?>customer-tickets" class="text-decoration-none"><i class="fas fa-ticket-alt"></i> My Support Tickets</a></li>
                                 <li><a href="<?php echo BASE_URL; ?>grievances/my" class="text-decoration-none"><i class="fas fa-list"></i> My Grievances</a></li>
                             </ul>
                         </div>
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (currentPath.includes('dashboard')) {
         suggestedLinks.push('<a href="<?php echo BASE_URL; ?>dashboard" class="alert-link">Dashboard</a>');
     } else if (currentPath.includes('grievance') || currentPath.includes('complaint')) {
-                                suggestedLinks.push('<a href="<?php echo BASE_URL; ?>support/assistance" class="alert-link">Support & Assistance</a>');
+                                suggestedLinks.push('<a href="<?php echo BASE_URL; ?>customer-tickets" class="alert-link">My Support Tickets</a>');
         suggestedLinks.push('<a href="<?php echo BASE_URL; ?>grievances/my" class="alert-link">My Grievances</a>');
     }
     

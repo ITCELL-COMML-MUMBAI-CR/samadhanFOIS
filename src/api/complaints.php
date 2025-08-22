@@ -64,7 +64,7 @@ switch ($action) {
         }
         break;
         
-    case 'submit_more_info':
+            case 'submit_more_info':
         if ($method === 'POST') {
             handleSubmitMoreInfo();
         } else {
@@ -72,7 +72,23 @@ switch ($action) {
         }
         break;
         
-    default:
+        case 'feedback':
+        if ($method === 'POST') {
+            handleCustomerFeedback();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+        
+        case 'additional-info':
+        if ($method === 'POST') {
+            handleCustomerAdditionalInfo();
+        } else {
+            sendError('Method not allowed', 405);
+        }
+        break;
+        
+        default:
         sendError('Invalid complaint action', 400);
         break;
 }
@@ -528,6 +544,156 @@ function handleSubmitMoreInfo() {
         $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
         
         sendSuccess([], 'Additional information submitted successfully');
+        
+    } catch (Exception $e) {
+        sendError('Failed to submit additional information: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Customer submits feedback for replied complaint (new simplified version)
+ */
+function handleCustomerFeedback() {
+    try {
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
+        // Validate user is customer
+        if ($currentUser['role'] !== 'customer') {
+            sendError('Only customers can submit feedback', 403);
+        }
+        
+        $ticketId = $_POST['ticket_id'] ?? '';
+        $rating = $_POST['rating'] ?? '';
+        $remarks = $_POST['remarks'] ?? '';
+        
+        if (empty($ticketId) || empty($rating)) {
+            sendError('Ticket ID and rating are required');
+        }
+        
+        if (!is_numeric($rating) || $rating < 1 || $rating > 5) {
+            sendError('Invalid rating value');
+        }
+        
+        require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../models/Transaction.php';
+        
+        $complaintModel = new Complaint();
+        $transactionModel = new Transaction();
+        
+        // Verify ticket belongs to customer and is in replied status
+        $ticket = $complaintModel->findByComplaintId($ticketId);
+        
+        if (!$ticket) {
+            sendError('Ticket not found', 404);
+        }
+        
+        if ($ticket['customer_id'] != $currentUser['customer_id']) {
+            sendError('Access denied', 403);
+        }
+        
+        if (strtolower($ticket['status']) !== 'replied') {
+            sendError('Feedback can only be given for replied tickets', 400);
+        }
+        
+        // Update complaint with rating and close it
+        $updateData = [
+            'rating' => $rating,
+            'rating_remarks' => $remarks,
+            'status' => 'Closed'
+        ];
+        
+        $success = $complaintModel->updateComplaint($ticketId, $updateData);
+        
+        if ($success) {
+            // Log the feedback transaction
+            $transactionModel->createTransaction([
+                'complaint_id' => $ticketId,
+                'transaction_type' => 'feedback',
+                'remarks' => "Customer feedback submitted. Rating: $rating/5" . ($remarks ? " - $remarks" : ''),
+                'created_by' => $currentUser['customer_id']
+            ]);
+            
+            sendSuccess([], 'Feedback submitted successfully');
+        } else {
+            sendError('Failed to submit feedback', 500);
+        }
+        
+    } catch (Exception $e) {
+        sendError('Failed to submit feedback: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Customer submits additional information for reverted complaint (new simplified version)
+ */
+function handleCustomerAdditionalInfo() {
+    try {
+        require_once __DIR__ . '/../utils/SessionManager.php';
+        
+        $currentUser = SessionManager::getCurrentUser();
+        if (!$currentUser) {
+            sendError('User not authenticated', 401);
+        }
+        
+        // Validate user is customer
+        if ($currentUser['role'] !== 'customer') {
+            sendError('Only customers can submit additional information', 403);
+        }
+        
+        $ticketId = $_POST['ticket_id'] ?? '';
+        $additionalInfo = $_POST['additional_info'] ?? '';
+        
+        if (empty($ticketId) || empty(trim($additionalInfo))) {
+            sendError('Ticket ID and additional information are required');
+        }
+        
+        require_once __DIR__ . '/../models/Complaint.php';
+        require_once __DIR__ . '/../models/Transaction.php';
+        
+        $complaintModel = new Complaint();
+        $transactionModel = new Transaction();
+        
+        // Verify ticket belongs to customer and is in reverted status
+        $ticket = $complaintModel->findByComplaintId($ticketId);
+        
+        if (!$ticket) {
+            sendError('Ticket not found', 404);
+        }
+        
+        if ($ticket['customer_id'] != $currentUser['customer_id']) {
+            sendError('Access denied', 403);
+        }
+        
+        if (strtolower($ticket['status']) !== 'reverted') {
+            sendError('Additional information can only be provided for reverted tickets', 400);
+        }
+        
+        // Update complaint status to pending
+        $updateData = [
+            'status' => 'Pending',
+            'description' => $ticket['description'] . "\n\n--- ADDITIONAL INFORMATION ---\n" . $additionalInfo
+        ];
+        
+        $success = $complaintModel->updateComplaint($ticketId, $updateData);
+        
+        if ($success) {
+            // Log the additional information transaction
+            $transactionModel->createTransaction([
+                'complaint_id' => $ticketId,
+                'transaction_type' => 'additional_info',
+                'remarks' => "Customer provided additional information: " . substr($additionalInfo, 0, 100) . (strlen($additionalInfo) > 100 ? '...' : ''),
+                'created_by' => $currentUser['customer_id']
+            ]);
+            
+            sendSuccess([], 'Additional information submitted successfully');
+        } else {
+            sendError('Failed to submit additional information', 500);
+        }
         
     } catch (Exception $e) {
         sendError('Failed to submit additional information: ' . $e->getMessage());

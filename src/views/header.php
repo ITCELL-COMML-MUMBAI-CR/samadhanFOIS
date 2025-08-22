@@ -18,15 +18,20 @@
     <link href="<?php echo BASE_URL; ?>css/style.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>css/navbar.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>css/help.css" rel="stylesheet">
+    
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
     <?php if (isset($pageTitle) && ($pageTitle === 'My Grievances' || $pageTitle === 'Customer Home')): ?>
     <link href="<?php echo BASE_URL; ?>css/customer_home.css" rel="stylesheet">
+    <?php endif; ?>
+    <?php if (isset($pageTitle) && $pageTitle === 'My Support Tickets'): ?>
+    <link href="<?php echo BASE_URL; ?>css/customer_tickets.css" rel="stylesheet">
     <?php endif; ?>
     <?php if (isset($pageTitle) && $pageTitle === 'Complaints Hub'): ?>
     <link href="<?php echo BASE_URL; ?>css/complaints_hub.css" rel="stylesheet">
     <?php endif; ?>
-    <?php if (isset($pageTitle) && $pageTitle === 'Support & Assistance'): ?>
-    <link href="<?php echo BASE_URL; ?>css/support_assistance.css" rel="stylesheet">
-    <?php endif; ?>
+
     
     <style>
         :root {

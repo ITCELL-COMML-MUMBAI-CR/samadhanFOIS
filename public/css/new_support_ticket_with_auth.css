@@ -167,6 +167,80 @@
     font-weight: 500;
 }
 
+/* File Preview Cards */
+.file-preview-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.file-preview-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.file-preview-card .card-img-top {
+    height: 150px;
+    object-fit: cover;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.file-preview-card .card-body {
+    padding: 0.75rem;
+    position: relative;
+}
+
+.file-preview-card .btn-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.file-preview-card .btn-remove:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Non-image file preview */
+.file-preview-card .file-icon {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.file-preview-card .file-icon i {
+    font-size: 3rem;
+    color: #6c757d;
+}
+
+/* File upload area disabled state */
+.file-upload-area.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.file-upload-area.disabled:hover {
+    transform: none;
+    border-color: #dee2e6;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
 /* Form Validation Styles */
 .form-control.is-valid {
     border-color: #28a745;

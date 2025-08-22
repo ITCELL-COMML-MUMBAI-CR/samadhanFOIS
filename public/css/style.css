@@ -39,7 +39,10 @@ body {
     font-weight: 400;
     letter-spacing: -0.022em;
 }
-
+.main-content {
+    margin: 5px;
+    padding: 5px;
+}
 /* Apple-inspired Card Enhancements */
 .card {
     border: none;

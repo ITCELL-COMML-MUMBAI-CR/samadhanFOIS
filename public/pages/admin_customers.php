@@ -1,312 +1,16 @@
 <?php
 /**
- * Admin Customer Management Page
- * Provides comprehensive customer management for administrators
+ * Admin Customer Management Page (View)
+ * This file only handles the presentation of customer data provided by the AdminController.
+ * All business logic, database queries, and session handling are now in AdminController.php.
  */
 
-require_once '../src/utils/SessionManager.php';
-
-// Handle AJAX requests first, before any HTML output
-if (isset($_POST['action']) && $_POST['action'] === 'ajax') {
-    // Prevent stray output from corrupting JSON response
-    error_reporting(0);
-    ini_set('display_errors', 0);
-
-    header('Content-Type: application/json');
-
-    try {
-        // Start session and check authentication for AJAX requests
-        SessionManager::start();
-
-        // Check authentication for AJAX requests
-        if (!SessionManager::isLoggedIn()) {
-            echo json_encode(['success' => false, 'message' => 'Session expired. Please refresh the page and try again.']);
-            exit;
-        }
-
-        // Get current user data using the updated SessionManager
-        $currentUser = SessionManager::getCurrentUser();
-        if (!$currentUser) {
-            echo json_encode(['success' => false, 'message' => 'Session expired. Please refresh the page and try again.']);
-            exit;
-        }
-
-        // Check if user has admin role
-        if (!SessionManager::hasRole('admin')) {
-            echo json_encode(['success' => false, 'message' => 'Access denied. Admin privileges required.']);
-            exit;
-        }
-
-        // Load models for AJAX requests
-        require_once '../src/models/BaseModel.php';
-        require_once '../src/models/Customer.php';
-        require_once '../src/utils/Helpers.php';
-        require_once '../src/utils/Database.php';
-
-        $db = Database::getInstance();
-        $connection = $db->getConnection();
-
-        $action = $_POST['ajax_action'] ?? '';
-        $response = ['success' => false, 'message' => 'Invalid action'];
-
-        switch ($action) {
-            case 'delete_customer':
-                $customerId = sanitizeInput($_POST['customer_id'] ?? '');
-                if (!empty($customerId)) {
-                    $customerModel = new Customer();
-                    $result = $customerModel->deleteCustomer($customerId);
-                    if ($result) {
-                        $response = ['success' => true, 'message' => 'Customer deleted successfully'];
-                    } else {
-                        $response = ['success' => false, 'message' => 'Failed to delete customer'];
-                    }
-                }
-                break;
-
-            case 'update_customer':
-                $customerId = sanitizeInput($_POST['customer_id'] ?? '');
-                $data = [
-                    'Name' => sanitizeInput($_POST['Name'] ?? ''),
-                    'Email' => sanitizeInput($_POST['Email'] ?? ''),
-                    'MobileNumber' => sanitizeInput($_POST['MobileNumber'] ?? ''),
-                    'CompanyName' => sanitizeInput($_POST['CompanyName'] ?? ''),
-                    'Designation' => sanitizeInput($_POST['Designation'] ?? '')
-                ];
-
-                $customerModel = new Customer();
-                $errors = $customerModel->validateCustomerData($data);
-
-                if (!empty($errors)) {
-                    $response = ['success' => false, 'message' => implode('<br>', $errors)];
-                    echo json_encode($response);
-                    exit;
-                }
-
-                // Handle password change if provided
-                $newPassword = $_POST['Password'] ?? '';
-                $confirmPassword = $_POST['confirm_password'] ?? '';
-
-                if (!empty($newPassword)) {
-                    if ($newPassword !== $confirmPassword) {
-                        $response = ['success' => false, 'message' => 'Passwords do not match'];
-                        echo json_encode($response);
-                        exit;
-                    }
-
-                    if (strlen($newPassword) < 6) {
-                        $response = ['success' => false, 'message' => 'Password must be at least 6 characters long'];
-                        echo json_encode($response);
-                        exit;
-                    }
-
-                    // Hash the new password
-                    $data['Password'] = password_hash($newPassword, PASSWORD_DEFAULT);
-                }
-
-                if (!empty($customerId)) {
-                    $customerModel = new Customer();
-                    $result = $customerModel->updateCustomer($customerId, $data);
-                    if ($result) {
-                        $response = ['success' => true, 'message' => 'Customer updated successfully'];
-                    } else {
-                        $response = ['success' => false, 'message' => 'Failed to update customer'];
-                    }
-                }
-                break;
-
-            case 'get_customer_details':
-                $customerId = sanitizeInput($_POST['customer_id'] ?? '');
-                if (!empty($customerId)) {
-                    $customerModel = new Customer();
-                    $customer = $customerModel->getCustomerById($customerId);
-                    if ($customer) {
-                        // Get customer's complaints
-                        try {
-                            $complaintsSql = "SELECT * FROM complaints WHERE customer_id = ? ORDER BY created_at DESC LIMIT 10";
-                            $stmt = $connection->prepare($complaintsSql);
-                            $stmt->execute([$customerId]);
-                            $complaints = $stmt->fetchAll();
-                        } catch (Exception $e) {
-                            // If complaints table doesn't exist or has different structure, use empty array
-                            $complaints = [];
-                        }
-
-                        $html = '
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-primary mb-3">Customer Information</h6>
-                                <table class="table table-sm">
-                                    <tr><td><strong>Customer ID:</strong></td><td>' . htmlspecialchars($customer['CustomerID']) . '</td></tr>
-                                    <tr><td><strong>Name:</strong></td><td>' . htmlspecialchars($customer['Name']) . '</td></tr>
-                                    <tr><td><strong>Email:</strong></td><td>' . htmlspecialchars($customer['Email']) . '</td></tr>
-                                    <tr><td><strong>Mobile:</strong></td><td>' . htmlspecialchars($customer['MobileNumber']) . '</td></tr>
-                                    <tr><td><strong>Company:</strong></td><td>' . htmlspecialchars($customer['CompanyName']) . '</td></tr>
-                                    <tr><td><strong>Designation:</strong></td><td>' . htmlspecialchars($customer['Designation'] ?: 'Not specified') . '</td></tr>
-                                    <tr><td><strong>Registration Date:</strong></td><td>' . (isset($customer['created_at']) ? date('d M Y', strtotime($customer['created_at'])) : 'Not available') . '</td></tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="text-primary mb-3">Recent Complaints (' . count($complaints) . ')</h6>';
-
-                        if (empty($complaints)) {
-                            $html .= '<p class="text-muted">No complaints found for this customer.</p>';
-                        } else {
-                            $html .= '<div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                                        <table class="table table-sm">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Complaint ID</th>
-                                                    <th>Subject</th>
-                                                    <th>Status</th>
-                                                    <th>Date</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>';
-
-                            foreach ($complaints as $complaint) {
-                                $statusClass = '';
-                                $status = $complaint['status'] ?? 'unknown';
-                                switch ($status) {
-                                    case 'open': $statusClass = 'badge bg-warning'; break;
-                                    case 'in_progress': $statusClass = 'badge bg-info'; break;
-                                    case 'resolved': $statusClass = 'badge bg-success'; break;
-                                    case 'closed': $statusClass = 'badge bg-secondary'; break;
-                                    default: $statusClass = 'badge bg-secondary';
-                                }
-
-                                $complaintId = $complaint['complaint_id'] ?? $complaint['id'] ?? 'N/A';
-                                $subject = $complaint['subject'] ?? $complaint['title'] ?? 'No subject';
-                                $createdAt = isset($complaint['created_at']) ? date('d M Y', strtotime($complaint['created_at'])) : 'N/A';
-
-                                $html .= '<tr>
-                                            <td><small>' . htmlspecialchars($complaintId) . '</small></td>
-                                            <td>' . htmlspecialchars(substr($subject, 0, 30)) . (strlen($subject) > 30 ? '...' : '') . '</td>
-                                            <td><span class="' . $statusClass . '">' . ucfirst(str_replace('_', ' ', $status)) . '</span></td>
-                                            <td><small>' . $createdAt . '</small></td>
-                                          </tr>';
-                            }
-
-                            $html .= '</tbody></table></div>';
-                        }
-
-                        $html .= '</div></div>';
-
-                        $response = ['success' => true, 'html' => $html];
-                    } else {
-                        $response = ['success' => false, 'message' => 'Customer not found'];
-                    }
-                } else {
-                    $response = ['success' => false, 'message' => 'Customer ID is required'];
-                }
-                break;
-        }
-    } catch (Exception $e) {
-        // Catch any uncaught exceptions and return a JSON error
-        http_response_code(500); // Internal Server Error
-        $response = ['success' => false, 'message' => 'A server error occurred: ' . $e->getMessage()];
-    }
-
-    echo json_encode($response);
-    exit;
-}
-
-// For non-AJAX requests, require admin access and load the page
-SessionManager::requireRole('admin');
-
-// Get current user
-$currentUser = SessionManager::getCurrentUser();
-
-// Load models for data
-require_once '../src/models/BaseModel.php';
-require_once '../src/models/Customer.php';
-require_once '../src/utils/Helpers.php';
-require_once '../src/utils/Database.php';
-
-// Include header
-require_once '../src/views/header.php';
+// The variables used in this view ($customers, $totalCustomers, $totalPages, etc.)
+// are expected to be extracted from the $data array passed by the AdminController's customers() method.
 ?>
 
 <!-- Include customer-specific styles -->
 <link href="<?php echo BASE_URL; ?>css/admin_customers.css" rel="stylesheet">
-
-<?php
-$db = Database::getInstance();
-$connection = $db->getConnection();
-
-// Get filters
-$filters = [
-    'search' => sanitizeInput(is_array($_GET['search'] ?? '') ? '' : ($_GET['search'] ?? '')),
-    'company' => sanitizeInput(is_array($_GET['company'] ?? '') ? '' : ($_GET['company'] ?? '')),
-    'status' => sanitizeInput(is_array($_GET['status'] ?? '') ? '' : ($_GET['status'] ?? ''))
-];
-
-// Build query
-$whereConditions = [];
-$params = [];
-
-if (!empty($filters['search'])) {
-    $whereConditions[] = "(c.Name LIKE ? OR c.Email LIKE ? OR c.MobileNumber LIKE ? OR c.CompanyName LIKE ?)";
-    $searchTerm = '%' . $filters['search'] . '%';
-    $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm, $searchTerm]);
-}
-
-if (!empty($filters['company'])) {
-    $whereConditions[] = "c.CompanyName LIKE ?";
-    $params[] = '%' . $filters['company'] . '%';
-}
-
-$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
-
-// Get total count
-$countSql = "SELECT COUNT(*) as count FROM customers c " . $whereClause;
-$stmt = $connection->prepare($countSql);
-$stmt->execute($params);
-$totalCustomers = $stmt->fetch()['count'];
-
-// Pagination
-$page = max(1, intval($_GET['page'] ?? 1));
-$limit = 20;
-$offset = ($page - 1) * $limit;
-$totalPages = ceil($totalCustomers / $limit);
-
-// Get customers
-$sql = "SELECT c.*, 
-        (SELECT COUNT(*) FROM complaints WHERE customer_id = c.CustomerID) as complaint_count
-        FROM customers c 
-        " . $whereClause . " 
-        ORDER BY c.CustomerID DESC 
-        LIMIT ? OFFSET ?";
-
-$stmt = $connection->prepare($sql);
-$stmt->execute(array_merge($params, [$limit, $offset]));
-$customers = $stmt->fetchAll();
-
-// Get unique companies for filter
-$stmt = $connection->prepare("SELECT DISTINCT CompanyName FROM customers WHERE CompanyName IS NOT NULL AND CompanyName != '' ORDER BY CompanyName ASC");
-$stmt->execute();
-$companies = $stmt->fetchAll();
-
-// Get statistics
-$stats = [];
-$stmt = $connection->prepare("SELECT COUNT(*) as count FROM customers");
-$stmt->execute();
-$stats['total_customers'] = $stmt->fetch()['count'];
-
-$stmt = $connection->prepare("SELECT COUNT(*) as count FROM customers WHERE CustomerID IN (SELECT DISTINCT customer_id FROM complaints)");
-$stmt->execute();
-$stats['customers_with_complaints'] = $stmt->fetch()['count'];
-
-$stmt = $connection->prepare("SELECT COUNT(DISTINCT CompanyName) as count FROM customers WHERE CompanyName IS NOT NULL AND CompanyName != ''");
-$stmt->execute();
-$stats['unique_companies'] = $stmt->fetch()['count'];
-
-$stmt = $connection->prepare("SELECT COUNT(*) as count FROM customers WHERE CustomerID LIKE 'ED" . date('Y') . "%'");
-$stmt->execute();
-$stats['new_this_year'] = $stmt->fetch()['count'];
-
-// Set page title for header
-$pageTitle = 'Customer Management';
-?>
 
 <div class="container-fluid py-4">
     <div class="row">
@@ -331,7 +35,7 @@ $pageTitle = 'Customer Management';
                 </div>
             </div>
         </div>
-    </div>  
+    </div>
 
     <!-- Filters -->
     <div class="row mb-4">
@@ -340,16 +44,16 @@ $pageTitle = 'Customer Management';
                 <div class="card-body">
                     <form method="GET" class="row g-3">
                         <div class="col-md-4">
-                            <input type="text" class="form-control" name="search" 
-                                   placeholder="Search by name, email, mobile, or company" 
-                                   value="<?php echo htmlspecialchars(is_array($filters['search']) ? '' : $filters['search']); ?>">
+                            <input type="text" class="form-control" name="search"
+                                   placeholder="Search by name, email, mobile, or company"
+                                   value="<?php echo htmlspecialchars($filters['search'] ?? ''); ?>">
                         </div>
                         <div class="col-md-3">
                             <select name="company" class="form-select">
                                 <option value="">All Companies</option>
                                 <?php foreach ($companies as $company): ?>
-                                    <option value="<?php echo htmlspecialchars($company['CompanyName']); ?>" 
-                                            <?php echo ($filters['company'] === $company['CompanyName']) ? 'selected' : ''; ?>>
+                                    <option value="<?php echo htmlspecialchars($company['CompanyName']); ?>"
+                                            <?php echo (($filters['company'] ?? '') === $company['CompanyName']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($company['CompanyName']); ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -383,7 +87,7 @@ $pageTitle = 'Customer Management';
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
-                            <i class="fas fa-list"></i> Customers 
+                            <i class="fas fa-list"></i> Customers
                             <span class="badge bg-secondary"><?php echo number_format($totalCustomers); ?></span>
                         </h5>
                         <div class="d-flex gap-2">
@@ -430,7 +134,7 @@ $pageTitle = 'Customer Management';
                                             <td>
                                                 <strong><?php echo htmlspecialchars($customer['Name']); ?></strong>
                                             </td>
-                                                                                         <td>
+                                            <td>
                                                  <?php echo htmlspecialchars($customer['Email']); ?>
                                              </td>
                                              <td>
@@ -449,18 +153,18 @@ $pageTitle = 'Customer Management';
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
-                                                    <button type="button" class="btn btn-outline-primary" 
+                                                    <button type="button" class="btn btn-outline-primary"
                                                             onclick="openEditCustomer('<?php echo htmlspecialchars($customer['CustomerID']); ?>')"
                                                             title="Edit Customer">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-outline-info" 
+                                                    <button type="button" class="btn btn-outline-info"
                                                             onclick="viewCustomerDetails('<?php echo htmlspecialchars($customer['CustomerID']); ?>')"
                                                             title="View Details">
                                                         <i class="fas fa-eye"></i>
                                                     </button>
-                                                    <button type="button" class="btn btn-outline-danger" 
-                                                            onclick="deleteCustomer('<?php echo htmlspecialchars($customer['CustomerID']); ?>', '<?php echo htmlspecialchars($customer['Name']); ?>')"
+                                                    <button type="button" class="btn btn-outline-danger"
+                                                            onclick="deleteCustomer('<?php echo htmlspecialchars($customer['CustomerID']); ?>', '<?php echo htmlspecialchars(addslashes($customer['Name'])); ?>')"
                                                             title="Delete Customer">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
@@ -473,9 +177,11 @@ $pageTitle = 'Customer Management';
                         </table>
                     </div>
                 </div>
-                
+
                 <!-- Pagination -->
-                <?php if ($totalPages > 1): ?>
+                <?php if ($totalPages > 1):
+                    $page = $_GET['page'] ?? 1;
+                ?>
                     <div class="card-footer">
                         <nav aria-label="Customer pagination">
                             <ul class="pagination justify-content-center mb-0">
@@ -486,15 +192,15 @@ $pageTitle = 'Customer Management';
                                         </a>
                                     </li>
                                 <?php endif; ?>
-                                
+
                                 <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                                    <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
+                                    <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
                                         <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>">
                                             <?php echo $i; ?>
                                         </a>
                                     </li>
                                 <?php endfor; ?>
-                                
+
                                 <?php if ($page < $totalPages): ?>
                                     <li class="page-item">
                                         <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>">
@@ -526,7 +232,7 @@ $pageTitle = 'Customer Management';
                     <input type="hidden" id="editCustomerId" name="customer_id">
                     <input type="hidden" name="action" value="ajax">
                     <input type="hidden" name="ajax_action" value="update_customer">
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-floating mb-3">
@@ -545,7 +251,7 @@ $pageTitle = 'Customer Management';
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-floating mb-3">
@@ -564,8 +270,8 @@ $pageTitle = 'Customer Management';
                             </div>
                         </div>
                     </div>
-                    
-                                         <div class="row">
+
+                     <div class="row">
                          <div class="col-md-12">
                              <div class="form-floating mb-3">
                                  <input type="text" class="form-control" id="editDesignation" name="Designation" placeholder="Designation">
@@ -575,7 +281,7 @@ $pageTitle = 'Customer Management';
                              </div>
                          </div>
                      </div>
-                     
+
                      <!-- Password Change Section -->
                      <hr class="my-4">
                      <div class="password-section">
@@ -635,7 +341,7 @@ $pageTitle = 'Customer Management';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="customerDetailsContent">
-                <!-- Content will be loaded dynamically -->
+                <!-- Content will be loaded dynamically via AJAX -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -646,7 +352,5 @@ $pageTitle = 'Customer Management';
     </div>
 </div>
 
-<!-- Include JavaScript files -->
+<!-- Include JavaScript file -->
 <script src="<?php echo BASE_URL; ?>js/admin_customers.js"></script>
-
-<?php require_once '../src/views/footer.php'; ?>
