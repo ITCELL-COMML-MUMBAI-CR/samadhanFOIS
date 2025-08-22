@@ -42,6 +42,7 @@ $controllerName = $segments[0] ?? 'home';
 $action = $segments[1] ?? 'index';
 $params = array_slice($segments, 2);
 
+
 // Handle API requests first (before including header)
 if ($controllerName === 'api') {
     // Handle API requests
@@ -97,6 +98,7 @@ switch ($controllerName) {
         } elseif ($action === 'additional-info') {
             $controller->submitAdditionalInfo();
         } elseif ($action === 'details') {
+            echo "<script>console.log('PARAMS $params[0]');</script>";
             $controller->getTicketDetails($params[0] ?? '');
         } elseif ($action === 'history') {
             $controller->getTransactionHistory($params[0] ?? '');

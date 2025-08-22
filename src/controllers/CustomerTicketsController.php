@@ -29,6 +29,11 @@ class CustomerTicketsController extends BaseController {
         // Get all tickets for customer (only pending, replied, reverted)
         $tickets = $complaintModel->findByCustomerWithFilters($customerId, [], '', 0, 0);
         
+        // Filter out closed tickets
+        $tickets = array_filter($tickets, function($ticket) {
+            return strtolower($ticket['status']) !== 'closed';
+        });
+        
         // Prepare data for view
         $data = [
             'pageTitle' => 'My Support Tickets',
@@ -42,7 +47,7 @@ class CustomerTicketsController extends BaseController {
         // Load view
         $this->loadView('header', $data);
         $this->loadView('pages/customer_tickets', $data);
-        $this->loadView('footer');
+        $this->loadView('footer', $data);
     }
     
     /**
@@ -189,12 +194,11 @@ class CustomerTicketsController extends BaseController {
     public function getTicketDetails($ticketId) {
         $currentUser = SessionManager::getCurrentUser();
         $customerId = $currentUser['customer_id'];
-        
         // Validate ticket ID
         $ticketId = intval($ticketId);
-        if ($ticketId <= 0) {
+        if (strlen($ticketId) <= 0) {
             http_response_code(400);
-            echo json_encode(['error' => true, 'message' => 'Invalid ticket ID']);
+            echo json_encode(['error' => true, 'message' => 'Invalid ticket ID $ticketId']);
             return;
         }
         
@@ -203,7 +207,7 @@ class CustomerTicketsController extends BaseController {
         
         try {
             // Get ticket details
-            $ticket = $complaintModel->findById($ticketId);
+            $ticket = $complaintModel->findByComplaintId($ticketId);
             
             // Verify ticket belongs to customer
             if (!$ticket || $ticket['customer_id'] != $customerId) {

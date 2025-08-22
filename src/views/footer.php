@@ -1,7 +1,4 @@
-    </main>
-    <!-- Main Content End -->
-    
-    <!-- Footer -->
+</main>
     <footer class="footer py-4 mt-5" style="background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #4a5568 100%); color: #e2e8f0;">
         <div class="container">
             <div class="row">
@@ -19,33 +16,25 @@
         </div>
     </footer>
     
-    <!-- jQuery (required for DataTables) -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     
-    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- DataTables JS -->
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
     
-    <!-- AOS (Animate On Scroll) JS -->
     <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
     
-    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <!-- Custom JavaScript -->
     <script src="<?php echo BASE_URL; ?>js/app.js"></script>
     <script src="<?php echo BASE_URL; ?>js/help.js"></script>
     <?php if (!isset($_SESSION['user_logged_in']) || !$_SESSION['user_logged_in']): ?>
-        <!-- Load navbar.js for non-logged-in users -->
         <script src="<?php echo BASE_URL; ?>js/navbar.js"></script>
     <?php endif; ?>
     
-    <!-- Page-specific JavaScript -->
     <?php if (isset($customJS)): ?>
         <?php foreach ((array)$customJS as $jsFile): ?>
             <script src="<?php echo BASE_URL . $jsFile; ?>"></script>

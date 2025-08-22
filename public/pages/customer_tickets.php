@@ -18,7 +18,6 @@ if (!isset($currentUser)) {
 }
 ?>
 
-<!-- Page Header -->
 <div class="page-header-section">
     <div class="page-title-section">
         <h1 class="page-title">
@@ -33,7 +32,6 @@ if (!isset($currentUser)) {
     </div>
 </div>
 
-<!-- DataTables Container -->
 <div class="tickets-container">
     <div class="card">
         <div class="card-body">
@@ -137,7 +135,6 @@ if (!isset($currentUser)) {
     </div>
 </div>
 
-<!-- Feedback Modal -->
 <div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -177,7 +174,7 @@ if (!isset($currentUser)) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success submit-feedback-btn">
+                <button type="button" class="btn btn-success" id="submitFeedbackBtn">
                     <i class="fas fa-check"></i> Submit Feedback
                 </button>
             </div>
@@ -185,7 +182,6 @@ if (!isset($currentUser)) {
     </div>
 </div>
 
-<!-- Additional Information Modal -->
 <div class="modal fade" id="additionalInfoModal" tabindex="-1" aria-labelledby="additionalInfoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -214,7 +210,7 @@ if (!isset($currentUser)) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-warning submit-additional-info-btn">
+                <button type="button" class="btn btn-warning" id="submitAdditionalInfoBtn">
                     <i class="fas fa-paper-plane"></i> Submit Information
                 </button>
             </div>
@@ -222,7 +218,6 @@ if (!isset($currentUser)) {
     </div>
 </div>
 
-<!-- Ticket Details Modal -->
 <div class="modal fade" id="ticketDetailsModal" tabindex="-1" aria-labelledby="ticketDetailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -233,10 +228,7 @@ if (!isset($currentUser)) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="ticketDetailsContent">
-                <!-- Ticket details will be loaded here -->
-            </div>
+                </div>
         </div>
     </div>
 </div>
-
-

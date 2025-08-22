@@ -1,418 +1,241 @@
 /**
  * Customer Tickets JavaScript
- * Handles DataTables initialization and modal interactions
+ * Handles DataTables initialization and modal interactions for the customer-facing ticket page.
+ *
+ * This script relies on jQuery and the DataTables library, which must be loaded
+ * before this script is executed.
  */
 
-// Global variables
-let ticketsTable;
-// Use existing BASE_URL if available, otherwise define it
-const CUSTOMER_TICKETS_BASE_URL = (typeof BASE_URL !== 'undefined') ? BASE_URL : window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+// Use existing BASE_URL if available, otherwise define a fallback.
+// This ensures API calls are directed to the correct path.
+const CUSTOMER_TICKETS_BASE_URL = (typeof BASE_URL !== 'undefined') ? BASE_URL : window.location.origin + '/samadhanFOIS/public/';
+
+// Main function to run when the document is fully loaded and ready.
+$(document).ready(function() {
+    console.log("Customer Tickets JS Loaded. Initializing...");
+
+    // 1. Initialize the DataTable on the table with the ID 'ticketsTable'.
+    // This adds search, sorting, and pagination functionality.
+    const ticketsTable = $('#ticketsTable').DataTable({
+        "responsive": true, // Makes the table responsive to screen size changes.
+        "pageLength": 10, // Default number of entries to show.
+        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]], // Dropdown options for entries per page.
+        "order": [[5, 'desc']], // Default sort order: 6th column (Created Date) descending.
+        "language": { // Customize default text.
+            "search": "_INPUT_",
+            "searchPlaceholder": "Search tickets...",
+            "lengthMenu": "Show _MENU_ entries",
+            "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+            "paginate": { "first": "First", "last": "Last", "next": "&rarr;", "previous": "&larr;" }
+        },
+        "columnDefs": [
+            { "orderable": false, "targets": 6 } // Disable sorting on the 'Actions' column (7th column).
+        ]
+    });
+    console.log("DataTable Initialized.");
+
+    // 2. Setup Event Listeners using jQuery's event delegation.
+    // This is crucial because DataTables rebuilds the table on sort/pagination,
+    // and direct event listeners would be lost. Delegation ensures events work on all table rows.
+    $('#ticketsTable tbody').on('click', '.view-ticket-btn', function () {
+        const ticketId = $(this).data('ticket-id');
+        console.log("View button clicked for ticket:", ticketId);
+        viewTicket(ticketId);
+    });
+
+    $('#ticketsTable tbody').on('click', '.give-feedback-btn', function () {
+        const ticketId = $(this).data('ticket-id');
+        console.log("Feedback button clicked for ticket:", ticketId);
+        giveFeedback(ticketId);
+    });
+
+    $('#ticketsTable tbody').on('click', '.provide-info-btn', function () {
+        const ticketId = $(this).data('ticket-id');
+        console.log("Add Info button clicked for ticket:", ticketId);
+        provideAdditionalInfo(ticketId);
+    });
+
+    // Event listeners for modal submission buttons.
+    $('#submitFeedbackBtn').on('click', function() {
+        submitFeedback();
+    });
+
+    $('#submitAdditionalInfoBtn').on('click', function() {
+        submitAdditionalInfo();
+    });
+
+    console.log("Event listeners are set up.");
+});
+
+
+// --- Function Definitions ---
 
 /**
- * View ticket details
+ * Fetches and displays the details for a specific ticket in a modal.
+ * @param {string} ticketId - The ID of the ticket to view.
  */
 function viewTicket(ticketId) {
-    console.log('viewTicket function called with ticketId:', ticketId);
     if (!ticketId) return;
-    
-    // Show loading state
+
     const modal = new bootstrap.Modal(document.getElementById('ticketDetailsModal'));
-    const content = document.getElementById('ticketDetailsContent');
-    content.innerHTML = '<div class="loading-spinner"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading ticket details...</p></div>';
-    modal.show();
+    const content = $('#ticketDetailsContent');
     
-    // Fetch ticket details
-    fetch(`${CUSTOMER_TICKETS_BASE_URL}api/complaints/${ticketId}`)
-        .then(response => response.json())
+    // Show a loading state in the modal body.
+    content.html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading ticket details...</p></div>');
+    modal.show();
+
+    // Fetch the ticket data from the API.
+    fetch(`${CUSTOMER_TICKETS_BASE_URL}customer-tickets/details/${ticketId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
         .then(data => {
-            if (data.error) {
-                content.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
-            } else {
-                content.innerHTML = generateTicketDetailsHTML(data.data);
-                // Load transaction history
-                loadTransactionHistory(ticketId);
+            if (data.error || !data.data) {
+                throw new Error(data.message || 'Invalid data received');
             }
+            // Populate the modal with the ticket details and load its history.
+            content.html(generateTicketDetailsHTML(data.data));
+            loadTransactionHistory(ticketId);
         })
         .catch(error => {
             console.error('Error fetching ticket details:', error);
-            content.innerHTML = '<div class="alert alert-danger">Failed to load ticket details. Please try again.</div>';
+            content.html(`<div class="alert alert-danger">Error: Could not load ticket details. ${error.message}</div>`);
         });
 }
 
 /**
- * Give feedback for a ticket
+ * Opens the "Give Feedback" modal and sets the ticket ID.
+ * @param {string} ticketId - The ID of the ticket.
  */
 function giveFeedback(ticketId) {
-    if (!ticketId) return;
-    
-    // Set the ticket ID in the form
-    document.getElementById('feedbackTicketId').value = ticketId;
-    
-    // Reset form
-    document.getElementById('feedbackForm').reset();
-    
-    // Show modal
+    $('#feedbackTicketId').val(ticketId);
+    $('#feedbackForm')[0].reset();
+    $('.rating-stars input').prop('checked', false); // Reset rating stars.
     const modal = new bootstrap.Modal(document.getElementById('feedbackModal'));
     modal.show();
 }
 
 /**
- * Provide additional information for a ticket
+ * Opens the "Provide Additional Info" modal and sets the ticket ID.
+ * @param {string} ticketId - The ID of the ticket.
  */
 function provideAdditionalInfo(ticketId) {
-    if (!ticketId) return;
-    
-    // Set the ticket ID in the form
-    document.getElementById('additionalInfoTicketId').value = ticketId;
-    
-    // Reset form
-    document.getElementById('additionalInfoForm').reset();
-    
-    // Show modal
+    $('#additionalInfoTicketId').val(ticketId);
+    $('#additionalInfoForm')[0].reset();
     const modal = new bootstrap.Modal(document.getElementById('additionalInfoModal'));
     modal.show();
 }
 
 /**
- * Submit feedback
+ * Submits the feedback form via an AJAX POST request.
  */
 function submitFeedback() {
     const form = document.getElementById('feedbackForm');
     const formData = new FormData(form);
-    
-    // Validate rating
     const rating = formData.get('rating');
+
+    // Basic validation.
     if (!rating) {
-        showAlert('Please select a rating', 'warning');
+        if (window.showAlert) showAlert('Please select a rating.', 'warning');
+        else alert('Please select a rating.');
         return;
     }
     
-    // Show loading state
-    const submitBtn = document.querySelector('#feedbackModal .btn-success');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    submitBtn.disabled = true;
-    
-    fetch(`${CUSTOMER_TICKETS_BASE_URL}api/complaints/feedback`, {
+    const submitBtn = $('#submitFeedbackBtn');
+    submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...');
+
+    fetch(`${CUSTOMER_TICKETS_BASE_URL}customer-tickets/feedback`, {
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            showAlert(data.message, 'error');
-        } else {
-            showAlert('Feedback submitted successfully!', 'success');
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('feedbackModal'));
-            modal.hide();
-            // Refresh table
-            if (ticketsTable) {
-                ticketsTable.ajax.reload();
-            } else {
-                window.location.reload();
-            }
+            throw new Error(data.message);
         }
+        if (window.showAlert) showAlert('Feedback submitted successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+        setTimeout(() => window.location.reload(), 1500); // Reload page to reflect changes.
     })
     .catch(error => {
         console.error('Error submitting feedback:', error);
-        showAlert('Failed to submit feedback. Please try again.', 'error');
+        if (window.showAlert) showAlert(`Error: ${error.message}`, 'danger');
     })
     .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        submitBtn.prop('disabled', false).html('<i class="fas fa-check"></i> Submit Feedback');
     });
 }
 
 /**
- * Submit additional information
+ * Submits the additional info form via an AJAX POST request.
  */
 function submitAdditionalInfo() {
     const form = document.getElementById('additionalInfoForm');
     const formData = new FormData(form);
-    
-    // Validate additional info
     const additionalInfo = formData.get('additional_info');
-    if (!additionalInfo.trim()) {
-        showAlert('Please provide additional information', 'warning');
+    
+    // Basic validation.
+    if (!additionalInfo || additionalInfo.trim() === '') {
+        if (window.showAlert) showAlert('Please provide the requested information.', 'warning');
+        else alert('Please provide the requested information.');
         return;
     }
-    
-    // Show loading state
-    const submitBtn = document.querySelector('#additionalInfoModal .btn-warning');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-    submitBtn.disabled = true;
-    
-    fetch(`${CUSTOMER_TICKETS_BASE_URL}api/complaints/additional-info`, {
+
+    const submitBtn = $('#submitAdditionalInfoBtn');
+    submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...');
+
+    fetch(`${CUSTOMER_TICKETS_BASE_URL}customer-tickets/additional-info`, {
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            showAlert(data.message, 'error');
-        } else {
-            showAlert('Additional information submitted successfully!', 'success');
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('additionalInfoModal'));
-            modal.hide();
-            // Refresh table
-            if (ticketsTable) {
-                ticketsTable.ajax.reload();
-            } else {
-                window.location.reload();
-            }
+            throw new Error(data.message);
         }
+        if (window.showAlert) showAlert('Information submitted successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('additionalInfoModal')).hide();
+        setTimeout(() => window.location.reload(), 1500); // Reload page to reflect changes.
     })
     .catch(error => {
         console.error('Error submitting additional info:', error);
-        showAlert('Failed to submit additional information. Please try again.', 'error');
+        if (window.showAlert) showAlert(`Error: ${error.message}`, 'danger');
     })
     .finally(() => {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
+        submitBtn.prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Submit Information');
     });
 }
 
-/**
- * Refresh the DataTable
- */
-function refreshTable() {
-    if (ticketsTable) {
-        ticketsTable.ajax.reload();
-    } else {
-        window.location.reload();
-    }
-}
-
-// Immediately expose all functions to global scope
-window.viewTicket = viewTicket;
-window.giveFeedback = giveFeedback;
-window.provideAdditionalInfo = provideAdditionalInfo;
-window.submitFeedback = submitFeedback;
-window.submitAdditionalInfo = submitAdditionalInfo;
-window.refreshTable = refreshTable;
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Customer Tickets JS: DOM loaded, initializing...');
-    initializeDataTable();
-    initializeModals();
-    initializeEventListeners();
-});
+// --- Helper Functions ---
 
 /**
- * Initialize DataTables
- */
-function initializeDataTable() {
-    ticketsTable = $('#ticketsTable').DataTable({
-        responsive: true,
-        pageLength: 10,
-        lengthMenu: [[5, 10, 25, 50], [5, 10, 25, 50]],
-        order: [[5, 'desc']], // Sort by created date descending
-        columnDefs: [
-            {
-                targets: [0], // Ticket ID column
-                width: '100px'
-            },
-            {
-                targets: [1], // Type column
-                width: '150px'
-            },
-            {
-                targets: [2], // Description column
-                width: '300px'
-            },
-            {
-                targets: [3], // Location column
-                width: '120px'
-            },
-            {
-                targets: [4], // Status column
-                width: '120px'
-            },
-            {
-                targets: [5], // Created Date column
-                width: '120px'
-            },
-            {
-                targets: [6], // Actions column
-                width: '120px',
-                orderable: false,
-                searchable: false
-            }
-        ],
-        language: {
-            search: "Search tickets:",
-            lengthMenu: "Show _MENU_ tickets per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ tickets",
-            infoEmpty: "Showing 0 to 0 of 0 tickets",
-            infoFiltered: "(filtered from _MAX_ total tickets)",
-            emptyTable: "No tickets found",
-            paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
-            }
-        },
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-             '<"row"<"col-sm-12"tr>>' +
-             '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-        initComplete: function() {
-            console.log('DataTable initialization complete');
-            // Add custom styling to DataTables elements
-            this.api().columns().every(function() {
-                let column = this;
-                let title = column.header().textContent;
-                
-                // Add tooltips to column headers
-                $(column.header()).attr('title', 'Click to sort by ' + title);
-            });
-        }
-    });
-    
-    // Add event listeners after DataTable is initialized
-    $('#ticketsTable').on('click', '.view-ticket-btn', function() {
-        const ticketId = $(this).data('ticket-id');
-        console.log('View ticket button clicked via DataTable event for ticket:', ticketId);
-        viewTicket(ticketId);
-    });
-    
-    $('#ticketsTable').on('click', '.give-feedback-btn', function() {
-        const ticketId = $(this).data('ticket-id');
-        console.log('Give feedback button clicked via DataTable event for ticket:', ticketId);
-        giveFeedback(ticketId);
-    });
-    
-    $('#ticketsTable').on('click', '.provide-info-btn', function() {
-        const ticketId = $(this).data('ticket-id');
-        console.log('Provide info button clicked via DataTable event for ticket:', ticketId);
-        provideAdditionalInfo(ticketId);
-    });
-}
-
-/**
- * Initialize modal interactions
- */
-function initializeModals() {
-    // Initialize Bootstrap modals
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        new bootstrap.Modal(modal);
-    });
-    
-    // Add event listeners for modal close
-    const modalCloseButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
-    modalCloseButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            const modalInstance = bootstrap.Modal.getInstance(modal);
-            if (modalInstance) {
-                modalInstance.hide();
-            }
-        });
-    });
-}
-
-/**
- * Initialize event listeners for buttons
- */
-function initializeEventListeners() {
-    console.log('Initializing event listeners for modals...');
-    
-    // Modal submit buttons
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.submit-feedback-btn')) {
-            console.log('Submit feedback button clicked');
-            submitFeedback();
-        }
-        
-        if (e.target.closest('.submit-additional-info-btn')) {
-            console.log('Submit additional info button clicked');
-            submitAdditionalInfo();
-        }
-    });
-}
-
-/**
- * Generate HTML for ticket details
+ * Generates the HTML content for the ticket details modal body.
+ * @param {object} ticket - The ticket data object from the API.
+ * @returns {string} The generated HTML string.
  */
 function generateTicketDetailsHTML(ticket) {
     return `
-        <div class="ticket-details-content">
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="section-title">
-                        <i class="fas fa-info-circle text-primary"></i> Ticket Information
-                    </div>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <label>Ticket ID</label>
-                            <span><strong>#${ticket.complaint_id}</strong></span>
-                        </div>
-                        <div class="info-item">
-                            <label>Type</label>
-                            <span>${ticket.Type || 'Not specified'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Subtype</label>
-                            <span>${ticket.Subtype || 'Not specified'}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Status</label>
-                            <span class="status-badge status-${ticket.status.toLowerCase()}">
-                                <i class="fas fa-${getStatusIcon(ticket.status)}"></i>
-                                ${ticket.status}
-                            </span>
-                        </div>
-                        <div class="info-item">
-                            <label>Created Date</label>
-                            <span>${formatDate(ticket.created_at)}</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Location</label>
-                            <span>${ticket.Location || 'Not specified'}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="description-section">
-                        <label>Description</label>
-                        <div class="description-content">${ticket.description || 'No description provided'}</div>
-                    </div>
-                </div>
+        <div class="row">
+            <div class="col-lg-8">
+                <h5><i class="fas fa-info-circle text-primary"></i> Ticket Information</h5>
+                <table class="table table-sm table-borderless">
+                    <tr><th style="width: 150px;">Ticket ID:</th><td><strong>#${ticket.complaint_id}</strong></td></tr>
+                    <tr><th>Type:</th><td>${ticket.Type || 'N/A'}</td></tr>
+                    <tr><th>Subtype:</th><td>${ticket.Subtype || 'N/A'}</td></tr>
+                    <tr><th>Status:</th><td><span class="status-badge status-${ticket.status.toLowerCase()}">${ticket.status}</span></td></tr>
+                    <tr><th>Created:</th><td>${formatDate(ticket.created_at)}</td></tr>
+                    <tr><th>Location:</th><td>${ticket.Location || 'N/A'}</td></tr>
+                </table>
+                <h6>Description:</h6>
+                <p class="bg-light p-3 rounded">${ticket.description || 'No description.'}</p>
                 
-                <div class="col-md-4">
-                    <div class="ticket-actions-section">
-                        <h6><i class="fas fa-tools text-primary"></i> Actions</h6>
-                        <div class="action-buttons">
-                            ${ticket.status.toLowerCase() === 'replied' ? 
-                                `<button class="btn btn-success btn-sm w-100 mb-2 give-feedback-btn" data-ticket-id="${ticket.complaint_id}">
-                                    <i class="fas fa-star"></i> Give Feedback
-                                </button>` : ''
-                            }
-                            ${ticket.status.toLowerCase() === 'reverted' ? 
-                                `<button class="btn btn-warning btn-sm w-100 mb-2 provide-info-btn" data-ticket-id="${ticket.complaint_id}">
-                                    <i class="fas fa-plus-circle"></i> Add Information
-                                </button>` : ''
-                            }
-                        </div>
-                    </div>
-                </div>
+                ${ticket.action_taken ? `<h6>Action Taken:</h6><p class="bg-light p-3 rounded">${ticket.action_taken}</p>` : ''}
             </div>
-            
-            <div class="transaction-history-section">
-                <div class="section-title">
-                    <i class="fas fa-history text-primary"></i> Transaction History
-                </div>
-                <div id="transactionHistory">
-                    <div class="loading-spinner">
-                        <div class="spinner-border spinner-border-sm" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <span class="ms-2">Loading history...</span>
-                    </div>
+            <div class="col-lg-4">
+                <h5><i class="fas fa-history text-primary"></i> History</h5>
+                <div id="transactionHistory" class="transaction-history-section">
+                    <div class="text-center"><div class="spinner-border spinner-border-sm"></div></div>
                 </div>
             </div>
         </div>
@@ -420,49 +243,46 @@ function generateTicketDetailsHTML(ticket) {
 }
 
 /**
- * Load transaction history
+ * Fetches and displays the transaction history for a ticket inside the details modal.
+ * @param {string} ticketId - The ID of the ticket.
  */
 function loadTransactionHistory(ticketId) {
-    const historyContainer = document.getElementById('transactionHistory');
-    if (!historyContainer) return;
+    const historyContainer = $('#transactionHistory');
     
-    fetch(`${CUSTOMER_TICKETS_BASE_URL}api/complaints/${ticketId}/history`)
+    fetch(`${CUSTOMER_TICKETS_BASE_URL}customer-tickets/history/${ticketId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                historyContainer.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
-            } else {
-                historyContainer.innerHTML = generateTransactionHistoryHTML(data.data);
+            if (data.error || !data.data) {
+                throw new Error(data.message || 'No history data found');
             }
+            historyContainer.html(generateTransactionHistoryHTML(data.data));
         })
         .catch(error => {
-            console.error('Error fetching transaction history:', error);
-            historyContainer.innerHTML = '<div class="alert alert-danger">Failed to load transaction history.</div>';
+            console.error('Error fetching history:', error);
+            historyContainer.html(`<div class="alert alert-warning p-2 small">${error.message}</div>`);
         });
 }
 
 /**
- * Generate HTML for transaction history
+ * Generates the HTML for the transaction history timeline.
+ * @param {Array} transactions - An array of transaction objects.
+ * @returns {string} The generated HTML string.
  */
 function generateTransactionHistoryHTML(transactions) {
-    if (!transactions || transactions.length === 0) {
-        return '<div class="alert alert-info">No transaction history available.</div>';
+    if (transactions.length === 0) {
+        return '<p class="text-muted small">No history available.</p>';
     }
-    
     let html = '<div class="timeline">';
-    transactions.forEach(transaction => {
-        const markerClass = getTransactionMarkerClass(transaction.transaction_type);
+    transactions.forEach(t => {
         html += `
             <div class="timeline-item">
-                <div class="timeline-marker ${markerClass}"></div>
+                <div class="timeline-marker"></div>
                 <div class="timeline-content">
                     <div class="timeline-header">
-                        <h6 class="timeline-title">${transaction.transaction_type.replace('_', ' ').toUpperCase()}</h6>
-                        <span class="timeline-date">${formatDate(transaction.created_at)}</span>
+                        <strong class="timeline-title">${t.transaction_type.replace(/_/g, ' ').toUpperCase()}</strong>
+                        <span class="timeline-date small text-muted">${formatDate(t.created_at)}</span>
                     </div>
-                    <div class="timeline-body">
-                        ${transaction.remarks || 'No remarks provided'}
-                    </div>
+                    <p class="timeline-body small mb-0">${t.remarks}</p>
                 </div>
             </div>
         `;
@@ -472,79 +292,33 @@ function generateTransactionHistoryHTML(transactions) {
 }
 
 /**
- * Show alert message
- */
-function showAlert(message, type = 'info') {
-    // Check if SweetAlert2 is available
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: type === 'success' ? 'Success!' : type === 'error' ? 'Error!' : 'Info',
-            text: message,
-            icon: type === 'success' ? 'success' : type === 'error' ? 'error' : 'info',
-            confirmButtonColor: '#667eea',
-            timer: type === 'success' ? 3000 : undefined,
-            timerProgressBar: type === 'success'
-        });
-    } else {
-        // Fallback to Bootstrap alert
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        // Insert at the top of the page
-        const container = document.querySelector('.tickets-container');
-        if (container) {
-            container.insertBefore(alertDiv, container.firstChild);
-        }
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.remove();
-            }
-        }, 5000);
-    }
-}
-
-/**
- * Get status icon
- */
-function getStatusIcon(status) {
-    switch (status.toLowerCase()) {
-        case 'pending': return 'clock';
-        case 'replied': return 'reply';
-        case 'reverted': return 'undo';
-        case 'closed': return 'check-circle';
-        default: return 'circle';
-    }
-}
-
-/**
- * Get transaction marker class
- */
-function getTransactionMarkerClass(transactionType) {
-    switch (transactionType.toLowerCase()) {
-        case 'created': return 'marker-primary';
-        case 'replied': return 'marker-success';
-        case 'reverted': return 'marker-warning';
-        case 'closed': return 'marker-info';
-        default: return 'marker-primary';
-    }
-}
-
-/**
- * Format date
+ * Formats a date string into a more readable format.
+ * @param {string} dateString - The date string to format.
+ * @returns {string} The formatted date.
  */
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (!dateString) return 'N/A';
+    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return new Date(dateString).toLocaleDateString('en-IN', options);
+}
+
+/**
+ * Shows an alert message to the user.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of alert (e.g., 'success', 'warning', 'danger').
+ */
+function showAlert(message, type = 'info') {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: type,
+            title: message,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+    } else {
+        alert(message);
+    }
 }
