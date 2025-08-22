@@ -195,6 +195,41 @@ class User extends BaseModel {
     }
     
     /**
+     * Get users by department, division, and zone
+     */
+    public function getByDepartmentAndDivision($department, $division = null, $zone = null, $limit = null) {
+        $sql = "SELECT * FROM users WHERE department = ?";
+        $params = [$department];
+        
+        if ($division) {
+            $sql .= " AND Division = ?";
+            $params[] = $division;
+        }
+        
+        if ($zone) {
+            $sql .= " AND Zone = ?";
+            $params[] = $zone;
+        }
+        
+        $sql .= " ORDER BY created_at DESC";
+        
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Get commercial controllers by division and zone
+     */
+    public function getCommercialControllersByDivision($division, $zone = null) {
+        return $this->getByDepartmentAndDivision('COMMERCIAL', $division, $zone);
+    }
+    
+    /**
      * Search users
      */
     public function search($searchTerm, $filters = [], $limit = null) {

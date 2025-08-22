@@ -172,13 +172,19 @@ class Complaint extends BaseModel {
     /**
      * Assign complaint to user
      */
-    public function assignTo($complaintId, $loginId) {
-        $stmt = $this->connection->prepare("
-            UPDATE complaints 
-            SET Assigned_To_Department = ?, updated_at = ? 
-            WHERE complaint_id = ?
-        ");
-        return $stmt->execute([$loginId, getCurrentDateTime(), $complaintId]);
+    public function assignTo($complaintId, $loginId, $setForwardingFlag = false) {
+        $sql = "UPDATE complaints SET Assigned_To_Department = ?, updated_at = ?";
+        $params = [$loginId, getCurrentDateTime()];
+        
+        if ($setForwardingFlag) {
+            $sql .= ", Forwarded_Flag = 'Y'";
+        }
+        
+        $sql .= " WHERE complaint_id = ?";
+        $params[] = $complaintId;
+        
+        $stmt = $this->connection->prepare($sql);
+        return $stmt->execute($params);
     }
     
     /**

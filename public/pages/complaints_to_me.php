@@ -339,6 +339,18 @@ if (!isset($currentUser)) {
                 <input type="hidden" name="complaint_id" id="forwardComplaintId">
                 
                 <div class="modal-body">
+                    <?php if (strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Forwarding Rules:</strong> You can forward to other Commercial divisions or any internal department.
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Forwarding Rules:</strong> You can forward internally to other departments (except Commercial) or to Commercial controllers of your own division only.
+                        </div>
+                    <?php endif; ?>
+                    
                     <div class="form-floating mb-3">
                         <select class="form-select" name="to_department" id="toDepartment" required>
                             <option value="">Select Department</option>

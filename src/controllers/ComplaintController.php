@@ -113,6 +113,8 @@ class ComplaintController extends BaseController {
                         $result = $complaintModel->updateStatus($complaintId, 'awaiting_approval', $actionTaken);
                         // Assign to commercial controller for approval
                         $assignResult = $complaintModel->assignTo($complaintId, 'commercial_controller');
+                        // Set awaiting approval flag
+                        $complaintModel->setAwaitingApproval($complaintId, 'Y');
                         if ($result) {
                             $transactionModel->logStatusUpdate($complaintId, 'Closed by controller. Awaiting Commercial approval. Remarks: ' . $remarks, $currentUser['login_id']);
                             $_SESSION['alert_message'] = "Grievance sent for Commercial approval.";
@@ -126,11 +128,13 @@ class ComplaintController extends BaseController {
                         return;
                         
                     case 'forward':
-                        // Only Commercial can forward complaints to other departments
-                        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
-                            throw new Exception('Only Commercial Controller can forward complaints to other departments');
-                        }
+                        // Get current user's division and zone for forwarding restrictions
+                        $userModel = $this->loadModel('User');
+                        $currentUserDetails = $userModel->findByLoginId($currentUser['login_id']);
+                        $userDivision = $currentUserDetails['Division'] ?? null;
+                        $userZone = $currentUserDetails['Zone'] ?? null;
                         
+                        $userDepartment = strtoupper($currentUser['department'] ?? '');
                         $toDepartment = $_POST['to_department'] ?? '';
                         $toUser = $_POST['to_user'] ?? '';
                         $forwardRemarks = sanitizeInput($_POST['forward_remarks'] ?? '');
@@ -139,9 +143,54 @@ class ComplaintController extends BaseController {
                             throw new Exception('Department and remarks are required for forwarding');
                         }
                         
-                        // Update complaint assignment
+                        // Check forwarding permissions
+                        $canForward = false;
+                        
+                        // Commercial can forward to other Commercial divisions
+                        if ($userDepartment === 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        // Commercial can forward to any internal department
+                        elseif ($userDepartment === 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        // Other departments can forward to Commercial of their own division only
+                        elseif ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                            // Check if the target user is in the same division
+                            if (!empty($toUser)) {
+                                $targetUserDetails = $userModel->findByLoginId($toUser);
+                                if ($targetUserDetails && 
+                                    $targetUserDetails['department'] === 'COMMERCIAL' && 
+                                    $targetUserDetails['Division'] === $userDivision) {
+                                    $canForward = true;
+                                }
+                            } else {
+                                // If no specific user selected, check if there are commercial controllers in the same division
+                                $commercialControllers = $userModel->getCommercialControllersByDivision($userDivision, $userZone);
+                                if (!empty($commercialControllers)) {
+                                    $canForward = true;
+                                }
+                            }
+                        }
+                        // Other departments can forward internally (except to Commercial)
+                        elseif ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) !== 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        
+                        if (!$canForward) {
+                            if ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                                throw new Exception('You can only forward to Commercial controllers of your own division');
+                            } else {
+                                throw new Exception('You do not have permission to forward to this department');
+                            }
+                        }
+                        
+                        // Update complaint assignment and set forwarding flag
                         if (!empty($toUser)) {
-                            $complaintModel->assignTo($complaintId, $toUser);
+                            $complaintModel->assignTo($complaintId, $toUser, true); // Set forwarding flag
+                        } else {
+                            // If no specific user, assign to department
+                            $complaintModel->forwardComplaint($complaintId, $toDepartment);
                         }
                         
                         // Log forward transaction
@@ -303,8 +352,19 @@ class ComplaintController extends BaseController {
         $departments = ['COMMERCIAL', 'OPERATING', 'MECHANICAL', 'ELECTRICAL', 'ENGINEERING', 'SECURITY', 'MEDICAL', 'ACCOUNTS', 'PERSONNEL'];
         
         try {
+            // Get current user's division and zone
+            $currentUserDetails = $userModel->findByLoginId($currentUser['login_id']);
+            $userDivision = $currentUserDetails['Division'] ?? null;
+            $userZone = $currentUserDetails['Zone'] ?? null;
+            
             foreach ($departments as $dept) {
-                $departmentUsers[$dept] = $userModel->findByDepartment($dept);
+                if ($dept === 'COMMERCIAL' && strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                    // For non-commercial users, only show commercial controllers of their own division
+                    $departmentUsers[$dept] = $userModel->getCommercialControllersByDivision($userDivision, $userZone);
+                } else {
+                    // For commercial users or other departments, show all users
+                    $departmentUsers[$dept] = $userModel->getByDepartment($dept);
+                }
             }
         } catch (Exception $e) {
             // Handle silently
@@ -408,6 +468,49 @@ class ComplaintController extends BaseController {
                     }
 
                     $_SESSION['alert_message'] = 'Action taken approved and sent to customer for feedback.';
+                    $_SESSION['alert_type'] = 'success';
+                    $this->redirect('grievances/approvals');
+                    return;
+                }
+                
+                if ($action === 'reject') {
+                    $complaint = $complaintModel->findByComplaintId($complaintId);
+                    if (!$complaint) {
+                        throw new Exception('Complaint not found');
+                    }
+                    
+                    $rejectionReason = sanitizeInput($_POST['rejection_reason'] ?? '');
+                    if (empty($rejectionReason)) {
+                        throw new Exception('Rejection reason is required');
+                    }
+                    
+                    // Get the original assigned department/user before approval
+                    $originalAssignedTo = $complaint['Assigned_To_Department'] ?? '';
+                    
+                    // Find the department that sent for approval (usually the one that closed it)
+                    $transactions = $transactionModel->findByComplaintId($complaintId);
+                    $closingTransaction = null;
+                    foreach ($transactions as $transaction) {
+                        if (strpos($transaction['remarks'] ?? '', 'Closed by controller') !== false) {
+                            $closingTransaction = $transaction;
+                            break;
+                        }
+                    }
+                    
+                    // Reassign back to the department that closed it, or to Commercial if not found
+                    $reassignTo = $closingTransaction ? $closingTransaction['created_by'] : 'commercial_controller';
+                    $complaintModel->assignTo($complaintId, $reassignTo);
+                    
+                    // Update status back to pending
+                    $complaintModel->updateStatus($complaintId, 'pending');
+                    
+                    // Clear awaiting approval flag
+                    $complaintModel->setAwaitingApproval($complaintId, 'N');
+                    
+                    // Log rejection
+                    $transactionModel->logStatusUpdate($complaintId, 'Commercial rejected action taken. Reason: ' . $rejectionReason, $currentUser['login_id']);
+                    
+                    $_SESSION['alert_message'] = 'Action taken rejected and sent back for review.';
                     $_SESSION['alert_type'] = 'success';
                     $this->redirect('grievances/approvals');
                     return;
@@ -662,6 +765,13 @@ class ComplaintController extends BaseController {
                         return;
                         
                     case 'forward':
+                        // Get current user's division and zone for forwarding restrictions
+                        $userModel = $this->loadModel('User');
+                        $currentUserDetails = $userModel->findByLoginId($currentUser['login_id']);
+                        $userDivision = $currentUserDetails['Division'] ?? null;
+                        $userZone = $currentUserDetails['Zone'] ?? null;
+                        
+                        $userDepartment = strtoupper($currentUser['department'] ?? '');
                         $toDepartment = $_POST['to_department'] ?? '';
                         $toUser = $_POST['to_user'] ?? '';
                         $forwardRemarks = sanitizeInput($_POST['forward_remarks'] ?? '');
@@ -670,8 +780,50 @@ class ComplaintController extends BaseController {
                             throw new Exception('Department and remarks are required for forwarding');
                         }
                         
+                        // Check forwarding permissions
+                        $canForward = false;
+                        
+                        // Commercial can forward to other Commercial divisions
+                        if ($userDepartment === 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        // Commercial can forward to any internal department
+                        elseif ($userDepartment === 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        // Other departments can forward to Commercial of their own division only
+                        elseif ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                            // Check if the target user is in the same division
+                            if (!empty($toUser)) {
+                                $targetUserDetails = $userModel->findByLoginId($toUser);
+                                if ($targetUserDetails && 
+                                    $targetUserDetails['department'] === 'COMMERCIAL' && 
+                                    $targetUserDetails['Division'] === $userDivision) {
+                                    $canForward = true;
+                                }
+                            } else {
+                                // If no specific user selected, check if there are commercial controllers in the same division
+                                $commercialControllers = $userModel->getCommercialControllersByDivision($userDivision, $userZone);
+                                if (!empty($commercialControllers)) {
+                                    $canForward = true;
+                                }
+                            }
+                        }
+                        // Other departments can forward internally (except to Commercial)
+                        elseif ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) !== 'COMMERCIAL') {
+                            $canForward = true;
+                        }
+                        
+                        if (!$canForward) {
+                            if ($userDepartment !== 'COMMERCIAL' && strtoupper($toDepartment) === 'COMMERCIAL') {
+                                throw new Exception('You can only forward to Commercial controllers of your own division');
+                            } else {
+                                throw new Exception('You do not have permission to forward to this department');
+                            }
+                        }
+                        
                         if (!empty($toUser)) {
-                            $complaintModel->assignTo($complaintId, $toUser);
+                            $complaintModel->assignTo($complaintId, $toUser, true); // Set forwarding flag
                         }
                         
                         $transactionModel->logForward(
@@ -802,8 +954,27 @@ class ComplaintController extends BaseController {
         $totalPages = ceil($totalCount / $limit);
         
         // Get department users for forwarding
-        $departmentUsers = $userModel->getUsersByDepartment();
-        $departments = array_keys($departmentUsers);
+        $departmentUsers = [];
+        $departments = ['COMMERCIAL', 'OPERATING', 'MECHANICAL', 'ELECTRICAL', 'ENGINEERING', 'SECURITY', 'MEDICAL', 'ACCOUNTS', 'PERSONNEL'];
+        
+        try {
+            // Get current user's division and zone
+            $currentUserDetails = $userModel->findByLoginId($currentUser['login_id']);
+            $userDivision = $currentUserDetails['Division'] ?? null;
+            $userZone = $currentUserDetails['Zone'] ?? null;
+            
+            foreach ($departments as $dept) {
+                if ($dept === 'COMMERCIAL' && strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                    // For non-commercial users, only show commercial controllers of their own division
+                    $departmentUsers[$dept] = $userModel->getCommercialControllersByDivision($userDivision, $userZone);
+                } else {
+                    // For commercial users or other departments, show all users
+                    $departmentUsers[$dept] = $userModel->getByDepartment($dept);
+                }
+            }
+        } catch (Exception $e) {
+            // Handle silently
+        }
         
         // Get statistics - always calculate for ALL complaints regardless of current filter
         $statistics = [

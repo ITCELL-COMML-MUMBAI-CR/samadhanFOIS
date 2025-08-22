@@ -113,6 +113,9 @@ if (!isset($currentUser)) {
                                         <button type="button" class="btn btn-outline-success" onclick="approve('<?php echo $row['complaint_id']; ?>')" title="Approve">
                                             <i class="fas fa-check"></i>
                                         </button>
+                                        <button type="button" class="btn btn-outline-danger" onclick="reject('<?php echo $row['complaint_id']; ?>')" title="Reject">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -150,13 +153,49 @@ if (!isset($currentUser)) {
             </form>
         </div>
     </div>
-    
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-times text-danger"></i> Reject Action Taken</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?php echo SessionManager::generateCSRFToken(); ?>">
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="complaint_id" id="rejectComplaintId">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> Rejecting will send the complaint back to the department for review.
+                    </div>
+                    <div class="form-floating mb-3">
+                        <textarea class="form-control" name="rejection_reason" placeholder="Rejection reason" style="height: 120px" required></textarea>
+                        <label>Rejection Reason *</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
 function approve(complaintId) {
     document.getElementById('approveComplaintId').value = complaintId;
     const modal = new bootstrap.Modal(document.getElementById('approveModal'));
+    modal.show();
+}
+
+function reject(complaintId) {
+    document.getElementById('rejectComplaintId').value = complaintId;
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     modal.show();
 }
 </script>
