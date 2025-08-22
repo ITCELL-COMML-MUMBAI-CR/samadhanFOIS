@@ -3,42 +3,67 @@
  * Enhanced functionality for the modern complaints interface
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Initialize the complaints hub interface
     initComplaintsHub();
 });
 
 function initComplaintsHub() {
+    const approveRejectModalEl = document.getElementById('approveRejectModal');
+    if (approveRejectModalEl) {
+        const approveRejectModal = new bootstrap.Modal(approveRejectModalEl);
+
+        const takeActionBtn = document.getElementById('takeActionBtn');
+        if (takeActionBtn) {
+            takeActionBtn.addEventListener('click', function () {
+                const complaintId = this.dataset.complaintId;
+                const actionTaken = this.dataset.actionTaken;
+
+                // Populate and show the modal
+                document.getElementById('modalComplaintId').textContent = complaintId;
+                document.getElementById('modalActionTaken').textContent = actionTaken || 'No action details provided.';
+                document.getElementById('approveComplaintId').value = complaintId;
+                document.getElementById('rejectComplaintId').value = complaintId;
+
+                document.getElementById('approveForm').style.display = 'block';
+                document.getElementById('rejectForm').style.display = 'block';
+                document.getElementById('rejectionReason').value = '';
+                document.querySelector('#approveForm textarea[name="remarks"]').value = '';
+
+                approveRejectModal.show();
+            });
+        }
+    }
     // Setup filter functionality
     setupFilters();
-    
+
     // Setup complaint selection
     setupComplaintSelection();
-    
+
     // Setup search functionality with debouncing
     setupSearchDebouncing();
-    
+
     // Setup date filter functionality
     setupDateFilter();
-    
+
     // Setup priority filter functionality
     setupPriorityFilter();
-    
+
     // Setup sorting functionality
     setupSorting();
-    
+
     // Setup real-time updates
     setupRealTimeUpdates();
-    
+
     // Setup keyboard shortcuts
     setupKeyboardShortcuts();
-    
+
     // Auto-refresh functionality
     setupAutoRefresh();
-    
+
     // Update list title based on current filter
     updateListTitle();
-    
+
     // Apply initial sorting (priority high to low) on page load
     setTimeout(() => {
         applyAllFilters();
@@ -47,9 +72,9 @@ function initComplaintsHub() {
 
 function setupFilters() {
     const filterItems = document.querySelectorAll('.filter-item');
-    
+
     filterItems.forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function () {
             const filter = this.dataset.filter;
             applyFilter(filter);
         });
@@ -61,17 +86,17 @@ function applyFilter(filter) {
     document.querySelectorAll('.filter-item').forEach(item => {
         item.classList.remove('active');
     });
-    
+
     // Add active class to clicked filter
     event.target.closest('.filter-item').classList.add('active');
-    
+
     // Build URL with filter parameters
     const currentUrl = new URL(window.location);
-    
+
     // Clear existing filter parameters
     currentUrl.searchParams.delete('status');
     currentUrl.searchParams.delete('view');
-    
+
     // Set new filter parameters
     if (filter === 'all') {
         currentUrl.searchParams.set('view', 'all');
@@ -80,13 +105,13 @@ function applyFilter(filter) {
     } else {
         currentUrl.searchParams.set('status', filter);
     }
-    
+
     // Preserve search query if exists
     const searchInput = document.getElementById('searchInput');
     if (searchInput && searchInput.value) {
         currentUrl.searchParams.set('search', searchInput.value);
     }
-    
+
     // Navigate to new URL
     window.location.href = currentUrl.toString();
 }
@@ -95,25 +120,25 @@ function setupComplaintSelection() {
     const complaintItems = document.querySelectorAll('.complaint-item');
     const defaultState = document.getElementById('defaultState');
     const complaintDetails = document.getElementById('complaintDetails');
-    
+
     complaintItems.forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function () {
             // Remove active class from all items
             complaintItems.forEach(i => i.classList.remove('active'));
-            
+
             // Add active class to clicked item
             this.classList.add('active');
-            
+
             // Get complaint ID
             const complaintId = this.dataset.complaintId;
-            
+
             // Show complaint details
             showComplaintDetails(complaintId, this);
         });
     });
 }
 
-function showComplaintDetails(complaintId, complaintElement) {
+/* function showComplaintDetails(complaintId, complaintElement) {
     const defaultState = document.getElementById('defaultState');
     const complaintDetails = document.getElementById('complaintDetails');
     
@@ -129,26 +154,61 @@ function showComplaintDetails(complaintId, complaintElement) {
     
     // Setup action buttons
     setupActionButtons(complaintId);
+} */
+
+function showComplaintDetails(complaintId, complaintElement) {
+    document.getElementById('defaultState').style.display = 'none';
+    document.getElementById('complaintDetails').style.display = 'flex';
+
+    const status = complaintElement.dataset.complaintStatus;
+
+    document.querySelectorAll('.action-btn').forEach(btn => btn.style.display = 'none');
+
+    if (status === 'awaiting_approval') {
+        // Use the now-defined currentUserRole and currentUserDepartment variables
+        if (currentUserRole === 'admin' || (currentUserDepartment && currentUserDepartment.toUpperCase() === 'COMMERCIAL')) {
+            const takeActionBtn = document.getElementById('takeActionBtn');
+            if (takeActionBtn) {
+                takeActionBtn.style.display = 'inline-flex';
+                takeActionBtn.dataset.complaintId = complaintId;
+                takeActionBtn.dataset.actionTaken = complaintElement.dataset.actionTaken;
+            }
+        }
+    } else {
+        document.getElementById('forwardBtn').style.display = 'inline-flex';
+        document.getElementById('closeBtn').style.display = 'inline-flex';
+        if (document.getElementById('revertBtn')) {
+            document.getElementById('revertBtn').style.display = 'inline-flex';
+        }
+    }
+
+    document.getElementById('forwardBtn').onclick = () => forwardComplaint(complaintId);
+    document.getElementById('closeBtn').onclick = () => closeComplaint(complaintId);
+    if (document.getElementById('revertBtn')) {
+        document.getElementById('revertBtn').onclick = () => revertComplaint(complaintId);
+    }
+
+    loadComplaintDetails(complaintId);
 }
 
 function updateComplaintHeader(complaintId, complaintElement) {
     const complaintIdText = document.getElementById('complaintIdText');
     const detailStatus = document.getElementById('detailStatus');
     const detailPriority = document.getElementById('detailPriority');
-    
+
     // Get complaint information from the element
     const complaintIdTextContent = complaintElement.querySelector('.complaint-id').textContent.trim();
     const statusBadge = complaintElement.querySelector('.badge.status-pending, .badge.status-replied, .badge.status-closed, .badge.status-awaiting-approval, .badge.status-reverted, .badge.status-forwarded');
     const priorityBadge = complaintElement.querySelector('.badge.priority-critical, .badge.priority-high, .badge.priority-medium, .badge.priority-normal');
-    
+
     const status = statusBadge ? statusBadge.textContent.trim() : 'Pending';
     const priority = priorityBadge ? priorityBadge.textContent.trim() : '';
-    
+
     // Update header
     complaintIdText.textContent = complaintIdTextContent.replace('#', '').trim();
     detailStatus.textContent = status;
     detailStatus.className = `complaint-status-badge status-${status.toLowerCase().replace(' ', '-')}`;
-    
+
     // Update priority badge (only show for non-closed complaints)
     if (priority && status.toLowerCase() !== 'closed') {
         detailPriority.innerHTML = `<i class="fas fa-flag"></i> ${priority}`;
@@ -163,7 +223,7 @@ function loadComplaintDetails(complaintId) {
     // Show loading state
     const infoSection = document.querySelector('.complaint-info-section');
     infoSection.innerHTML = '<div class="text-center text-muted">Loading complaint details...</div>';
-    
+
     // Fetch complaint details
     fetch(`${BASE_URL}api/complaints/view/${complaintId}`)
         .then(response => response.json())
@@ -185,9 +245,9 @@ function loadComplaintDetails(complaintId) {
 
 function displayComplaintDetails(complaint) {
     const infoSection = document.querySelector('.complaint-info-section');
-    console.log('Complaint data:', complaint);
-    console.log('Evidence data:', complaint.evidence);
-    
+    //console.log('Complaint data:', complaint);
+    //console.log('Evidence data:', complaint.evidence);
+
     // Create complaint details HTML with all available fields except status and priority
     const detailsHTML = `
         <div class="info-group">
@@ -371,18 +431,18 @@ function displayComplaintDetails(complaint) {
         </div>
         ` : ''}
     `;
-    
+
     infoSection.innerHTML = detailsHTML;
 }
 
 function loadTransactionHistory(complaint) {
     const historyList = document.getElementById('transactionHistory');
-    
+
     if (!complaint.transactions || complaint.transactions.length === 0) {
         historyList.innerHTML = '<div class="text-center text-muted">No transaction history available</div>';
         return;
     }
-    
+
     let historyHTML = '';
     complaint.transactions.forEach(transaction => {
         // Map transaction types to readable actions
@@ -409,7 +469,7 @@ function loadTransactionHistory(complaint) {
             default:
                 actionText = transaction.transaction_type.replace('_', ' ').toUpperCase();
         }
-        
+
         historyHTML += `
             <div class="history-item">
                 <div class="history-item-header">
@@ -423,7 +483,7 @@ function loadTransactionHistory(complaint) {
             </div>
         `;
     });
-    
+
     historyList.innerHTML = historyHTML;
 }
 
@@ -432,28 +492,28 @@ function setupActionButtons(complaintId) {
     const forwardBtn = document.getElementById('forwardBtn');
     const closeBtn = document.getElementById('closeBtn');
     const revertBtn = document.getElementById('revertBtn');
-    
+
     // View details button
     if (viewDetailsBtn) {
         viewDetailsBtn.onclick = () => {
             window.open(`${BASE_URL}complaints/view/${complaintId}`, '_blank');
         };
     }
-    
+
     // Forward button
     if (forwardBtn) {
         forwardBtn.onclick = () => {
             forwardComplaint(complaintId);
         };
     }
-    
+
     // Close button
     if (closeBtn) {
         closeBtn.onclick = () => {
             closeComplaint(complaintId);
         };
     }
-    
+
     // Revert button (if exists)
     if (revertBtn) {
         revertBtn.onclick = () => {
@@ -465,37 +525,37 @@ function setupActionButtons(complaintId) {
 function setupSearchDebouncing() {
     const searchInput = document.getElementById('searchInput');
     const searchClearBtn = document.getElementById('searchClearBtn');
-    
+
     if (!searchInput) return;
-    
+
     // Real-time search as user types
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const query = searchInput.value;
         applyAllFilters();
-        
+
         // Show/hide clear button
         if (searchClearBtn) {
             searchClearBtn.style.display = query.trim() ? 'block' : 'none';
         }
     });
-    
+
     // Also handle Enter key for traditional search
-    searchInput.addEventListener('keypress', function(e) {
+    searchInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
             performTraditionalSearch(searchInput.value);
         }
     });
-    
+
     // Clear button functionality
     if (searchClearBtn) {
-        searchClearBtn.addEventListener('click', function() {
+        searchClearBtn.addEventListener('click', function () {
             searchInput.value = '';
             searchInput.focus();
             applyAllFilters();
             searchClearBtn.style.display = 'none';
         });
     }
-    
+
     // Show clear button if there's initial search value
     if (searchInput.value.trim() && searchClearBtn) {
         searchClearBtn.style.display = 'block';
@@ -507,10 +567,10 @@ function setupDateFilter() {
     const customDateGroup = document.getElementById('customDateGroup');
     const startDate = document.getElementById('startDate');
     const endDate = document.getElementById('endDate');
-    
+
     if (!dateFilter) return;
-    
-    dateFilter.addEventListener('change', function() {
+
+    dateFilter.addEventListener('change', function () {
         if (this.value === 'custom') {
             customDateGroup.style.display = 'block';
         } else {
@@ -518,7 +578,7 @@ function setupDateFilter() {
             applyAllFilters();
         }
     });
-    
+
     // Custom date inputs
     if (startDate && endDate) {
         startDate.addEventListener('change', applyAllFilters);
@@ -528,17 +588,17 @@ function setupDateFilter() {
 
 function setupPriorityFilter() {
     const priorityFilter = document.getElementById('priorityFilter');
-    
+
     if (!priorityFilter) return;
-    
+
     priorityFilter.addEventListener('change', applyAllFilters);
 }
 
 function setupSorting() {
     const sortFilter = document.getElementById('sortFilter');
-    
+
     if (!sortFilter) return;
-    
+
     sortFilter.addEventListener('change', applyAllFilters);
 }
 
@@ -547,15 +607,15 @@ function applyAllFilters() {
     const dateFilter = document.getElementById('dateFilter')?.value || '';
     const priorityFilter = document.getElementById('priorityFilter')?.value || '';
     const sortBy = document.getElementById('sortFilter')?.value || 'priority';
-    
+
     const complaintItems = document.querySelectorAll('.complaint-item');
     let visibleCount = 0;
-    
+
     complaintItems.forEach(item => {
         const matchesSearch = matchesSearchFilter(item, searchQuery);
         const matchesDate = matchesDateFilter(item, dateFilter);
         const matchesPriority = matchesPriorityFilter(item, priorityFilter);
-        
+
         if (matchesSearch && matchesDate && matchesPriority) {
             item.style.display = 'block';
             item.style.opacity = '1';
@@ -567,14 +627,14 @@ function applyAllFilters() {
             }, 150);
         }
     });
-    
+
     // Sort complaints
     sortComplaints(sortBy);
-    
+
     // Update empty state and title
     updateEmptyState(visibleCount);
     updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visibleCount);
-    
+
     // Add search highlight effect
     if (searchQuery) {
         highlightSearchTerms(searchQuery);
@@ -585,26 +645,26 @@ function applyAllFilters() {
 
 function matchesSearchFilter(item, searchTerm) {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase().trim();
     const complaintId = item.querySelector('.complaint-id').textContent.toLowerCase();
     const customerName = item.querySelector('.complaint-customer').textContent.toLowerCase();
     const complaintType = item.querySelector('.complaint-type').textContent.toLowerCase();
     const complaintPreview = item.querySelector('.complaint-preview').textContent.toLowerCase();
-    
+
     return complaintId.includes(searchLower) ||
-           customerName.includes(searchLower) ||
-           complaintType.includes(searchLower) ||
-           complaintPreview.includes(searchLower);
+        customerName.includes(searchLower) ||
+        complaintType.includes(searchLower) ||
+        complaintPreview.includes(searchLower);
 }
 
 function matchesDateFilter(item, dateFilter) {
     if (!dateFilter) return true;
-    
+
     const complaintDate = new Date(item.querySelector('.complaint-time').textContent);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     switch (dateFilter) {
         case 'today':
             return complaintDate >= today;
@@ -624,11 +684,11 @@ function matchesDateFilter(item, dateFilter) {
             const startDate = document.getElementById('startDate')?.value;
             const endDate = document.getElementById('endDate')?.value;
             if (!startDate || !endDate) return true;
-            
+
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            
+
             return complaintDate >= start && complaintDate <= end;
         default:
             return true;
@@ -637,10 +697,10 @@ function matchesDateFilter(item, dateFilter) {
 
 function matchesPriorityFilter(item, priorityFilter) {
     if (!priorityFilter) return true;
-    
+
     const priorityBadge = item.querySelector('.badge.priority-critical, .badge.priority-high, .badge.priority-medium, .badge.priority-normal');
     if (!priorityBadge) return false;
-    
+
     const itemPriority = priorityBadge.textContent.toLowerCase().trim();
     return itemPriority === priorityFilter.toLowerCase();
 }
@@ -648,22 +708,22 @@ function matchesPriorityFilter(item, priorityFilter) {
 function sortComplaints(sortBy) {
     const complaintsList = document.getElementById('complaintsList');
     const complaintItems = Array.from(complaintsList.querySelectorAll('.complaint-item'));
-    
+
     complaintItems.sort((a, b) => {
         switch (sortBy) {
             case 'priority':
                 return getPriorityWeight(b) - getPriorityWeight(a);
             case 'date':
-                return new Date(b.querySelector('.complaint-time').textContent) - 
-                       new Date(a.querySelector('.complaint-time').textContent);
+                return new Date(b.querySelector('.complaint-time').textContent) -
+                    new Date(a.querySelector('.complaint-time').textContent);
             case 'date_old':
-                return new Date(a.querySelector('.complaint-time').textContent) - 
-                       new Date(b.querySelector('.complaint-time').textContent);
+                return new Date(a.querySelector('.complaint-time').textContent) -
+                    new Date(b.querySelector('.complaint-time').textContent);
             default:
                 return 0;
         }
     });
-    
+
     // Re-append sorted items
     complaintItems.forEach(item => {
         complaintsList.appendChild(item);
@@ -673,28 +733,33 @@ function sortComplaints(sortBy) {
 function getPriorityWeight(item) {
     const priorityBadge = item.querySelector('.badge.priority-critical, .badge.priority-high, .badge.priority-medium, .badge.priority-normal');
     if (!priorityBadge) return 0;
-    
+
     const priority = priorityBadge.textContent.toLowerCase().trim();
     switch (priority) {
-        case 'critical': return 4;
-        case 'high': return 3;
-        case 'medium': return 2;
-        case 'normal': return 1;
-        default: return 0;
+        case 'critical':
+            return 4;
+        case 'high':
+            return 3;
+        case 'medium':
+            return 2;
+        case 'normal':
+            return 1;
+        default:
+            return 0;
     }
 }
 
 function updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visibleCount) {
     const listTitle = document.getElementById('listTitle');
     const totalComplaints = document.querySelectorAll('.complaint-item').length;
-    
+
     let title = '';
     const filters = [];
-    
+
     if (searchQuery) filters.push(`Search: "${searchQuery}"`);
     if (dateFilter) filters.push(`Date: ${dateFilter}`);
     if (priorityFilter) filters.push(`Priority: ${priorityFilter}`);
-    
+
     if (filters.length > 0) {
         title = `Filtered Results (${visibleCount}/${totalComplaints})`;
     } else {
@@ -705,7 +770,7 @@ function updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visi
             title = 'All Complaints';
         }
     }
-    
+
     listTitle.textContent = title;
 }
 
@@ -714,10 +779,10 @@ function setupDateFilter() {
     const customDateGroup = document.getElementById('customDateGroup');
     const startDate = document.getElementById('startDate');
     const endDate = document.getElementById('endDate');
-    
+
     if (!dateFilter) return;
-    
-    dateFilter.addEventListener('change', function() {
+
+    dateFilter.addEventListener('change', function () {
         if (this.value === 'custom') {
             customDateGroup.style.display = 'block';
         } else {
@@ -725,7 +790,7 @@ function setupDateFilter() {
             applyAllFilters();
         }
     });
-    
+
     // Custom date inputs
     if (startDate && endDate) {
         startDate.addEventListener('change', applyAllFilters);
@@ -735,17 +800,17 @@ function setupDateFilter() {
 
 function setupPriorityFilter() {
     const priorityFilter = document.getElementById('priorityFilter');
-    
+
     if (!priorityFilter) return;
-    
+
     priorityFilter.addEventListener('change', applyAllFilters);
 }
 
 function setupSorting() {
     const sortFilter = document.getElementById('sortFilter');
-    
+
     if (!sortFilter) return;
-    
+
     sortFilter.addEventListener('change', applyAllFilters);
 }
 
@@ -754,15 +819,15 @@ function applyAllFilters() {
     const dateFilter = document.getElementById('dateFilter')?.value || '';
     const priorityFilter = document.getElementById('priorityFilter')?.value || '';
     const sortBy = document.getElementById('sortFilter')?.value || 'priority';
-    
+
     const complaintItems = document.querySelectorAll('.complaint-item');
     let visibleCount = 0;
-    
+
     complaintItems.forEach(item => {
         const matchesSearch = matchesSearchFilter(item, searchQuery);
         const matchesDate = matchesDateFilter(item, dateFilter);
         const matchesPriority = matchesPriorityFilter(item, priorityFilter);
-        
+
         if (matchesSearch && matchesDate && matchesPriority) {
             item.style.display = 'block';
             item.style.opacity = '1';
@@ -774,14 +839,14 @@ function applyAllFilters() {
             }, 150);
         }
     });
-    
+
     // Sort complaints
     sortComplaints(sortBy);
-    
+
     // Update empty state and title
     updateEmptyState(visibleCount);
     updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visibleCount);
-    
+
     // Add search highlight effect
     if (searchQuery) {
         highlightSearchTerms(searchQuery);
@@ -792,26 +857,26 @@ function applyAllFilters() {
 
 function matchesSearchFilter(item, searchTerm) {
     if (!searchTerm) return true;
-    
+
     const searchLower = searchTerm.toLowerCase().trim();
     const complaintId = item.querySelector('.complaint-id').textContent.toLowerCase();
     const customerName = item.querySelector('.complaint-customer').textContent.toLowerCase();
     const complaintType = item.querySelector('.complaint-type').textContent.toLowerCase();
     const complaintPreview = item.querySelector('.complaint-preview').textContent.toLowerCase();
-    
+
     return complaintId.includes(searchLower) ||
-           customerName.includes(searchLower) ||
-           complaintType.includes(searchLower) ||
-           complaintPreview.includes(searchLower);
+        customerName.includes(searchLower) ||
+        complaintType.includes(searchLower) ||
+        complaintPreview.includes(searchLower);
 }
 
 function matchesDateFilter(item, dateFilter) {
     if (!dateFilter) return true;
-    
+
     const complaintDate = new Date(item.querySelector('.complaint-time').textContent);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     switch (dateFilter) {
         case 'today':
             return complaintDate >= today;
@@ -831,11 +896,11 @@ function matchesDateFilter(item, dateFilter) {
             const startDate = document.getElementById('startDate')?.value;
             const endDate = document.getElementById('endDate')?.value;
             if (!startDate || !endDate) return true;
-            
+
             const start = new Date(startDate);
             const end = new Date(endDate);
             end.setHours(23, 59, 59, 999);
-            
+
             return complaintDate >= start && complaintDate <= end;
         default:
             return true;
@@ -844,10 +909,10 @@ function matchesDateFilter(item, dateFilter) {
 
 function matchesPriorityFilter(item, priorityFilter) {
     if (!priorityFilter) return true;
-    
+
     const priorityBadge = item.querySelector('.badge.priority-critical, .badge.priority-high, .badge.priority-medium, .badge.priority-normal');
     if (!priorityBadge) return false;
-    
+
     const itemPriority = priorityBadge.textContent.toLowerCase().trim();
     return itemPriority === priorityFilter.toLowerCase();
 }
@@ -855,22 +920,22 @@ function matchesPriorityFilter(item, priorityFilter) {
 function sortComplaints(sortBy) {
     const complaintsList = document.getElementById('complaintsList');
     const complaintItems = Array.from(complaintsList.querySelectorAll('.complaint-item'));
-    
+
     complaintItems.sort((a, b) => {
         switch (sortBy) {
             case 'priority':
                 return getPriorityWeight(b) - getPriorityWeight(a);
             case 'date':
-                return new Date(b.querySelector('.complaint-time').textContent) - 
-                       new Date(a.querySelector('.complaint-time').textContent);
+                return new Date(b.querySelector('.complaint-time').textContent) -
+                    new Date(a.querySelector('.complaint-time').textContent);
             case 'date_old':
-                return new Date(a.querySelector('.complaint-time').textContent) - 
-                       new Date(b.querySelector('.complaint-time').textContent);
+                return new Date(a.querySelector('.complaint-time').textContent) -
+                    new Date(b.querySelector('.complaint-time').textContent);
             default:
                 return 0;
         }
     });
-    
+
     // Re-append sorted items
     complaintItems.forEach(item => {
         complaintsList.appendChild(item);
@@ -880,28 +945,33 @@ function sortComplaints(sortBy) {
 function getPriorityWeight(item) {
     const priorityBadge = item.querySelector('.badge.priority-critical, .badge.priority-high, .badge.priority-medium, .badge.priority-normal');
     if (!priorityBadge) return 0;
-    
+
     const priority = priorityBadge.textContent.toLowerCase().trim();
     switch (priority) {
-        case 'critical': return 4;
-        case 'high': return 3;
-        case 'medium': return 2;
-        case 'normal': return 1;
-        default: return 0;
+        case 'critical':
+            return 4;
+        case 'high':
+            return 3;
+        case 'medium':
+            return 2;
+        case 'normal':
+            return 1;
+        default:
+            return 0;
     }
 }
 
 function updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visibleCount) {
     const listTitle = document.getElementById('listTitle');
     const totalComplaints = document.querySelectorAll('.complaint-item').length;
-    
+
     let title = '';
     const filters = [];
-    
+
     if (searchQuery) filters.push(`Search: "${searchQuery}"`);
     if (dateFilter) filters.push(`Date: ${dateFilter}`);
     if (priorityFilter) filters.push(`Priority: ${priorityFilter}`);
-    
+
     if (filters.length > 0) {
         title = `Filtered Results (${visibleCount}/${totalComplaints})`;
     } else {
@@ -912,7 +982,7 @@ function updateListTitleForFilters(searchQuery, dateFilter, priorityFilter, visi
             title = 'All Complaints';
         }
     }
-    
+
     listTitle.textContent = title;
 }
 
@@ -922,15 +992,15 @@ function performRealTimeSearch(query) {
 
 function highlightSearchTerms(searchTerm) {
     const complaintItems = document.querySelectorAll('.complaint-item');
-    
+
     complaintItems.forEach(item => {
         if (item.style.display !== 'none') {
             const elements = item.querySelectorAll('.complaint-id, .complaint-customer, .complaint-type, .complaint-preview');
-            
+
             elements.forEach(element => {
                 const originalText = element.getAttribute('data-original-text') || element.innerHTML;
                 element.setAttribute('data-original-text', originalText);
-                
+
                 const highlightedText = originalText.replace(
                     new RegExp(searchTerm, 'gi'),
                     match => `<mark class="search-highlight">${match}</mark>`
@@ -943,10 +1013,10 @@ function highlightSearchTerms(searchTerm) {
 
 function removeSearchHighlights() {
     const complaintItems = document.querySelectorAll('.complaint-item');
-    
+
     complaintItems.forEach(item => {
         const elements = item.querySelectorAll('.complaint-id, .complaint-customer, .complaint-type, .complaint-preview');
-        
+
         elements.forEach(element => {
             const originalText = element.getAttribute('data-original-text');
             if (originalText) {
@@ -960,7 +1030,7 @@ function removeSearchHighlights() {
 function updateEmptyState(visibleCount) {
     const complaintsList = document.getElementById('complaintsList');
     let emptyState = complaintsList.querySelector('.empty-state');
-    
+
     if (visibleCount === 0) {
         if (!emptyState) {
             emptyState = document.createElement('div');
@@ -984,7 +1054,7 @@ function updateEmptyState(visibleCount) {
 function updateListTitleForSearch(query, visibleCount) {
     const listTitle = document.getElementById('listTitle');
     const activeFilter = document.querySelector('.filter-item.active');
-    
+
     if (query.trim()) {
         const totalComplaints = document.querySelectorAll('.complaint-item').length;
         listTitle.textContent = `Search Results (${visibleCount}/${totalComplaints})`;
@@ -999,13 +1069,13 @@ function updateListTitleForSearch(query, visibleCount) {
 
 function performTraditionalSearch(query) {
     const currentUrl = new URL(window.location);
-    
+
     if (query.trim()) {
         currentUrl.searchParams.set('search', query);
     } else {
         currentUrl.searchParams.delete('search');
     }
-    
+
     // Preserve current filter
     const activeFilter = document.querySelector('.filter-item.active');
     if (activeFilter) {
@@ -1018,14 +1088,14 @@ function performTraditionalSearch(query) {
             currentUrl.searchParams.set('status', filter);
         }
     }
-    
+
     window.location.href = currentUrl.toString();
 }
 
 function updateListTitle() {
     const listTitle = document.getElementById('listTitle');
     const activeFilter = document.querySelector('.filter-item.active');
-    
+
     if (activeFilter) {
         const filterText = activeFilter.querySelector('span').textContent;
         listTitle.textContent = filterText;
@@ -1034,13 +1104,13 @@ function updateListTitle() {
 
 function setupRealTimeUpdates() {
     // Poll for updates every 30 seconds
-    setInterval(function() {
+    setInterval(function () {
         checkForNewComplaints();
     }, 30000);
 }
 
 function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         // Ctrl/Cmd + F: Focus search
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
@@ -1050,13 +1120,13 @@ function setupKeyboardShortcuts() {
                 searchInput.select();
             }
         }
-        
+
         // Ctrl/Cmd + R: Refresh
         if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
             e.preventDefault();
             location.reload();
         }
-        
+
         // Escape: Clear selection
         if (e.key === 'Escape') {
             clearComplaintSelection();
@@ -1068,10 +1138,10 @@ function clearComplaintSelection() {
     const complaintItems = document.querySelectorAll('.complaint-item');
     const defaultState = document.getElementById('defaultState');
     const complaintDetails = document.getElementById('complaintDetails');
-    
+
     // Remove active class from all items
     complaintItems.forEach(i => i.classList.remove('active'));
-    
+
     // Show default state
     defaultState.style.display = 'flex';
     complaintDetails.style.display = 'none';
@@ -1079,7 +1149,7 @@ function clearComplaintSelection() {
 
 function setupAutoRefresh() {
     // Auto-refresh every 60 seconds if no modals are open
-    setInterval(function() {
+    setInterval(function () {
         if (!document.querySelector('.modal.show')) {
             // Check if user is active
             if (isUserActive()) {
@@ -1098,7 +1168,7 @@ function checkForNewComplaints() {
             const newDoc = parser.parseFromString(html, 'text/html');
             const currentComplaints = document.querySelectorAll('.complaint-item');
             const newComplaints = newDoc.querySelectorAll('.complaint-item');
-            
+
             if (newComplaints.length > currentComplaints.length) {
                 showNotification('New complaints available', 'info');
             }
@@ -1126,9 +1196,9 @@ function showNotification(message, type = 'info') {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         document.body.appendChild(notification);
-        
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (notification.parentNode) {
@@ -1140,11 +1210,11 @@ function showNotification(message, type = 'info') {
 
 function formatDateTime(timestamp) {
     const date = new Date(timestamp);
-    return date.toLocaleString('en-US', { 
+    return date.toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-        hour: '2-digit', 
+        hour: '2-digit',
         minute: '2-digit'
     });
 }
@@ -1173,12 +1243,12 @@ function revertComplaint(complaintId) {
 function updateUserDropdown() {
     const toDepartmentSelect = document.getElementById('toDepartment');
     const toUserSelect = document.getElementById('toUser');
-    
+
     if (toDepartmentSelect && toUserSelect && typeof departmentUsers !== 'undefined') {
-        toDepartmentSelect.addEventListener('change', function() {
+        toDepartmentSelect.addEventListener('change', function () {
             const department = this.value;
             toUserSelect.innerHTML = '<option value="">Select User (Optional)</option>';
-            
+
             if (department && departmentUsers[department]) {
                 departmentUsers[department].forEach(user => {
                     const option = document.createElement('option');
@@ -1221,11 +1291,11 @@ function openEvidenceModal(url, filename) {
         `;
         document.body.appendChild(modal);
     }
-    
+
     // Update modal content
     const evidenceContent = modal.querySelector('#evidenceContent');
     const fileExtension = filename.toLowerCase().split('.').pop();
-    
+
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExtension)) {
         // Image file
         evidenceContent.innerHTML = `<img src="${url}" alt="${filename}" class="img-fluid evidence-modal-image">`;
@@ -1245,13 +1315,13 @@ function openEvidenceModal(url, filename) {
             </div>
         `;
     }
-    
+
     // Show modal
     const bootstrapModal = new bootstrap.Modal(modal);
     bootstrapModal.show();
 }
 
 // Initialize department dropdown functionality
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     updateUserDropdown();
 });

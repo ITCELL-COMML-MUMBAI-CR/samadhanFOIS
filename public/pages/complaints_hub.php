@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Three-Column Complaints Hub Layout
  * Filters | Complaints List | Complaint Details
@@ -23,50 +24,50 @@ if (!isset($currentUser)) {
                 <i class="fas fa-filter text-primary"></i> Filters
             </h5>
         </div>
-        
+
         <div class="filters-list">
             <div class="filter-item <?php echo $view === 'all' && empty($status) ? 'active' : ''; ?>" data-filter="all">
                 <i class="fas fa-globe"></i>
                 <span>All Complaints</span>
                 <span class="filter-count"><?php echo $statistics['total']; ?></span>
             </div>
-            
+
             <div class="filter-item <?php echo $view === 'assigned' ? 'active' : ''; ?>" data-filter="assigned">
                 <i class="fas fa-user-check"></i>
                 <span>Assigned to Me</span>
                 <span class="filter-count"><?php echo $statistics['assigned']; ?></span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'pending' ? 'active' : ''; ?>" data-filter="pending">
                 <i class="fas fa-clock"></i>
                 <span>Pending</span>
                 <span class="filter-count"><?php echo $statistics['pending']; ?></span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'replied' ? 'active' : ''; ?>" data-filter="replied">
                 <i class="fas fa-reply"></i>
                 <span>Replied</span>
                 <span class="filter-count"><?php echo $statistics['replied']; ?></span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'closed' ? 'active' : ''; ?>" data-filter="closed">
                 <i class="fas fa-check-circle"></i>
                 <span>Closed</span>
                 <span class="filter-count"><?php echo $statistics['closed']; ?></span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'forwarded' ? 'active' : ''; ?>" data-filter="forwarded">
                 <i class="fas fa-share"></i>
                 <span>Forwarded</span>
                 <span class="filter-count">0</span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'reverted' ? 'active' : ''; ?>" data-filter="reverted">
                 <i class="fas fa-undo"></i>
                 <span>Reverted</span>
                 <span class="filter-count">0</span>
             </div>
-            
+
             <div class="filter-item <?php echo $status === 'awaiting_approval' ? 'active' : ''; ?>" data-filter="awaiting_approval">
                 <i class="fas fa-clock"></i>
                 <span>Pending Approval</span>
@@ -79,7 +80,7 @@ if (!isset($currentUser)) {
     <div class="list-column">
         <div class="list-header">
             <h5 class="list-title">
-                <i class="fas fa-list text-primary"></i> 
+                <i class="fas fa-list text-primary"></i>
                 <span id="listTitle">All Complaints</span>
                 <span class="list-subtitle">as per filters</span>
             </h5>
@@ -89,7 +90,7 @@ if (!isset($currentUser)) {
                 </button>
             </div>
         </div>
-        
+
         <!-- Date Filter -->
         <div class="filter-section">
             <div class="filter-row">
@@ -120,9 +121,9 @@ if (!isset($currentUser)) {
         <div class="search-section">
             <div class="search-input-group">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" class="search-input" id="searchInput" 
-                       placeholder="Search complaints..." 
-                       value="<?php echo htmlspecialchars($search ?? ''); ?>">
+                <input type="text" class="search-input" id="searchInput"
+                    placeholder="Search complaints..."
+                    value="<?php echo htmlspecialchars($search ?? ''); ?>">
                 <button type="button" class="search-clear-btn" id="searchClearBtn" style="display: none;">
                     <i class="fas fa-times"></i>
                 </button>
@@ -156,7 +157,7 @@ if (!isset($currentUser)) {
                 </div>
             </div>
         </div>
-        
+
         <div class="complaints-list" id="complaintsList">
             <?php if (empty($grievances)): ?>
                 <div class="empty-state">
@@ -170,11 +171,14 @@ if (!isset($currentUser)) {
                 </div>
             <?php else: ?>
                 <?php foreach ($grievances as $grievance): ?>
-                    <?php 
+                    <?php
                     // Debug: Check what data we have
                     // echo "<!-- Debug: " . json_encode($grievance) . " -->"; 
                     ?>
-                    <div class="complaint-item" data-complaint-id="<?php echo htmlspecialchars($grievance['complaint_id'] ?? ''); ?>">
+                    <div class="complaint-item" data-complaint-id="<?php echo htmlspecialchars($grievance['complaint_id'] ?? ''); ?>"
+                        data-complaint-status="<?php echo htmlspecialchars(strtolower($grievance['status'] ?? 'pending')); ?>"
+                        data-action-taken="<?php echo htmlspecialchars($grievance['action_taken'] ?? ''); ?>">
+                        >
                         <div class="complaint-header">
                             <div class="complaint-id">
                                 <i class="fas fa-hashtag"></i> <?php echo htmlspecialchars($grievance['complaint_id'] ?? ''); ?>
@@ -183,27 +187,27 @@ if (!isset($currentUser)) {
                                 <?php echo date('d M Y, H:i', strtotime($grievance['created_at'])); ?>
                             </div>
                         </div>
-                        
+
                         <div class="complaint-customer">
                             <i class="fas fa-user"></i> <?php echo htmlspecialchars($grievance['customer_name'] ?? 'Unknown'); ?>
                         </div>
-                        
+
                         <div class="complaint-type">
                             <strong><?php echo htmlspecialchars($grievance['Type'] ?? 'Not specified'); ?></strong>
                             <?php if (!empty($grievance['Subtype'])): ?>
                                 <span class="subtype">- <?php echo htmlspecialchars($grievance['Subtype'] ?? ''); ?></span>
                             <?php endif; ?>
                         </div>
-                        
+
                         <div class="complaint-preview">
                             <?php echo htmlspecialchars(substr($grievance['description'] ?? '', 0, 100)); ?>
                             <?php if (strlen($grievance['description'] ?? '') > 100): ?>
                                 <span class="text-muted">...</span>
                             <?php endif; ?>
                         </div>
-                        
+
                         <div class="complaint-badges">
-                            <?php 
+                            <?php
                             $priority = $grievance['display_priority'] ?? $grievance['priority'] ?? 'medium';
                             $status = $grievance['status'] ?? 'pending';
                             ?>
@@ -250,21 +254,18 @@ if (!isset($currentUser)) {
                         <div class="complaint-priority-badge" id="detailPriority" style="display: none;"></div>
                     </div>
                 </div>
-                
+
                 <div class="action-buttons">
-                    <!-- <button class="btn btn-sm btn-outline-primary" id="viewDetailsBtn" title="View Full Details">
-                        <i class="fas fa-eye"></i> View
-                    </button> -->
-                    <button class="btn btn-sm btn-outline-warning" id="forwardBtn" title="Forward Complaint">
-                        <i class="fas fa-share"></i> Forward
-                    </button>
-                    <button class="btn btn-sm btn-outline-success" id="closeBtn" title="Close Complaint">
-                        <i class="fas fa-check-circle"></i> Close
-                    </button>
+                    <!-- Standard Action Buttons -->
+                    <button class="btn btn-sm btn-outline-warning action-btn" id="forwardBtn" title="Forward Complaint"><i class="fas fa-share"></i> Forward</button>
+                    <button class="btn btn-sm btn-outline-success action-btn" id="closeBtn" title="Close Complaint"><i class="fas fa-check-circle"></i> Close</button>
                     <?php if (strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
-                        <button class="btn btn-sm btn-outline-danger" id="revertBtn" title="Revert to Customer">
-                            <i class="fas fa-undo"></i> Revert
-                        </button>
+                        <button class="btn btn-sm btn-outline-danger action-btn" id="revertBtn" title="Revert to Customer"><i class="fas fa-undo"></i> Revert</button>
+                    <?php endif; ?>
+
+                    <!-- Approval Action Button (Initially Hidden) -->
+                    <?php if ($currentUser['role'] === 'admin' || strtoupper($currentUser['department'] ?? '') === 'COMMERCIAL'): ?>
+                        <button class="btn btn-sm btn-primary action-btn" id="takeActionBtn" title="Approve/Reject Action" style="display: none;"><i class="fas fa-gavel"></i> Take Action</button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -275,32 +276,32 @@ if (!isset($currentUser)) {
                     <label class="info-label">Customer Information</label>
                     <div class="info-content" id="detailCustomerInfo"></div>
                 </div>
-                
+
                 <div class="info-group">
                     <label class="info-label">Complaint Type</label>
                     <div class="info-content" id="detailComplaintType"></div>
                 </div>
-                
+
                 <div class="info-group">
                     <label class="info-label">Shed</label>
                     <div class="info-content" id="detailLocation"></div>
                 </div>
-                
+
                 <div class="info-group">
                     <label class="info-label">Priority</label>
                     <div class="info-content" id="detailPriority"></div>
                 </div>
-                
+
                 <div class="info-group">
                     <label class="info-label">Status</label>
                     <div class="info-content" id="detailStatusInfo"></div>
                 </div>
-                
+
                 <div class="info-group">
                     <label class="info-label">Created Date</label>
                     <div class="info-content" id="detailCreatedDate"></div>
                 </div>
-                
+
                 <div class="info-group full-width">
                     <label class="info-label">Description</label>
                     <div class="info-content description-text" id="detailDescription"></div>
@@ -324,11 +325,15 @@ if (!isset($currentUser)) {
 <?php include 'modals/close_complaint_modal.php'; ?>
 <?php include 'modals/forward_complaint_modal.php'; ?>
 <?php include 'modals/revert_complaint_modal.php'; ?>
+<?php include 'modals/approve_reject_modal.php'; ?>
 
 <script>
-// Department users data
-const departmentUsers = <?php echo json_encode($departmentUsers); ?>;
-const currentView = '<?php echo $view; ?>';
-const currentStatus = '<?php echo $status; ?>';
+    // Department users data
+    const departmentUsers = <?php echo json_encode($departmentUsers); ?>;
+    const currentView = '<?php echo $view; ?>';
+    const currentStatus = '<?php echo $status; ?>';
+// Pass PHP variables to JavaScript
+const currentUserRole = '<?php echo $currentUser['role']; ?>';
+const currentUserDepartment = '<?php echo $currentUser['department']; ?>';
 </script>
 <script src="<?php echo BASE_URL; ?>js/complaints_hub.js"></script>

@@ -397,12 +397,13 @@ class ComplaintController extends BaseController {
     }
 
     /**
-     * Approvals queue for Commercial Controller
+     * Approvals queue for Commercial Controller and Admin
      */
-    public function approvals() {
-        SessionManager::requireRole('controller');
+    /* public function approvals() {
+        // Allow both admin and commercial controllers to access this page
+        SessionManager::requireAnyRole(['admin', 'controller']);
         $currentUser = SessionManager::getCurrentUser();
-        if (strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+        if ($currentUser['role'] !== 'admin' && strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
             if (!headers_sent()) {
                 header('Location: ' . BASE_URL . 'dashboard?error=access_denied');
             }
@@ -422,7 +423,7 @@ class ComplaintController extends BaseController {
             unset($_SESSION['alert_message'], $_SESSION['alert_type']);
         }
 
-        // Handle POST actions
+        // Handle POST actions for approve/reject
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 if (!SessionManager::validateCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -431,13 +432,13 @@ class ComplaintController extends BaseController {
 
                 $action = $_POST['action'] ?? '';
                 $complaintId = $_POST['complaint_id'] ?? '';
-                $remarks = sanitizeInput($_POST['remarks'] ?? '');
 
                 $complaintModel = $this->loadModel('Complaint');
                 $transactionModel = $this->loadModel('Transaction');
                 $userModel = $this->loadModel('User');
 
                 if ($action === 'approve') {
+                    $remarks = sanitizeInput($_POST['remarks'] ?? '');
                     $complaint = $complaintModel->findByComplaintId($complaintId);
                     if (!$complaint) {
                         throw new Exception('Complaint not found');
@@ -469,7 +470,7 @@ class ComplaintController extends BaseController {
 
                     $_SESSION['alert_message'] = 'Action taken approved and sent to customer for feedback.';
                     $_SESSION['alert_type'] = 'success';
-                    $this->redirect('grievances/approvals');
+                    $this->redirect('dashboard'); // Redirect to dashboard
                     return;
                 }
                 
@@ -484,21 +485,18 @@ class ComplaintController extends BaseController {
                         throw new Exception('Rejection reason is required');
                     }
                     
-                    // Get the original assigned department/user before approval
-                    $originalAssignedTo = $complaint['Assigned_To_Department'] ?? '';
-                    
-                    // Find the department that sent for approval (usually the one that closed it)
+                    // Find the department that sent for approval (the one who took the action)
                     $transactions = $transactionModel->findByComplaintId($complaintId);
                     $closingTransaction = null;
-                    foreach ($transactions as $transaction) {
+                    foreach (array_reverse($transactions) as $transaction) {
                         if (strpos($transaction['remarks'] ?? '', 'Closed by controller') !== false) {
                             $closingTransaction = $transaction;
                             break;
                         }
                     }
                     
-                    // Reassign back to the department that closed it, or to Commercial if not found
-                    $reassignTo = $closingTransaction ? $closingTransaction['created_by'] : 'commercial_controller';
+                    // Reassign back to the user who took the action
+                    $reassignTo = $closingTransaction ? $closingTransaction['created_by'] : ($complaint['Assigned_To_Department'] ?? 'commercial_controller');
                     $complaintModel->assignTo($complaintId, $reassignTo);
                     
                     // Update status back to pending
@@ -512,7 +510,7 @@ class ComplaintController extends BaseController {
                     
                     $_SESSION['alert_message'] = 'Action taken rejected and sent back for review.';
                     $_SESSION['alert_type'] = 'success';
-                    $this->redirect('grievances/approvals');
+                    $this->redirect('dashboard'); // Redirect to dashboard
                     return;
                 }
             } catch (Exception $e) {
@@ -525,14 +523,15 @@ class ComplaintController extends BaseController {
 
         // Fetch approvals list
         $complaintModel = $this->loadModel('Complaint');
-        $approvals = $complaintModel->findAwaitingApproval($currentUser['login_id']);
+        $approvals = $complaintModel->findAwaitingApproval(); // Fetch for all commercial controllers/admins
 
         $data = compact('approvals', 'currentUser', 'error', 'success');
+        $data['customJS'] = ['js/approvals.js']; // Add custom JS file
         
         $this->loadView('header', ['pageTitle' => 'Approvals']);
         $this->loadView('pages/approvals', $data);
-        $this->loadView('footer');
-    }
+        $this->loadView('footer', $data);
+    } */
 
     /**
      * Detailed complaint view
@@ -892,6 +891,70 @@ class ComplaintController extends BaseController {
                         }
                         $this->redirect('grievances/hub');
                         return;
+                        case 'approve':
+                            // Approval logic is now here
+                            if ($currentUser['role'] !== 'admin' && strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                                throw new Exception('You do not have permission to approve this action.');
+                            }
+                            $remarks = sanitizeInput($_POST['remarks'] ?? '');
+                            $complaint = $complaintModel->findByComplaintId($complaintId);
+                            if (!$complaint) throw new Exception('Complaint not found');
+                            
+                            $customerId = $complaint['customer_id'] ?? null;
+                            $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
+                            $customerLoginId = $customerUser['login_id'] ?? null;
+                        
+                            $complaintModel->updateStatus($complaintId, 'replied');
+                            if ($customerLoginId) {
+                                $complaintModel->assignTo($complaintId, $customerLoginId);
+                            }
+                            $complaintModel->setAwaitingApproval($complaintId, 'N');
+                            $transactionModel->logStatusUpdate($complaintId, 'Commercial approval granted. ' . ($remarks ? 'Remarks: ' . $remarks : ''), $currentUser['login_id']);
+                        
+                            // Email logic...
+                            require_once __DIR__ . '/../utils/EmailService.php';
+                            $emailService = new EmailService();
+                            $customerEmail = $complaint['customer_email'] ?? '';
+                            $customerName = $complaint['customer_name'] ?? 'Valued Customer';
+                            if ($customerEmail && EmailService::isValidEmail($customerEmail)) {
+                                $emailService->sendStatusUpdate($customerEmail, $customerName, $complaintId, 'awaiting_approval', 'replied', $remarks);
+                            }
+                        
+                            $_SESSION['alert_message'] = 'Action approved and sent to customer.';
+                            $_SESSION['alert_type'] = 'success';
+                            $this->redirect('dashboard'); // Redirect to dashboard
+                            return;
+                        
+                        case 'reject':
+                            // Rejection logic is now here
+                            if ($currentUser['role'] !== 'admin' && strtoupper($currentUser['department'] ?? '') !== 'COMMERCIAL') {
+                                throw new Exception('You do not have permission to reject this action.');
+                            }
+                            $complaint = $complaintModel->findByComplaintId($complaintId);
+                            if (!$complaint) throw new Exception('Complaint not found');
+                            
+                            $rejectionReason = sanitizeInput($_POST['rejection_reason'] ?? '');
+                            if (empty($rejectionReason)) throw new Exception('Rejection reason is required');
+                            
+                            $transactions = $transactionModel->findByComplaintId($complaintId);
+                            $closingTransaction = null;
+                            foreach (array_reverse($transactions) as $transaction) {
+                                if (strpos($transaction['remarks'] ?? '', 'Closed by controller') !== false) {
+                                    $closingTransaction = $transaction;
+                                    break;
+                                }
+                            }
+                            
+                            $reassignTo = $closingTransaction ? $closingTransaction['created_by'] : ($complaint['Assigned_To_Department'] ?? 'commercial_controller');
+                            $complaintModel->assignTo($complaintId, $reassignTo);
+                            $complaintModel->updateStatus($complaintId, 'pending');
+                            $complaintModel->setAwaitingApproval($complaintId, 'N');
+                            $transactionModel->logStatusUpdate($complaintId, 'Commercial rejected action taken. Reason: ' . $rejectionReason, $currentUser['login_id']);
+                            
+                            $_SESSION['alert_message'] = 'Action rejected and sent back for review.';
+                            $_SESSION['alert_type'] = 'success';
+                            $this->redirect('dashboard'); // Redirect to dashboard
+                            return;
                 }
             } catch (Exception $e) {
                 $_SESSION['alert_message'] = $e->getMessage();
