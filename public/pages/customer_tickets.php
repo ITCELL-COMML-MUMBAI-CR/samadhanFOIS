@@ -195,19 +195,46 @@ if (!isset($currentUser)) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="additionalInfoForm">
+                <form id="additionalInfoForm" enctype="multipart/form-data">
                     <input type="hidden" id="additionalInfoTicketId" name="ticket_id">
                     <input type="hidden" name="csrf_token" value="<?php echo CSRF::generateToken(); ?>">
                     
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        <strong>Note:</strong> Your ticket has been reverted for additional information. Please provide the requested details to help us resolve your issue faster.
+                        <strong>Note:</strong> Your ticket has been reverted. Please provide the requested details and manage your evidence files below.
+                    </div>
+
+                    <div id="existingEvidenceSection" class="mb-3">
+                        <!-- Existing evidence will be loaded here by JavaScript -->
                     </div>
                     
                     <div class="mb-3">
-                        <label for="additionalInfo" class="form-label">Additional Information</label>
+                        <label for="additionalInfo" class="form-label">Additional Information *</label>
                         <textarea class="form-control" id="additionalInfo" name="additional_info" rows="6" 
                                   placeholder="Please provide the additional information requested by our support team..." required></textarea>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-paperclip"></i> Upload New Evidence (Optional)
+                            </h6>
+                            <p class="card-text small">You can upload new supporting images if needed.</p>
+                            
+                            <div class="file-upload-area" id="additionalEvidenceArea" style="cursor: pointer; border: 2px dashed #dee2e6; border-radius: 8px; padding: 20px; text-align: center;">
+                                <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                <p class="mb-2">Click to select additional evidence files</p>
+                                <input type="file" class="form-control" id="additional_evidence" name="additional_evidence[]" 
+                                       multiple accept="image/*" style="display: none;">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); document.getElementById('additional_evidence').click();">
+                                    <i class="fas fa-upload"></i> Select Files
+                                </button>
+                            </div>
+                            
+                            <div class="row mt-3" id="additionalEvidencePreview">
+                                <!-- New file previews will be shown here -->
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>

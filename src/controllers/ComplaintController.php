@@ -899,6 +899,28 @@ class ComplaintController extends BaseController {
                             $remarks = sanitizeInput($_POST['remarks'] ?? '');
                             $complaint = $complaintModel->findByComplaintId($complaintId);
                             if (!$complaint) throw new Exception('Complaint not found');
+
+                            // Find the user who sent the complaint for approval
+    $transactions = $transactionModel->findByComplaintId($complaintId);
+    $actionTakenByUser = null;
+    foreach (array_reverse($transactions) as $transaction) {
+        if (strpos($transaction['remarks'] ?? '', 'Closed by controller') !== false) {
+            $actionTakenByUser = $transaction['created_by'];
+            break;
+        }
+    }
+
+    if ($actionTakenByUser) {
+        $actionUser = $userModel->findByLoginId($actionTakenByUser);
+        if ($actionUser) {
+            $updateData = [
+                'department' => $actionUser['department'],
+                'Division' => $actionUser['Division'],
+                'Zone' => $actionUser['Zone']
+            ];
+            $complaintModel->updateComplaint($complaintId, $updateData);
+        }
+    }
                             
                             $customerId = $complaint['customer_id'] ?? null;
                             $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;

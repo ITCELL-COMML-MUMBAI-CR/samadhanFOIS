@@ -106,8 +106,12 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'feedback_submitted',
                     'remarks' => "Customer feedback submitted. Rating: $rating stars" . ($remarks ? ". Remarks: $remarks" : ''),
-                    'created_by' => $currentUser['login_id'] ?? 'customer'
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                 ]);
+                
+                // Set a session alert to be displayed after the page reloads.
+                SessionManager::setAlert('Feedback submitted successfully!', 'success');
                 
                 echo json_encode(['error' => false, 'message' => 'Feedback submitted successfully']);
             } else {
@@ -153,6 +157,7 @@ class CustomerTicketsController extends BaseController {
         // Load models
         $complaintModel = $this->loadModel('Complaint');
         $transactionModel = $this->loadModel('Transaction');
+        $evidenceModel = $this->loadModel('Evidence'); // Load Evidence model
         
         try {
             // Verify ticket belongs to customer and is in reverted status
@@ -161,10 +166,38 @@ class CustomerTicketsController extends BaseController {
                 echo json_encode(['error' => true, 'message' => 'Invalid ticket or ticket not in reverted status']);
                 return;
             }
+
+            // Handle image deletion if requested
+            $deleteImages = $_POST['delete_images'] ?? [];
+            if (!empty($deleteImages)) {
+                $currentEvidence = $evidenceModel->findByComplaintId($ticketId);
+                if ($currentEvidence) {
+                    foreach ($deleteImages as $filename) {
+                        for ($i = 1; $i <= 3; $i++) {
+                            $imageField = "image_$i";
+                            if (isset($currentEvidence[$imageField]) && $currentEvidence[$imageField] === $filename) {
+                                $evidenceModel->deleteImage($ticketId, $i);
+                                break; 
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Handle additional evidence upload if provided
+            if (!empty($_FILES['additional_evidence']['name'][0])) {
+                $uploadResult = $evidenceModel->handleFileUpload($_FILES['additional_evidence'], $ticketId);
+                if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                    throw new Exception('Failed to upload some files: ' . implode(', ', $uploadResult['errors']));
+                }
+            }
             
-            // Update complaint with additional information
+            // Append new info to the existing description
+            $newDescription = $ticket['description'] . "\n\n--- ADDITIONAL INFORMATION ---\n" . $additionalInfo;
+
+            // Update complaint with the appended description and set status to Pending
             $updateData = [
-                'additional_info' => $additionalInfo,
+                'description' => $newDescription,
                 'status' => 'Pending'
             ];
             
@@ -174,7 +207,8 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'additional_info_provided',
                     'remarks' => "Customer provided additional information: $additionalInfo",
-                    'created_by' => $currentUser['login_id'] ?? 'customer'
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                 ]);
                 
                 echo json_encode(['error' => false, 'message' => 'Additional information submitted successfully']);

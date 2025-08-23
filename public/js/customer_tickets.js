@@ -63,6 +63,37 @@ $(document).ready(function() {
     $('#submitAdditionalInfoBtn').on('click', function() {
         submitAdditionalInfo();
     });
+    
+    $('#additionalInfoModal').on('shown.bs.modal', function () {
+        const fileInput = document.getElementById('additional_evidence');
+        const previewContainer = document.getElementById('additionalEvidencePreview');
+
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                previewContainer.innerHTML = ''; // Clear previous previews
+                if (this.files.length > 3) {
+                    showAlert('You can only upload a maximum of 3 files.', 'warning');
+                    this.value = ''; // Clear the selection
+                    return;
+                }
+                Array.from(this.files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewCol = document.createElement('div');
+                        previewCol.className = 'col-4';
+                        previewCol.innerHTML = `
+                            <div class="text-center">
+                                <img src="${e.target.result}" class="img-thumbnail mb-2" style="height: 80px; object-fit: cover;">
+                                <small class="d-block text-muted text-truncate">${file.name}</small>
+                            </div>
+                        `;
+                        previewContainer.appendChild(previewCol);
+                    }
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+    });
 
     console.log("Event listeners are set up.");
 });
@@ -117,13 +148,71 @@ function giveFeedback(ticketId) {
 }
 
 /**
- * Opens the "Provide Additional Info" modal and sets the ticket ID.
+ * Opens the "Provide Additional Info" modal, fetches existing evidence, and sets up the form.
  * @param {string} ticketId - The ID of the ticket.
  */
 function provideAdditionalInfo(ticketId) {
-    $('#additionalInfoTicketId').val(ticketId);
-    $('#additionalInfoForm')[0].reset();
     const modal = new bootstrap.Modal(document.getElementById('additionalInfoModal'));
+    const form = document.getElementById('additionalInfoForm');
+    const existingEvidenceContainer = document.getElementById('existingEvidenceSection');
+    const newEvidencePreviewContainer = document.getElementById('additionalEvidencePreview');
+    const fileInput = document.getElementById('additional_evidence');
+
+    // Reset form and containers
+    form.reset();
+    existingEvidenceContainer.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading existing evidence...</div>';
+    newEvidencePreviewContainer.innerHTML = '';
+    if(fileInput) fileInput.value = '';
+    $('#additionalInfoTicketId').val(ticketId);
+
+    // Fetch ticket details to get existing evidence
+    fetch(`${CUSTOMER_TICKETS_BASE_URL}customer-tickets/details/${ticketId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error || !data.data) {
+                existingEvidenceContainer.innerHTML = '<div class="alert alert-warning p-2 small">Could not load existing evidence.</div>';
+                return;
+            }
+            
+            const ticket = data.data;
+            let evidenceHTML = '';
+            
+            if (ticket.evidence && ticket.evidence.length > 0) {
+                evidenceHTML += `
+                    <h6 class="card-title"><i class="fas fa-images"></i> Manage Existing Evidence</h6>
+                    <p class="card-text small">Select images to delete before submitting.</p>
+                    <div class="row g-2">
+                `;
+                ticket.evidence.forEach((img, index) => {
+                    evidenceHTML += `
+                        <div class="col-6 col-md-4">
+                            <div class="border rounded p-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="delete_images[]" value="${img.filename}" id="delete_img_${index}">
+                                    <label class="form-check-label" for="delete_img_${index}">
+                                        <small class="text-muted">Delete this image</small>
+                                    </label>
+                                </div>
+                                <div class="ratio ratio-4x3 mt-2">
+                                    <img src="${img.url}" alt="Evidence" class="w-100 h-100 object-fit-cover">
+                                </div>
+                                <small class="text-muted d-block mt-1 text-truncate">${img.filename}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                evidenceHTML += '</div>';
+            } else {
+                evidenceHTML = '<p class="text-muted small">No existing evidence attached to this ticket.</p>';
+            }
+            
+            existingEvidenceContainer.innerHTML = evidenceHTML;
+        })
+        .catch(error => {
+            console.error('Error fetching existing evidence:', error);
+            existingEvidenceContainer.innerHTML = '<div class="alert alert-danger p-2 small">Error loading evidence.</div>';
+        });
+
     modal.show();
 }
 
@@ -154,9 +243,8 @@ function submitFeedback() {
         if (data.error) {
             throw new Error(data.message);
         }
-        if (window.showAlert) showAlert('Feedback submitted successfully!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
-        setTimeout(() => window.location.reload(), 1500); // Reload page to reflect changes.
+        setTimeout(() => window.location.reload(), 500); // Reload page to reflect changes.
     })
     .catch(error => {
         console.error('Error submitting feedback:', error);
@@ -194,9 +282,8 @@ function submitAdditionalInfo() {
         if (data.error) {
             throw new Error(data.message);
         }
-        if (window.showAlert) showAlert('Information submitted successfully!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('additionalInfoModal')).hide();
-        setTimeout(() => window.location.reload(), 1500); // Reload page to reflect changes.
+        setTimeout(() => window.location.reload(), 500); // Reload page to reflect changes.
     })
     .catch(error => {
         console.error('Error submitting additional info:', error);

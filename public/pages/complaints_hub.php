@@ -26,46 +26,16 @@ if (!isset($currentUser)) {
         </div>
 
         <div class="filters-list">
-            <div class="filter-item <?php echo $view === 'all' && empty($status) ? 'active' : ''; ?>" data-filter="all">
-                <i class="fas fa-globe"></i>
-                <span>All Complaints</span>
-                <span class="filter-count"><?php echo $statistics['total']; ?></span>
-            </div>
-
             <div class="filter-item <?php echo $view === 'assigned' ? 'active' : ''; ?>" data-filter="assigned">
                 <i class="fas fa-user-check"></i>
                 <span>Assigned to Me</span>
                 <span class="filter-count"><?php echo $statistics['assigned']; ?></span>
             </div>
 
-            <div class="filter-item <?php echo $status === 'pending' ? 'active' : ''; ?>" data-filter="pending">
-                <i class="fas fa-clock"></i>
-                <span>Pending</span>
-                <span class="filter-count"><?php echo $statistics['pending']; ?></span>
-            </div>
-
-            <div class="filter-item <?php echo $status === 'replied' ? 'active' : ''; ?>" data-filter="replied">
-                <i class="fas fa-reply"></i>
-                <span>Replied</span>
-                <span class="filter-count"><?php echo $statistics['replied']; ?></span>
-            </div>
-
-            <div class="filter-item <?php echo $status === 'closed' ? 'active' : ''; ?>" data-filter="closed">
-                <i class="fas fa-check-circle"></i>
-                <span>Closed</span>
-                <span class="filter-count"><?php echo $statistics['closed']; ?></span>
-            </div>
-
             <div class="filter-item <?php echo $status === 'forwarded' ? 'active' : ''; ?>" data-filter="forwarded">
                 <i class="fas fa-share"></i>
                 <span>Forwarded</span>
-                <span class="filter-count">0</span>
-            </div>
-
-            <div class="filter-item <?php echo $status === 'reverted' ? 'active' : ''; ?>" data-filter="reverted">
-                <i class="fas fa-undo"></i>
-                <span>Reverted</span>
-                <span class="filter-count">0</span>
+                <span class="filter-count"><?php echo $statistics['forwarded'] ?? 0; ?></span>
             </div>
 
             <div class="filter-item <?php echo $status === 'awaiting_approval' ? 'active' : ''; ?>" data-filter="awaiting_approval">
@@ -171,14 +141,10 @@ if (!isset($currentUser)) {
                 </div>
             <?php else: ?>
                 <?php foreach ($grievances as $grievance): ?>
-                    <?php
-                    // Debug: Check what data we have
-                    // echo "<!-- Debug: " . json_encode($grievance) . " -->"; 
-                    ?>
                     <div class="complaint-item" data-complaint-id="<?php echo htmlspecialchars($grievance['complaint_id'] ?? ''); ?>"
                         data-complaint-status="<?php echo htmlspecialchars(strtolower($grievance['status'] ?? 'pending')); ?>"
                         data-action-taken="<?php echo htmlspecialchars($grievance['action_taken'] ?? ''); ?>">
-                        >
+
                         <div class="complaint-header">
                             <div class="complaint-id">
                                 <i class="fas fa-hashtag"></i> <?php echo htmlspecialchars($grievance['complaint_id'] ?? ''); ?>
@@ -332,8 +298,8 @@ if (!isset($currentUser)) {
     const departmentUsers = <?php echo json_encode($departmentUsers); ?>;
     const currentView = '<?php echo $view; ?>';
     const currentStatus = '<?php echo $status; ?>';
-// Pass PHP variables to JavaScript
-const currentUserRole = '<?php echo $currentUser['role']; ?>';
-const currentUserDepartment = '<?php echo $currentUser['department']; ?>';
+    // Pass PHP variables to JavaScript
+    const currentUserRole = '<?php echo $currentUser['role']; ?>';
+    const currentUserDepartment = '<?php echo $currentUser['department']; ?>';
 </script>
 <script src="<?php echo BASE_URL; ?>js/complaints_hub.js"></script>

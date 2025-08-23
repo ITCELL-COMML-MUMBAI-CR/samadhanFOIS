@@ -187,7 +187,7 @@ function showComplaintDetails(complaintId, complaintElement) {
     if (document.getElementById('revertBtn')) {
         document.getElementById('revertBtn').onclick = () => revertComplaint(complaintId);
     }
-
+updateComplaintHeader(complaintId, complaintElement);
     loadComplaintDetails(complaintId);
 }
 

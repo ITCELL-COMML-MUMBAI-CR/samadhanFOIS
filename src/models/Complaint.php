@@ -161,6 +161,14 @@ class Complaint extends BaseModel {
             $sql .= ", action_taken = ?";
             $params[] = $actionTaken;
         }
+
+        if (in_array($status, ['replied', 'awaiting_approval', 'closed'])) {
+            $sql .= ", Forwarded_Flag = 'N'";
+        }
+
+        if (in_array($status, ['replied', 'closed'])) {
+            $sql .= ", Assigned_To_Department = NULL";
+        }
         
         $sql .= " WHERE complaint_id = ?";
         $params[] = $complaintId;

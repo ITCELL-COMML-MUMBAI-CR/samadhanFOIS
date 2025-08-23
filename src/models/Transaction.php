@@ -16,6 +16,11 @@ class Transaction extends BaseModel {
         $data['transaction_id'] = $this->generateTransactionId();
         $data['created_at'] = getCurrentDateTime();
         
+        // Default creator type to 'user' if not specified
+        if (!isset($data['created_by_type'])) {
+            $data['created_by_type'] = 'user';
+        }
+        
         return $this->createWithId($data);
     }
     
@@ -35,16 +40,17 @@ class Transaction extends BaseModel {
     }
     
     /**
-     * Get transactions for a complaint
+     * Get transactions for a complaint, joining with both users and customers.
      */
     public function findByComplaintId($complaintId) {
         $stmt = $this->connection->prepare("
             SELECT t.*, 
-                   u1.name as created_by_name,
+                   COALESCE(u.name, c.Name) as created_by_name,
                    u2.name as from_user_name,
                    u3.name as to_user_name
             FROM transactions t
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u ON t.created_by = u.login_id AND t.created_by_type = 'user'
+            LEFT JOIN customers c ON t.created_by = c.CustomerID AND t.created_by_type = 'customer'
             LEFT JOIN users u2 ON t.from_user = u2.login_id
             LEFT JOIN users u3 ON t.to_user = u3.login_id
             WHERE t.complaint_id = ?
@@ -55,7 +61,7 @@ class Transaction extends BaseModel {
     }
     
     /**
-     * Log complaint forward action
+     * Log complaint forward action (by a user)
      */
     public function logForward($complaintId, $fromUser, $toUser, $fromDept, $toDept, $remarks, $createdBy) {
         return $this->createTransaction([
@@ -66,36 +72,39 @@ class Transaction extends BaseModel {
             'from_department' => $fromDept,
             'to_department' => $toDept,
             'remarks' => $remarks,
-            'created_by' => $createdBy
+            'created_by' => $createdBy,
+            'created_by_type' => 'user'
         ]);
     }
     
     /**
-     * Log internal remark
+     * Log internal remark (by a user)
      */
     public function logInternalRemark($complaintId, $remarks, $createdBy) {
         return $this->createTransaction([
             'complaint_id' => $complaintId,
             'transaction_type' => 'internal_remark',
             'remarks' => $remarks,
-            'created_by' => $createdBy
+            'created_by' => $createdBy,
+            'created_by_type' => 'user'
         ]);
     }
     
     /**
-     * Log status update
+     * Log status update (by a user)
      */
     public function logStatusUpdate($complaintId, $remarks, $createdBy) {
         return $this->createTransaction([
             'complaint_id' => $complaintId,
             'transaction_type' => 'status_update',
             'remarks' => $remarks,
-            'created_by' => $createdBy
+            'created_by' => $createdBy,
+            'created_by_type' => 'user'
         ]);
     }
     
     /**
-     * Log assignment
+     * Log assignment (by a user)
      */
     public function logAssignment($complaintId, $fromUser, $toUser, $remarks, $createdBy) {
         return $this->createTransaction([
@@ -104,7 +113,8 @@ class Transaction extends BaseModel {
             'from_user' => $fromUser,
             'to_user' => $toUser,
             'remarks' => $remarks,
-            'created_by' => $createdBy
+            'created_by' => $createdBy,
+            'created_by_type' => 'user'
         ]);
     }
     
@@ -114,11 +124,12 @@ class Transaction extends BaseModel {
     public function getRecent($limit = 10) {
         $stmt = $this->connection->prepare("
             SELECT t.*, 
-                   u1.name as created_by_name,
+                   COALESCE(u.name, c.Name) as created_by_name,
                    u2.name as from_user_name,
                    u3.name as to_user_name
             FROM transactions t
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u ON t.created_by = u.login_id AND t.created_by_type = 'user'
+            LEFT JOIN customers c ON t.created_by = c.CustomerID AND t.created_by_type = 'customer'
             LEFT JOIN users u2 ON t.from_user = u2.login_id
             LEFT JOIN users u3 ON t.to_user = u3.login_id
             ORDER BY t.created_at DESC
@@ -134,11 +145,12 @@ class Transaction extends BaseModel {
     public function findByType($type, $limit = null) {
         $sql = "
             SELECT t.*, 
-                   u1.name as created_by_name,
+                   COALESCE(u.name, c.Name) as created_by_name,
                    u2.name as from_user_name,
                    u3.name as to_user_name
             FROM transactions t
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u ON t.created_by = u.login_id AND t.created_by_type = 'user'
+            LEFT JOIN customers c ON t.created_by = c.CustomerID AND t.created_by_type = 'customer'
             LEFT JOIN users u2 ON t.from_user = u2.login_id
             LEFT JOIN users u3 ON t.to_user = u3.login_id
             WHERE t.transaction_type = ?
@@ -160,14 +172,15 @@ class Transaction extends BaseModel {
     public function findByUser($userId, $limit = null) {
         $sql = "
             SELECT t.*, 
-                   u1.name as created_by_name,
+                   COALESCE(u.name, c.Name) as created_by_name,
                    u2.name as from_user_name,
                    u3.name as to_user_name
             FROM transactions t
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
+            LEFT JOIN users u ON t.created_by = u.login_id AND t.created_by_type = 'user'
+            LEFT JOIN customers c ON t.created_by = c.CustomerID AND t.created_by_type = 'customer'
             LEFT JOIN users u2 ON t.from_user = u2.login_id
             LEFT JOIN users u3 ON t.to_user = u3.login_id
-            WHERE t.created_by = ? OR t.from_user = ? OR t.to_user = ?
+            WHERE (t.created_by = ? AND t.created_by_type = 'user') OR t.from_user = ? OR t.to_user = ?
             ORDER BY t.created_at DESC
         ";
         
@@ -227,20 +240,7 @@ class Transaction extends BaseModel {
      * Get complaint history
      */
     public function getComplaintHistory($complaintId) {
-        $stmt = $this->connection->prepare("
-            SELECT t.*,
-                   u1.name as created_by_name,
-                   u2.name as from_user_name,
-                   u3.name as to_user_name
-            FROM transactions t
-            LEFT JOIN users u1 ON t.created_by = u1.login_id
-            LEFT JOIN users u2 ON t.from_user = u2.login_id
-            LEFT JOIN users u3 ON t.to_user = u3.login_id
-            WHERE t.complaint_id = ?
-            ORDER BY t.created_at ASC
-        ");
-        $stmt->execute([$complaintId]);
-        return $stmt->fetchAll();
+        return $this->findByComplaintId($complaintId);
     }
 }
 ?>
