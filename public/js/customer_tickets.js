@@ -464,6 +464,7 @@ function submitFeedback() {
         }
         bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
         setTimeout(() => window.location.reload(), 500); // Reload page to reflect changes.
+        setTimeout(() => window.location.reload(), 500); // Reload page to reflect changes.
     })
     .catch(error => {
         console.error('Error submitting feedback:', error);

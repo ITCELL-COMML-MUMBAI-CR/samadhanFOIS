@@ -198,6 +198,7 @@ if (!isset($currentUser)) {
             </div>
             <div class="modal-body">
                 <form id="additionalInfoForm" enctype="multipart/form-data">
+                <form id="additionalInfoForm" enctype="multipart/form-data">
                     <input type="hidden" id="additionalInfoTicketId" name="ticket_id">
                     <input type="hidden" name="csrf_token" value="<?php echo CSRF::generateToken(); ?>">
                     
@@ -213,6 +214,7 @@ if (!isset($currentUser)) {
                     </div>
                     
                     <div class="mb-3">
+                        <label for="additionalInfo" class="form-label">Additional Information *</label>
                         <label for="additionalInfo" class="form-label">Additional Information *</label>
                         <textarea class="form-control" id="additionalInfo" name="additional_info" rows="6" 
                                   placeholder="Please provide the additional information requested by our support team..." required></textarea>
@@ -268,3 +270,4 @@ if (!isset($currentUser)) {
         </div>
     </div>
 </div>
+

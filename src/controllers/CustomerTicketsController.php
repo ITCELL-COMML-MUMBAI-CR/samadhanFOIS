@@ -111,7 +111,12 @@ class CustomerTicketsController extends BaseController {
                     'remarks' => "Customer feedback submitted. Rating: $rating stars" . ($remarks ? ". Remarks: $remarks" : ''),
                     'created_by' => $currentUser['customer_id'],
                     'created_by_type' => 'customer'
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                 ]);
+                
+                // Set a session alert to be displayed after the page reloads.
+                SessionManager::setAlert('Feedback submitted successfully!', 'success');
                 
                 // Set a session alert to be displayed after the page reloads.
                 SessionManager::setAlert('Feedback submitted successfully!', 'success');
@@ -166,6 +171,7 @@ class CustomerTicketsController extends BaseController {
         // Load models
         $complaintModel = $this->loadModel('Complaint');
         $transactionModel = $this->loadModel('Transaction');
+        $evidenceModel = $this->loadModel('Evidence'); // Load Evidence model
         $evidenceModel = $this->loadModel('Evidence'); // Load Evidence model
         
         try {
@@ -252,6 +258,7 @@ class CustomerTicketsController extends BaseController {
             // Update complaint with the appended description and set status to Pending
             $updateData = [
                 'description' => $newDescription,
+                'description' => $newDescription,
                 'status' => 'Pending'
             ];
             
@@ -274,6 +281,8 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'additional_info_provided',
                     'remarks' => "Customer provided additional information: $additionalInfo",
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                     'created_by' => $currentUser['customer_id'],
                     'created_by_type' => 'customer'
                 ]);
@@ -374,3 +383,4 @@ class CustomerTicketsController extends BaseController {
         }
     }
 }
+
