@@ -379,7 +379,7 @@ function handleAssignComplaint($complaintId) {
         require_once __DIR__ . '/../models/Complaint.php';
         $complaintModel = new Complaint();
         
-        $result = $complaintModel->assignComplaint($complaintId, $assignedTo);
+        $result = $complaintModel->assignTo($complaintId, $assignedTo);
         
         if ($result) {
             sendSuccess([], 'Complaint assigned successfully');
@@ -597,7 +597,7 @@ function handleSubmitMoreInfo() {
         
         // Move back to pending and assign to commercial controller for review
         $complaintModel->updateStatus($complaintId, 'pending');
-        $complaintModel->assignTo($complaintId, 'commercial_controller');
+        $complaintModel->assignTo($complaintId, 'COMMERCIAL');
         $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
         
         sendSuccess([], 'Additional information submitted successfully');
@@ -738,7 +738,27 @@ function handleCustomerAdditionalInfo() {
         
         $success = $complaintModel->updateComplaint($ticketId, $updateData);
         
+        // Assign to appropriate commercial controller based on the shed's division
         if ($success) {
+            $shedId = $ticket['shed_id'] ?? null;
+            if ($shedId) {
+                $commercialController = $complaintModel->getCommercialControllerForShed($shedId);
+                if ($commercialController) {
+                    $complaintModel->assignTo($ticketId, $commercialController);
+                } else {
+                    // Fallback to generic commercial_controller if no specific controller found
+                    $complaintModel->assignTo($ticketId, 'commercial_controller');
+                }
+            } else {
+                // Fallback to generic commercial_controller if no shed_id
+                $complaintModel->assignTo($ticketId, 'commercial_controller');
+            }
+        }
+        
+        if ($success) {
+            // Log transaction
+            $transactionModel->logStatusUpdate($ticketId, 'Customer provided additional information', $currentUser['login_id']);
+            
             // Log the additional information transaction
             $transactionModel->createTransaction([
                 'complaint_id' => $ticketId,

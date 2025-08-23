@@ -131,22 +131,36 @@ class Complaint extends BaseModel {
      * Get complaints assigned to user
      */
     public function findAssignedTo($loginId, $limit = null) {
+        // Get user details to check division
+        $userModel = new User();
+        $userDetails = $userModel->findByLoginId($loginId);
+        $userDivision = $userDetails['Division'] ?? null;
+        $userDepartment = $userDetails['department'] ?? null;
+        
+        // Base query including either direct assignment or in same division for forwarded complaints
         $sql = "
             SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
                    s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             LEFT JOIN shed s ON c.shed_id = s.ShedID
-            WHERE c.Assigned_To_Department = ?
+            WHERE (c.Assigned_To_Department = ? 
+                  OR (c.Division = ? AND c.Forwarded_Flag = 'Y' 
+                      AND " . ($userDepartment === 'COMMERCIAL' ? "1=1" : "c.department = ?") . "))
             ORDER BY c.created_at DESC
         ";
+        
+        $params = [$loginId, $userDivision];
+        if ($userDepartment !== 'COMMERCIAL') {
+            $params[] = $userDepartment;
+        }
         
         if ($limit) {
             $sql .= " LIMIT $limit";
         }
         
         $stmt = $this->connection->prepare($sql);
-        $stmt->execute([$loginId]);
+        $stmt->execute($params);
         return $stmt->fetchAll();
     }
     
@@ -160,6 +174,14 @@ class Complaint extends BaseModel {
         if ($actionTaken !== null) {
             $sql .= ", action_taken = ?";
             $params[] = $actionTaken;
+        }
+
+        if (in_array($status, ['replied', 'awaiting_approval', 'closed'])) {
+            $sql .= ", Forwarded_Flag = 'N'";
+        }
+
+        if (in_array($status, ['replied', 'closed'])) {
+            $sql .= ", Assigned_To_Department = NULL";
         }
         
         $sql .= " WHERE complaint_id = ?";
@@ -784,10 +806,24 @@ class Complaint extends BaseModel {
     /**
      * Count complaints with filters
      */
-    public function countWithFilters($filters = [], $search = '') {
+    public function countWithFilters($filters = [], $search = '', $userLoginId = null) {
+        // If user login ID provided, get user details for division restriction
+        $userDivision = null;
+        if ($userLoginId) {
+            $userModel = new User();
+            $userDetails = $userModel->findByLoginId($userLoginId);
+            $userDivision = $userDetails['Division'] ?? null;
+        }
+        
         $sql = "SELECT COUNT(*) as count FROM complaints c";
         $params = [];
         $conditions = [];
+        
+        // Add division restriction if applicable
+        if ($userDivision && $userDivision !== 'HQ') {
+            $conditions[] = "(c.Division = ? OR c.Division = 'HQ' OR c.Division IS NULL)";
+            $params[] = $userDivision;
+        }
         
         // Add search condition
         if (!empty($search)) {
@@ -832,15 +868,29 @@ class Complaint extends BaseModel {
      * Find assigned complaints with filters
      */
     public function findAssignedToWithFilters($loginId, $filters = [], $search = '', $limit = null, $offset = null) {
+        // Get user details to check division
+        $userModel = new User();
+        $userDetails = $userModel->findByLoginId($loginId);
+        $userDivision = $userDetails['Division'] ?? null;
+        $userDepartment = $userDetails['department'] ?? null;
+
+        // Base query including either direct assignment or in same division for forwarded complaints
         $sql = "
             SELECT c.*, cu.Name as customer_name, c.Assigned_To_Department as assigned_to,
                    s.Terminal as shed_terminal, s.Type as shed_type
             FROM complaints c
             LEFT JOIN customers cu ON c.customer_id = cu.CustomerID
             LEFT JOIN shed s ON c.shed_id = s.ShedID
-            WHERE c.Assigned_To_Department = ?
+            WHERE (c.Assigned_To_Department = ? 
+                  OR (c.Division = ? AND c.Forwarded_Flag = 'Y' 
+                      AND " . ($userDepartment === 'COMMERCIAL' ? "1=1" : "c.department = ?") . "))
         ";
-        $params = [$loginId];
+        
+        $params = [$loginId, $userDivision];
+        if ($userDepartment !== 'COMMERCIAL') {
+            $params[] = $userDepartment;
+        }
+        
         $conditions = [];
         
         // Add search condition
@@ -895,8 +945,22 @@ class Complaint extends BaseModel {
      * Count assigned complaints with filters
      */
     public function countAssignedToWithFilters($loginId, $filters = [], $search = '') {
-        $sql = "SELECT COUNT(*) as count FROM complaints c WHERE c.Assigned_To_Department = ?";
-        $params = [$loginId];
+        // Get user details to check division
+        $userModel = new User();
+        $userDetails = $userModel->findByLoginId($loginId);
+        $userDivision = $userDetails['Division'] ?? null;
+        $userDepartment = $userDetails['department'] ?? null;
+        
+        // Base query including either direct assignment or in same division for forwarded complaints
+        $sql = "SELECT COUNT(*) as count FROM complaints c WHERE (c.Assigned_To_Department = ? 
+                OR (c.Division = ? AND c.Forwarded_Flag = 'Y' 
+                    AND " . ($userDepartment === 'COMMERCIAL' ? "1=1" : "c.department = ?") . "))";
+                    
+        $params = [$loginId, $userDivision];
+        if ($userDepartment !== 'COMMERCIAL') {
+            $params[] = $userDepartment;
+        }
+        
         $conditions = [];
         
         // Add search condition
@@ -940,8 +1004,17 @@ class Complaint extends BaseModel {
     
     /**
      * Search complaints with filters and pagination
+     * Added division restriction - departments can only see complaints from their division except HQ
      */
-    public function searchWithFilters($searchTerm = '', $filters = [], $limit = null, $offset = null) {
+    public function searchWithFilters($searchTerm = '', $filters = [], $limit = null, $offset = null, $userLoginId = null) {
+        // If user login ID provided, get user details for division restriction
+        $userDivision = null;
+        if ($userLoginId) {
+            $userModel = new User();
+            $userDetails = $userModel->findByLoginId($userLoginId);
+            $userDivision = $userDetails['Division'] ?? null;
+        }
+        
         $sql = "
             SELECT c.*, cu.Name as customer_name 
             FROM complaints c
@@ -949,6 +1022,12 @@ class Complaint extends BaseModel {
         ";
         $params = [];
         $conditions = [];
+        
+        // Add division restriction if applicable
+        if ($userDivision && $userDivision !== 'HQ') {
+            $conditions[] = "(c.Division = ? OR c.Division = 'HQ' OR c.Division IS NULL)";
+            $params[] = $userDivision;
+        }
         
         // Add search condition
         if (!empty($searchTerm)) {
@@ -1253,7 +1332,7 @@ class Complaint extends BaseModel {
     /**
      * Get commercial controller for a specific shed based on division and zone
      */
-    private function getCommercialControllerForShed($shedId) {
+    public function getCommercialControllerForShed($shedId) {
         try {
             // Get shed details with division and zone
             $stmt = $this->connection->prepare("

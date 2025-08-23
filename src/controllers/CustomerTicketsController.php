@@ -70,13 +70,16 @@ class CustomerTicketsController extends BaseController {
         
         $currentUser = SessionManager::getCurrentUser();
         $customerId = $currentUser['customer_id'];
-        
+
         // Validate input
         $ticketId = $_POST['ticket_id'] ?? 0;
-        $rating = intval($_POST['rating'] ?? 0);
-        $remarks = trim($_POST['remarks'] ?? '');
+        $rating = trim($_POST['feedback_rating'] ?? '');
+        $remarks = trim($_POST['feedback_text'] ?? '');
+
+        //echo "<script>console.log('Rating: " . $rating . "');</script>";
+        //echo "<script>console.log('Remarks: " . $remarks . "');</script>";
         
-        if (empty($ticketId) || $rating < 1 || $rating > 5) {
+        if (empty($ticketId)) {
             echo json_encode(['error' => true, 'message' => 'Invalid input parameters']);
             return;
         }
@@ -106,8 +109,12 @@ class CustomerTicketsController extends BaseController {
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'feedback_submitted',
                     'remarks' => "Customer feedback submitted. Rating: $rating stars" . ($remarks ? ". Remarks: $remarks" : ''),
-                    'created_by' => $currentUser['login_id'] ?? 'customer'
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                 ]);
+                
+                // Set a session alert to be displayed after the page reloads.
+                SessionManager::setAlert('Feedback submitted successfully!', 'success');
                 
                 echo json_encode(['error' => false, 'message' => 'Feedback submitted successfully']);
             } else {
@@ -124,6 +131,12 @@ class CustomerTicketsController extends BaseController {
      * Handle additional information submission
      */
     public function submitAdditionalInfo() {
+        Logger::info('CustomerTicketsController: submitAdditionalInfo start', [
+            'request_method' => $_SERVER['REQUEST_METHOD'],
+            'request' => $_REQUEST,
+            'files_count' => count($_FILES)
+        ]);
+        
         // Check if it's a POST request
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
@@ -153,6 +166,7 @@ class CustomerTicketsController extends BaseController {
         // Load models
         $complaintModel = $this->loadModel('Complaint');
         $transactionModel = $this->loadModel('Transaction');
+        $evidenceModel = $this->loadModel('Evidence'); // Load Evidence model
         
         try {
             // Verify ticket belongs to customer and is in reverted status
@@ -161,20 +175,107 @@ class CustomerTicketsController extends BaseController {
                 echo json_encode(['error' => true, 'message' => 'Invalid ticket or ticket not in reverted status']);
                 return;
             }
+
+            // Handle image deletion if requested
+            $deleteImages = $_POST['delete_images'] ?? [];
+            if (!empty($deleteImages)) {
+                $currentEvidence = $evidenceModel->findByComplaintId($ticketId);
+                if ($currentEvidence) {
+                    foreach ($deleteImages as $filename) {
+                        for ($i = 1; $i <= 3; $i++) {
+                            $imageField = "image_$i";
+                            if (isset($currentEvidence[$imageField]) && $currentEvidence[$imageField] === $filename) {
+                                $evidenceModel->deleteImage($ticketId, $i);
+                                break; 
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Debug file uploads
+            Logger::info('CustomerTicketsController: Files debug', [
+                'additional_evidence_exists' => isset($_FILES['additional_evidence']),
+                'files_keys' => array_keys($_FILES),
+                'ticket_id' => $ticketId
+            ]);
             
-            // Update complaint with additional information
+            // Handle additional evidence upload if provided
+            if (isset($_FILES['additional_evidence']) && 
+                is_array($_FILES['additional_evidence']['name']) && 
+                !empty($_FILES['additional_evidence']['name'][0])) {
+                
+                Logger::info('Processing file uploads from additional_evidence', [
+                    'file_count' => count($_FILES['additional_evidence']['name']),
+                    'names' => $_FILES['additional_evidence']['name']
+                ]);
+                
+                // Pass the files to the Evidence model for handling
+                $uploadResult = $evidenceModel->handleFileUpload($_FILES['additional_evidence'], $ticketId);
+                if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                    Logger::error('File upload errors from additional_evidence', [
+                        'errors' => $uploadResult['errors']
+                    ]);
+                    throw new Exception('Failed to upload some files: ' . implode(', ', $uploadResult['errors']));
+                } else {
+                    Logger::info('File upload success from additional_evidence', [
+                        'uploaded_files' => $uploadResult['uploaded_files']
+                    ]);
+                }
+            } 
+            // Try with evidence field as fallback (for compatibility)
+            elseif (isset($_FILES['evidence']) && 
+                    is_array($_FILES['evidence']['name']) && 
+                    !empty($_FILES['evidence']['name'][0])) {
+                
+                Logger::info('Processing file uploads from evidence field', [
+                    'file_count' => count($_FILES['evidence']['name']),
+                    'names' => $_FILES['evidence']['name']
+                ]);
+                
+                $uploadResult = $evidenceModel->handleFileUpload($_FILES['evidence'], $ticketId);
+                if (!$uploadResult['success'] && !empty($uploadResult['errors'])) {
+                    Logger::error('File upload errors from evidence field', [
+                        'errors' => $uploadResult['errors']
+                    ]);
+                    throw new Exception('Failed to upload some files: ' . implode(', ', $uploadResult['errors']));
+                } else {
+                    Logger::info('File upload success from evidence field', [
+                        'uploaded_files' => $uploadResult['uploaded_files']
+                    ]);
+                }
+            }
+            
+            // Append new info to the existing description
+            $newDescription = $ticket['description'] . "\n\n--- ADDITIONAL INFORMATION ---\n" . $additionalInfo;
+
+            // Update complaint with the appended description and set status to Pending
             $updateData = [
-                'additional_info' => $additionalInfo,
+                'description' => $newDescription,
                 'status' => 'Pending'
             ];
             
             if ($complaintModel->updateComplaint($ticketId, $updateData)) {
+                // Reassign to commercial department for review
+                // Get the complaint details to access the shed_id
+                $complaintDetails = $complaintModel->findByComplaintId($ticketId);
+                $shedId = $complaintDetails['shed_id'] ?? null;
+                
+                // Use the shed's division to determine the appropriate commercial controller
+                if ($shedId) {
+                    $commercialController = $complaintModel->getCommercialControllerForShed($shedId);
+                    if ($commercialController) {
+                        $complaintModel->assignTo($ticketId, $commercialController);
+                    }
+                }
+                
                 // Log the additional information transaction
                 $transactionModel->createTransaction([
                     'complaint_id' => $ticketId,
                     'transaction_type' => 'additional_info_provided',
                     'remarks' => "Customer provided additional information: $additionalInfo",
-                    'created_by' => $currentUser['login_id'] ?? 'customer'
+                    'created_by' => $currentUser['customer_id'],
+                    'created_by_type' => 'customer'
                 ]);
                 
                 echo json_encode(['error' => false, 'message' => 'Additional information submitted successfully']);

@@ -153,24 +153,26 @@ if (!isset($currentUser)) {
                     <input type="hidden" name="csrf_token" value="<?php echo CSRF::generateToken(); ?>">
                     
                     <div class="mb-3">
-                        <label for="rating" class="form-label">Rating</label>
-                        <div class="rating-stars">
-                            <input type="radio" name="rating" value="5" id="star5">
-                            <label for="star5"><i class="fas fa-star"></i></label>
-                            <input type="radio" name="rating" value="4" id="star4">
-                            <label for="star4"><i class="fas fa-star"></i></label>
-                            <input type="radio" name="rating" value="3" id="star3">
-                            <label for="star3"><i class="fas fa-star"></i></label>
-                            <input type="radio" name="rating" value="2" id="star2">
-                            <label for="star2"><i class="fas fa-star"></i></label>
-                            <input type="radio" name="rating" value="1" id="star1">
-                            <label for="star1"><i class="fas fa-star"></i></label>
+                        <label class="form-label">Rating</label>
+                        <div class="rating-options">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="feedback_rating" value="Excellent" id="ratingExcellent">
+                                <label class="form-check-label" for="ratingExcellent">Excellent</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="feedback_rating" value="Satisfactory" id="ratingSatisfactory">
+                                <label class="form-check-label" for="ratingSatisfactory">Satisfactory</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="feedback_rating" value="Unsatisfactory" id="ratingUnsatisfactory">
+                                <label class="form-check-label" for="ratingUnsatisfactory">Unsatisfactory</label>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="feedbackRemarks" class="form-label">Additional Comments (Optional)</label>
-                        <textarea class="form-control" id="feedbackRemarks" name="remarks" rows="4" 
+                        <textarea class="form-control" id="feedbackRemarks" name="feedback_text" rows="4" 
                                   placeholder="Share your experience with our support team..."></textarea>
                     </div>
                 </form>
@@ -195,19 +197,50 @@ if (!isset($currentUser)) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="additionalInfoForm">
+                <form id="additionalInfoForm" enctype="multipart/form-data">
                     <input type="hidden" id="additionalInfoTicketId" name="ticket_id">
                     <input type="hidden" name="csrf_token" value="<?php echo CSRF::generateToken(); ?>">
                     
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        <strong>Note:</strong> Your ticket has been reverted for additional information. Please provide the requested details to help us resolve your issue faster.
+                        <strong>Note:</strong> Your ticket has been reverted. Please provide the requested details and manage your evidence files below.
+                    </div>
+                    <div id="askedInfoSection" class="mb-3">
+
+                    </div>
+                    <div id="existingEvidenceSection" class="mb-3">
+                        <!-- Existing evidence will be loaded here by JavaScript -->
                     </div>
                     
                     <div class="mb-3">
-                        <label for="additionalInfo" class="form-label">Additional Information</label>
+                        <label for="additionalInfo" class="form-label">Additional Information *</label>
                         <textarea class="form-control" id="additionalInfo" name="additional_info" rows="6" 
                                   placeholder="Please provide the additional information requested by our support team..." required></textarea>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-paperclip"></i> Supporting Documents (Optional)
+                            </h6>
+                            <p class="card-text">Upload supporting images or documents (Max 3 files, 2MB each)</p>
+                            
+                            <div class="file-upload-area" id="fileUploadArea" style="cursor: pointer;">
+                                <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                                <p>Drag and drop files here or click to select (Max 3 files)</p>
+                                <input type="file" class="form-control" id="evidence" name="additional_evidence[]" 
+                                       accept="image/*,.pdf,.doc,.docx" style="display: none;">
+                                <button type="button" class="btn btn-outline-primary" onclick="event.stopPropagation(); document.getElementById('evidence').click();">
+                                    <i class="fas fa-upload"></i> Select Files
+                                </button>
+                            </div>
+                            
+                            <div class="row mt-3" id="imagePreview"></div>
+                            
+                            <div class="form-text">
+                                Supported formats: JPG, JPEG, PNG, GIF, PDF, DOC, DOCX. Maximum 3 files, 2MB each.
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>

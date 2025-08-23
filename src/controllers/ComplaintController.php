@@ -624,9 +624,21 @@ class ComplaintController extends BaseController {
                                 }
                             }
                             
-                            // Move back to pending and assign to commercial controller for review
+                            // Move back to pending and assign to appropriate commercial controller based on shed's division
                             $complaintModel->updateStatus($complaintId, 'pending');
-                            $complaintModel->assignTo($complaintId, 'commercial_controller');
+                            
+                            // Get the complaint details to access the shed_id
+                            $complaintDetails = $complaintModel->findByComplaintId($complaintId);
+                            $shedId = $complaintDetails['shed_id'] ?? null;
+                            
+                            // Use the shed's division to determine the appropriate commercial controller
+                            if ($shedId) {
+                                $commercialController = $complaintModel->getCommercialControllerForShed($shedId);
+                                if ($commercialController) {
+                                    $complaintModel->assignTo($complaintId, $commercialController);
+                                }
+                            }
+                            
                             $transactionModel->logStatusUpdate($complaintId, 'Customer provided more information: ' . $moreInfo, $currentUser['login_id']);
                             break;
                     }
@@ -760,7 +772,18 @@ class ComplaintController extends BaseController {
                             $_SESSION['alert_message'] = 'Failed to process close request.';
                             $_SESSION['alert_type'] = 'error';
                         }
-                        $this->redirect('grievances/hub');
+                        // Redirect back to the same page with complaint ID
+                        $redirectUrl = 'grievances/hub';
+                        // Preserve existing query parameters
+                        if (isset($_GET) && !empty($_GET)) {
+                            $queryParams = $_GET;
+                            // Add complaint ID to URL
+                            $queryParams['complaint_id'] = $complaintId;
+                            $redirectUrl .= '?' . http_build_query($queryParams);
+                        } else {
+                            $redirectUrl .= '?complaint_id=' . $complaintId;
+                        }
+                        $this->redirect($redirectUrl);
                         return;
                         
                     case 'forward':
@@ -837,7 +860,18 @@ class ComplaintController extends BaseController {
                         
                         $_SESSION['alert_message'] = 'Grievance forwarded successfully!';
                         $_SESSION['alert_type'] = 'success';
-                        $this->redirect('grievances/hub');
+                        // Redirect back to the same page with complaint ID
+                        $redirectUrl = 'grievances/hub';
+                        // Preserve existing query parameters
+                        if (isset($_GET) && !empty($_GET)) {
+                            $queryParams = $_GET;
+                            // Add complaint ID to URL
+                            $queryParams['complaint_id'] = $complaintId;
+                            $redirectUrl .= '?' . http_build_query($queryParams);
+                        } else {
+                            $redirectUrl .= '?complaint_id=' . $complaintId;
+                        }
+                        $this->redirect($redirectUrl);
                         return;
                         
                     case 'revert':
@@ -872,7 +906,18 @@ class ComplaintController extends BaseController {
                         
                         $_SESSION['alert_message'] = 'Grievance reverted to customer with remarks.';
                         $_SESSION['alert_type'] = 'success';
-                        $this->redirect('grievances/hub');
+                        // Redirect back to the same page with complaint ID
+                        $redirectUrl = 'grievances/hub';
+                        // Preserve existing query parameters
+                        if (isset($_GET) && !empty($_GET)) {
+                            $queryParams = $_GET;
+                            // Add complaint ID to URL
+                            $queryParams['complaint_id'] = $complaintId;
+                            $redirectUrl .= '?' . http_build_query($queryParams);
+                        } else {
+                            $redirectUrl .= '?complaint_id=' . $complaintId;
+                        }
+                        $this->redirect($redirectUrl);
                         return;
                         
                     case 'assign_priority':
@@ -889,7 +934,18 @@ class ComplaintController extends BaseController {
                             $_SESSION['alert_message'] = 'Failed to update priority.';
                             $_SESSION['alert_type'] = 'error';
                         }
-                        $this->redirect('grievances/hub');
+                        // Redirect back to the same page with complaint ID
+                        $redirectUrl = 'grievances/hub';
+                        // Preserve existing query parameters
+                        if (isset($_GET) && !empty($_GET)) {
+                            $queryParams = $_GET;
+                            // Add complaint ID to URL
+                            $queryParams['complaint_id'] = $complaintId;
+                            $redirectUrl .= '?' . http_build_query($queryParams);
+                        } else {
+                            $redirectUrl .= '?complaint_id=' . $complaintId;
+                        }
+                        $this->redirect($redirectUrl);
                         return;
                         case 'approve':
                             // Approval logic is now here
@@ -899,6 +955,28 @@ class ComplaintController extends BaseController {
                             $remarks = sanitizeInput($_POST['remarks'] ?? '');
                             $complaint = $complaintModel->findByComplaintId($complaintId);
                             if (!$complaint) throw new Exception('Complaint not found');
+
+                            // Find the user who sent the complaint for approval
+    $transactions = $transactionModel->findByComplaintId($complaintId);
+    $actionTakenByUser = null;
+    foreach (array_reverse($transactions) as $transaction) {
+        if (strpos($transaction['remarks'] ?? '', 'Closed by controller') !== false) {
+            $actionTakenByUser = $transaction['created_by'];
+            break;
+        }
+    }
+
+    if ($actionTakenByUser) {
+        $actionUser = $userModel->findByLoginId($actionTakenByUser);
+        if ($actionUser) {
+            $updateData = [
+                'department' => $actionUser['department'],
+                'Division' => $actionUser['Division'],
+                'Zone' => $actionUser['Zone']
+            ];
+            $complaintModel->updateComplaint($complaintId, $updateData);
+        }
+    }
                             
                             $customerId = $complaint['customer_id'] ?? null;
                             $customerUser = $customerId ? $userModel->findByCustomerId($customerId) : null;
@@ -992,10 +1070,10 @@ class ComplaintController extends BaseController {
             $grievances = $complaintModel->findAssignedToWithFilters($currentUser['login_id'], $filters, $search, $limit, $offset);
             $totalCount = $complaintModel->countAssignedToWithFilters($currentUser['login_id'], $filters, $search);
         } else {
-            // Get all grievances
+            // Get all grievances with division restriction
             $complaintModel->updateAutoPriorities();
-            $grievances = $complaintModel->searchWithFilters($search, $filters, $limit, $offset);
-            $totalCount = $complaintModel->countWithFilters($filters, $search);
+            $grievances = $complaintModel->searchWithFilters($search, $filters, $limit, $offset, $currentUser['login_id']);
+            $totalCount = $complaintModel->countWithFilters($filters, $search, $currentUser['login_id']);
         }
         
         // Calculate auto-priority for each grievance and ensure status is available

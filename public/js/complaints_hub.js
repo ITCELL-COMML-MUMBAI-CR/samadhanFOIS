@@ -6,6 +6,20 @@
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize the complaints hub interface
     initComplaintsHub();
+    
+    // Check if there's a complaint ID in URL to restore complaint details on page refresh
+    const urlParams = new URLSearchParams(window.location.search);
+    const complaintId = urlParams.get('complaint_id');
+    if (complaintId) {
+        // Find the complaint item with matching ID
+        const complaintItem = document.querySelector(`.complaint-item[data-complaint-id="${complaintId}"]`);
+        if (complaintItem) {
+            // Simulate click to show details
+            setTimeout(() => {
+                complaintItem.click();
+            }, 100);
+        }
+    }
 });
 
 function initComplaintsHub() {
@@ -159,11 +173,18 @@ function setupComplaintSelection() {
 function showComplaintDetails(complaintId, complaintElement) {
     document.getElementById('defaultState').style.display = 'none';
     document.getElementById('complaintDetails').style.display = 'flex';
+    
+    // Update URL with complaint_id parameter for persistence on page refresh
+    const url = new URL(window.location);
+    url.searchParams.set('complaint_id', complaintId);
+    window.history.replaceState({}, '', url);
 
     const status = complaintElement.dataset.complaintStatus;
 
     document.querySelectorAll('.action-btn').forEach(btn => btn.style.display = 'none');
 
+    const isForwarded = complaintElement.dataset.complaintStatus === 'forwarded' || complaintElement.querySelector('.status-forwarded');
+    
     if (status === 'awaiting_approval') {
         // Use the now-defined currentUserRole and currentUserDepartment variables
         if (currentUserRole === 'admin' || (currentUserDepartment && currentUserDepartment.toUpperCase() === 'COMMERCIAL')) {
@@ -174,7 +195,8 @@ function showComplaintDetails(complaintId, complaintElement) {
                 takeActionBtn.dataset.actionTaken = complaintElement.dataset.actionTaken;
             }
         }
-    } else {
+    } else if (!isForwarded) {
+        // Only show action buttons if not forwarded
         document.getElementById('forwardBtn').style.display = 'inline-flex';
         document.getElementById('closeBtn').style.display = 'inline-flex';
         if (document.getElementById('revertBtn')) {
@@ -187,7 +209,7 @@ function showComplaintDetails(complaintId, complaintElement) {
     if (document.getElementById('revertBtn')) {
         document.getElementById('revertBtn').onclick = () => revertComplaint(complaintId);
     }
-
+updateComplaintHeader(complaintId, complaintElement);
     loadComplaintDetails(complaintId);
 }
 
@@ -1145,6 +1167,11 @@ function clearComplaintSelection() {
     // Show default state
     defaultState.style.display = 'flex';
     complaintDetails.style.display = 'none';
+    
+    // Remove complaint_id from URL
+    const url = new URL(window.location);
+    url.searchParams.delete('complaint_id');
+    window.history.replaceState({}, '', url);
 }
 
 function setupAutoRefresh() {

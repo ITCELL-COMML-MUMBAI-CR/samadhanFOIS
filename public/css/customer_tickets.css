@@ -246,7 +246,7 @@
 }
 
 .modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: rgb(187, 187, 187);
     color: white;
     border-radius: 15px 15px 0 0;
     border: none;
@@ -268,29 +268,30 @@
     padding: 1.5rem 2rem;
 }
 
-/* Rating Stars */
-.rating-stars {
+/* Rating Options */
+.rating-options {
     display: flex;
-    flex-direction: row-reverse;
-    gap: 0.5rem;
-    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
 }
 
-.rating-stars input[type="radio"] {
-    display: none;
+.rating-options .form-check {
+    margin: 0;
+    padding-left: 2rem;
 }
 
-.rating-stars label {
+.rating-options .form-check-input {
+    margin-top: 0.25rem;
+}
+
+.rating-options .form-check-label {
+    font-weight: 500;
     cursor: pointer;
-    font-size: 2rem;
-    color: #e9ecef;
-    transition: color 0.3s ease;
 }
 
-.rating-stars label:hover,
-.rating-stars label:hover ~ label,
-.rating-stars input[type="radio"]:checked ~ label {
-    color: #ffc107;
+.rating-options .form-check-input:checked ~ .form-check-label {
+    color: #495057;
 }
 
 /* Form Controls */
@@ -466,6 +467,62 @@
 .empty-message {
     font-size: 1rem;
     margin-bottom: 2rem;
+}
+
+/* File Upload Styles */
+.file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.file-upload-area.dragover {
+    background-color: rgba(0, 123, 255, 0.05);
+    border-color: #007bff;
+}
+
+.file-upload-area.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.file-preview-card {
+    position: relative;
+    height: 100%;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.file-preview-card img {
+    height: 120px;
+    object-fit: cover;
+}
+
+.file-preview-card .card-body {
+    padding: 10px;
+    position: relative;
+}
+
+.file-preview-card .btn-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.8rem;
+}
+
+.file-preview-card .file-icon {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    font-size: 3rem;
+    color: #6c757d;
 }
 
 /* Responsive Design */
